@@ -1,87 +1,138 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
-import { UpdateProjectSchema } from '@/lib/types'
-import { successResponse, errorResponse, parseRequestBody } from '@/lib/utils/api-helpers'
+import { UpdateProjectInput } from '@/lib/types'
 
 /**
  * GET /api/projects/[projectId]
- * Get project details
+ * Get a specific project by ID
  */
-export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
-    try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
+async function getProject(req: NextRequest, context: any) {
+  const projectsRepo = new ProjectsRepository(context.user)
+  const { projectId } = context.params
 
-      const repository = new ProjectsRepository(user)
-      const project = await repository.getProjectById(projectId)
+  try {
+    const project = await projectsRepo.getProjectById(projectId)
+    return NextResponse.json({ success: true, data: project })
+  } catch (error) {
+    console.error('Error fetching project:', error)
 
-      return successResponse(project)
-    } catch (error) {
-      return errorResponse(error)
+    if (error instanceof Error) {
+      if (error.name === 'NotFoundError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 404 }
+        )
+      }
+      if (error.name === 'ForbiddenError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 }
+        )
+      }
     }
-  },
-  { requireProject: true }
-)
+
+    return NextResponse.json(
+      { error: 'Failed to fetch project' },
+      { status: 500 }
+    )
+  }
+}
 
 /**
  * PUT /api/projects/[projectId]
- * Update project (full update)
+ * Update a specific project
  */
-export const PUT = withAuth(
-  async (req: NextRequest, { user }) => {
-    try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
-      const updates = await parseRequestBody(req, UpdateProjectSchema)
+async function updateProject(req: NextRequest, context: any) {
+  const projectsRepo = new ProjectsRepository(context.user)
+  const { projectId } = context.params
 
-      const repository = new ProjectsRepository(user)
-      const project = await repository.updateProject(projectId, updates)
+  try {
+    const body = await req.json()
+    const updateData: UpdateProjectInput = {}
 
-      return successResponse(project)
-    } catch (error) {
-      return errorResponse(error)
+    if (body.name !== undefined) updateData.name = body.name
+    if (body.description !== undefined) updateData.description = body.description
+    if (body.slug !== undefined) updateData.slug = body.slug
+    if (body.status !== undefined) updateData.status = body.status
+    if (body.ownerId !== undefined) updateData.ownerId = body.ownerId
+    if (body.settings !== undefined) updateData.settings = body.settings
+
+    const project = await projectsRepo.updateProject(projectId, updateData)
+    return NextResponse.json({ success: true, data: project })
+  } catch (error) {
+    console.error('Error updating project:', error)
+
+    if (error instanceof Error) {
+      if (error.name === 'NotFoundError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 404 }
+        )
+      }
+      if (error.name === 'ForbiddenError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 }
+        )
+      }
+      if (error.name === 'ConflictError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 }
+        )
+      }
     }
-  },
-  { requireProject: true, allowedRoles: ['admin', 'member'] }
-)
 
-/**
- * PATCH /api/projects/[projectId]
- * Update project (partial update)
- */
-export const PATCH = withAuth(
-  async (req: NextRequest, { user }) => {
-    try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
-      const updates = await parseRequestBody(req, UpdateProjectSchema)
-
-      const repository = new ProjectsRepository(user)
-      const project = await repository.updateProject(projectId, updates)
-
-      return successResponse(project)
-    } catch (error) {
-      return errorResponse(error)
-    }
-  },
-  { requireProject: true, allowedRoles: ['admin', 'member'] }
-)
+    return NextResponse.json(
+      { error: 'Failed to update project' },
+      { status: 500 }
+    )
+  }
+}
 
 /**
  * DELETE /api/projects/[projectId]
- * Delete project (only if empty)
+ * Delete a specific project
  */
-export const DELETE = withAuth(
-  async (req: NextRequest, { user }) => {
-    try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
+async function deleteProject(req: NextRequest, context: any) {
+  const projectsRepo = new ProjectsRepository(context.user)
+  const { projectId } = context.params
 
-      const repository = new ProjectsRepository(user)
-      const result = await repository.deleteProject(projectId)
+  try {
+    const result = await projectsRepo.deleteProject(projectId)
+    return NextResponse.json({ success: true, data: result })
+  } catch (error) {
+    console.error('Error deleting project:', error)
 
-      return successResponse(result)
-    } catch (error) {
-      return errorResponse(error)
+    if (error instanceof Error) {
+      if (error.name === 'NotFoundError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 404 }
+        )
+      }
+      if (error.name === 'ForbiddenError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 }
+        )
+      }
+      if (error.name === 'ConflictError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 }
+        )
+      }
     }
-  },
-  { requireProject: true, requireAdmin: true }
-)
+
+    return NextResponse.json(
+      { error: 'Failed to delete project' },
+      { status: 500 }
+    )
+  }
+}
+
+export const GET = withAuth(getProject, { requireOrg: true, requireProject: true })
+export const PUT = withAuth(updateProject, { requireOrg: true, requireProject: true })
+export const DELETE = withAuth(deleteProject, { requireOrg: true, requireProject: true })

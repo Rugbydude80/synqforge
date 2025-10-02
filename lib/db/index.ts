@@ -1,17 +1,17 @@
-import { drizzle } from 'drizzle-orm/mysql2'
-import mysql from 'mysql2/promise'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 import { customAlphabet } from 'nanoid'
 import * as schema from './schema'
 
-const poolConnection = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'synqforge',
+// Create the connection
+const connectionString = process.env.DATABASE_URL!
+const client = postgres(connectionString, {
+  max: 10,
+  idle_timeout: 20,
+  max_lifetime: 60 * 30, // 30 minutes
 })
 
-export const db = drizzle(poolConnection, { schema, mode: 'default' })
+export const db = drizzle(client, { schema })
 
 /**
  * Generate a unique ID for database records

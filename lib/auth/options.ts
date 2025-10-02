@@ -2,8 +2,9 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { users, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { verifyPassword } from '@/lib/utils/auth'
 
 declare module 'next-auth' {
   interface Session {
@@ -12,6 +13,9 @@ declare module 'next-auth' {
       email: string
       name: string | null
       image: string | null
+      role: string
+      organizationId: string
+      organizationName: string
     }
   }
 
@@ -19,6 +23,9 @@ declare module 'next-auth' {
     id: string
     email: string
     name: string | null
+    role: string
+    organizationId: string
+    organizationName: string
   }
 }
 
@@ -39,15 +46,19 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // TODO: Implement password verification
-        // This is a placeholder - you should implement proper password hashing/verification
         const [user] = await db
           .select()
           .from(users)
           .where(eq(users.email, credentials.email))
           .limit(1)
 
-        if (!user || !user.isActive) {
+        if (!user || !user.isActive || !user.password) {
+          return null
+        }
+
+        // Verify password
+        const isValidPassword = await verifyPassword(credentials.password, user.password)
+        if (!isValidPassword) {
           return null
         }
 
@@ -64,34 +75,62 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.email = user.email
+        token.role = user.role
+        token.organizationId = user.organizationId
+        // organizationName will be fetched in session callback
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.organizationId) {
         session.user.id = token.id as string
         session.user.email = token.email as string
+        session.user.role = token.role as string
+        session.user.organizationId = token.organizationId as string
+
+        // Fetch organization name if not already in token
+        if (!token.organizationName) {
+          const [org] = await db
+            .select({ name: organizations.name })
+            .from(organizations)
+            .where(eq(organizations.id, token.organizationId as string))
+            .limit(1)
+
+          session.user.organizationName = org?.name || 'Unknown Organization'
+        } else {
+          session.user.organizationName = token.organizationName as string
+        }
       }
       return session
     },
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
-        // Check if user exists, if not create them
+        // Check if user exists
         const [existingUser] = await db
-          .select()
+          .select({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            role: users.role,
+            organizationId: users.organizationId,
+            isActive: users.isActive
+          })
           .from(users)
           .where(eq(users.email, user.email!))
           .limit(1)
 
         if (!existingUser) {
-          // TODO: Create new user with default organization
-          // This is a placeholder - implement proper user creation flow
-          return false
+          return false // User creation handled in signup API
         }
 
         if (!existingUser.isActive) {
           return false
         }
+
+        // Add organization info to user object for JWT callback
+        user.role = existingUser.role
+        user.organizationId = existingUser.organizationId
+        // We'll get organization name in session callback
       }
       return true
     },
