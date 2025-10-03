@@ -197,7 +197,8 @@ export const sprintStories = pgTable(
   {
     sprintId: varchar('sprint_id', { length: 36 }).notNull(),
     storyId: varchar('story_id', { length: 36 }).notNull(),
-    committedAt: timestamp('committed_at').defaultNow(),
+    addedAt: timestamp('added_at').defaultNow(),
+    addedBy: varchar('added_by', { length: 36 }),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.sprintId, table.storyId] }),
@@ -215,14 +216,14 @@ export const aiGenerations = pgTable(
     id: varchar('id', { length: 36 }).primaryKey(),
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
     userId: varchar('user_id', { length: 36 }).notNull(),
-    type: pgEnum('type', ['story_generation', 'story_validation', 'epic_creation', 'requirements_analysis']).notNull(),
+    type: aiGenerationTypeEnum('type').notNull(),
     model: varchar('model', { length: 100 }).notNull(),
     promptText: text('prompt_text').notNull(),
     responseText: text('response_text'),
-    tokensUsed: int('tokens_used'),
+    tokensUsed: integer('tokens_used'),
     costUsd: decimal('cost_usd', { precision: 10, scale: 4 }),
-    processingTimeMs: int('processing_time_ms'),
-    status: pgEnum('status', ['pending', 'completed', 'failed']).default('pending'),
+    processingTimeMs: integer('processing_time_ms'),
+    status: generationStatusEnum('status').default('pending'),
     errorMessage: text('error_message'),
     metadata: json('metadata').$type<Record<string, any>>(),
     createdAt: timestamp('created_at').defaultNow(),
@@ -247,13 +248,13 @@ export const documents = pgTable(
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
     uploadedBy: varchar('uploaded_by', { length: 36 }).notNull(),
     originalFilename: varchar('original_filename', { length: 255 }).notNull(),
-    fileSize: int('file_size').notNull(),
+    fileSize: integer('file_size').notNull(),
     fileType: varchar('file_type', { length: 100 }).notNull(),
     storagePath: varchar('storage_path', { length: 500 }).notNull(),
-    processingStatus: pgEnum('processing_status', ['uploaded', 'processing', 'completed', 'failed']).default('uploaded'),
+    processingStatus: processingStatusEnum('processing_status').default('uploaded'),
     extractedText: text('extracted_text'),
     aiAnalysis: json('ai_analysis').$type<Record<string, any>>(),
-    generatedStoriesCount: int('generated_stories_count').default(0),
+    generatedStoriesCount: integer('generated_stories_count').default(0),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
@@ -326,12 +327,12 @@ export const creditTransactions = pgTable(
     id: varchar('id', { length: 36 }).primaryKey(),
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
     userId: varchar('user_id', { length: 36 }),
-    type: pgEnum('type', ['purchase', 'usage', 'refund', 'bonus']).notNull(),
-    amount: int('amount').notNull(),
+    type: transactionTypeEnum('type').notNull(),
+    amount: integer('amount').notNull(),
     description: varchar('description', { length: 255 }).notNull(),
     aiGenerationId: varchar('ai_generation_id', { length: 36 }),
     stripeTransactionId: varchar('stripe_transaction_id', { length: 255 }),
-    balanceAfter: int('balance_after').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
@@ -350,13 +351,13 @@ export const sprintMetrics = pgTable(
   'sprint_metrics',
   {
     sprintId: varchar('sprint_id', { length: 36 }).primaryKey(),
-    totalStories: int('total_stories').default(0),
-    completedStories: int('completed_stories').default(0),
-    totalPoints: int('total_points').default(0),
-    completedPoints: int('completed_points').default(0),
+    totalStories: integer('total_stories').default(0),
+    completedStories: integer('completed_stories').default(0),
+    totalPoints: integer('total_points').default(0),
+    completedPoints: integer('completed_points').default(0),
     completionPercentage: decimal('completion_percentage', { precision: 5, scale: 2 }).default('0'),
     velocity: decimal('velocity', { precision: 8, scale: 2 }).default('0'),
-    lastCalculated: timestamp('last_calculated').defaultNow().onUpdateNow(),
+    lastCalculated: timestamp('last_calculated').defaultNow(),
   },
   (table) => ({
     calculatedIdx: index('idx_metrics_calculated').on(table.lastCalculated),
@@ -408,5 +409,34 @@ export const storiesRelations = relations(stories, ({ one }) => ({
   project: one(projects, {
     fields: [stories.projectId],
     references: [projects.id],
+  }),
+  creator: one(users, {
+    fields: [stories.createdBy],
+    references: [users.id],
+    relationName: 'storyCreator'
+  }),
+  assignee: one(users, {
+    fields: [stories.assigneeId],
+    references: [users.id],
+    relationName: 'storyAssignee'
+  }),
+}))
+
+export const sprintsRelations = relations(sprints, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [sprints.projectId],
+    references: [projects.id],
+  }),
+  stories: many(sprintStories),
+}))
+
+export const sprintStoriesRelations = relations(sprintStories, ({ one }) => ({
+  sprint: one(sprints, {
+    fields: [sprintStories.sprintId],
+    references: [sprints.id],
+  }),
+  story: one(stories, {
+    fields: [sprintStories.storyId],
+    references: [stories.id],
   }),
 }))
