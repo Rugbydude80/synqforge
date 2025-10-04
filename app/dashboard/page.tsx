@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { projectsAPI } from '@/lib/api/client'
 import {
   LayoutDashboard,
@@ -23,26 +25,35 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatRelativeTime, getStatusColor } from '@/lib/utils'
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [activeNav, setActiveNav] = useState('dashboard')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const data = await projectsAPI.getAll()
-        setProjects(data)
-      } catch (error) {
-        console.error('Failed to fetch projects:', error)
-        setError('Failed to load projects')
-      } finally {
-        setLoading(false)
-      }
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
     }
 
-    fetchProjects()
-  }, [])
+    if (status === 'authenticated') {
+      const fetchProjects = async () => {
+        try {
+          const data = await projectsAPI.getAll()
+          setProjects(data)
+        } catch (error) {
+          console.error('Failed to fetch projects:', error)
+          setError('Failed to load projects')
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchProjects()
+    }
+  }, [status, router])
 
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },

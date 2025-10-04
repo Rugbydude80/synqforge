@@ -62,10 +62,20 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Fetch organization info for the user
+        const [org] = await db
+          .select({ name: organizations.name })
+          .from(organizations)
+          .where(eq(organizations.id, user.organizationId))
+          .limit(1)
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
+          organizationId: user.organizationId,
+          organizationName: org?.name || 'Unknown Organization',
         }
       },
     }),
@@ -77,7 +87,7 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email
         token.role = user.role
         token.organizationId = user.organizationId
-        // organizationName will be fetched in session callback
+        token.organizationName = user.organizationName
       }
       return token
     },
@@ -87,21 +97,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string
         session.user.role = token.role as string
         session.user.organizationId = token.organizationId as string
-
-        // Fetch organization name if organizationId exists
-        if (token.organizationId) {
-          if (!token.organizationName) {
-            const [org] = await db
-              .select({ name: organizations.name })
-              .from(organizations)
-              .where(eq(organizations.id, token.organizationId as string))
-              .limit(1)
-
-            session.user.organizationName = org?.name || 'Unknown Organization'
-          } else {
-            session.user.organizationName = token.organizationName as string
-          }
-        }
+        session.user.organizationName = token.organizationName as string
       }
       return session
     },
@@ -129,10 +125,17 @@ export const authOptions: NextAuthOptions = {
           return false
         }
 
+        // Fetch organization info for the user
+        const [org] = await db
+          .select({ name: organizations.name })
+          .from(organizations)
+          .where(eq(organizations.id, existingUser.organizationId))
+          .limit(1)
+
         // Add organization info to user object for JWT callback
         user.role = existingUser.role
         user.organizationId = existingUser.organizationId
-        // We'll get organization name in session callback
+        user.organizationName = org?.name || 'Unknown Organization'
       }
       return true
     },

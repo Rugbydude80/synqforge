@@ -77,7 +77,7 @@ async function createProject(req: NextRequest, context: any) {
   }
 }
 
-export const GET = withAuth(getProjects, { requireOrg: true })
-export const POST = withAuth(createProject, { requireOrg: true })
+export const GET = withAuth(getProjects)
+export const POST = withAuth(createProject)
 
 

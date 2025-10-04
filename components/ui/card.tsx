@@ -8,14 +8,14 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'rounded-xl border bg-card text-card-foreground shadow-lg',
-      gradient && 'gradient-border',
+      'rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100',
+      gradient && 'relative before:absolute before:inset-0 before:rounded-xl before:p-[1px] before:bg-gradient-to-r before:from-brand-purple-500 before:to-brand-emerald-500 before:-z-10',
       className
     )}
     {...props}
   >
     {gradient ? (
-      <div className="gradient-border-content p-6">{props.children}</div>
+      <div className="relative z-10 bg-white dark:bg-gray-900 rounded-xl p-6">{props.children}</div>
     ) : (
       props.children
     )}
