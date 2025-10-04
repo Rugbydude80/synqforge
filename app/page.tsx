@@ -1,3 +1,4 @@
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,8 +11,15 @@ import {
   Shield,
   ArrowRight,
 } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth()
+  if (session?.user) {
+    redirect('/dashboard')
+  }
+
   const features = [
     {
       icon: Sparkles,
@@ -81,9 +89,9 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div className="flex gap-4 justify-center">
-              <Link href="/dashboard">
+              <Link href="/auth/signin">
                 <Button size="lg" className="group">
-                  Get Started
+                  Sign In
                   <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -160,7 +168,7 @@ export default function LandingPage() {
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join teams that are shipping faster with AI-powered project management
           </p>
-          <Link href="/dashboard">
+          <Link href="/auth/signin">
             <Button size="lg">
               Start Building Now
               <ArrowRight className="h-4 w-4 ml-2" />

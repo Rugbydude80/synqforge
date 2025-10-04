@@ -44,6 +44,14 @@ export function withAuth(
         )
       }
 
+      // Validate session user has required fields
+      if (!session.user.id) {
+        return NextResponse.json(
+          { error: 'Invalid session', message: 'User ID not found in session' },
+          { status: 401 }
+        )
+      }
+
       // Get full user context from database
       const userContext = await getUserContext(session.user.id)
       

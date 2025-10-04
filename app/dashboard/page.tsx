@@ -250,8 +250,9 @@ export default function DashboardPage() {
           )}
 
           {!loading && !error && (
-          {/* Metrics Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <>
+              {/* Metrics Grid */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric, i) => (
               <Card key={i} className="relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
                 <div
@@ -365,7 +366,8 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+            </div>
+            </>
           )}
         </div>
       </main>

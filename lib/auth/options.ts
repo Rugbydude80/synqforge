@@ -82,23 +82,25 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (session.user && token.organizationId) {
+      if (session.user && token.id) {
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.role = token.role as string
         session.user.organizationId = token.organizationId as string
 
-        // Fetch organization name if not already in token
-        if (!token.organizationName) {
-          const [org] = await db
-            .select({ name: organizations.name })
-            .from(organizations)
-            .where(eq(organizations.id, token.organizationId as string))
-            .limit(1)
+        // Fetch organization name if organizationId exists
+        if (token.organizationId) {
+          if (!token.organizationName) {
+            const [org] = await db
+              .select({ name: organizations.name })
+              .from(organizations)
+              .where(eq(organizations.id, token.organizationId as string))
+              .limit(1)
 
-          session.user.organizationName = org?.name || 'Unknown Organization'
-        } else {
-          session.user.organizationName = token.organizationName as string
+            session.user.organizationName = org?.name || 'Unknown Organization'
+          } else {
+            session.user.organizationName = token.organizationName as string
+          }
         }
       }
       return session
