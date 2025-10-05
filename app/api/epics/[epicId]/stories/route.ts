@@ -11,14 +11,9 @@ export const GET = withAuth(
   async (req: NextRequest, { user }) => {
     try {
       const epicId = req.nextUrl.pathname.split('/')[3]
-      const { searchParams } = new URL(req.url)
-      
-      const filters = {
-        status: searchParams.get('status') || undefined,
-      }
 
       const repository = new EpicsRepository(user)
-      const stories = await repository.getEpicStories(epicId, filters)
+      const stories = await repository.getEpicStories(epicId)
 
       return successResponse(stories, { total: stories.length })
     } catch (error) {

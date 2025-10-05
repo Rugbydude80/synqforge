@@ -25,7 +25,7 @@ export const roleEnum = pgEnum('role', ['admin', 'member', 'viewer'])
 export const projectStatusEnum = pgEnum('project_status', ['planning', 'active', 'on_hold', 'completed', 'archived'])
 export const epicStatusEnum = pgEnum('epic_status', ['draft', 'planned', 'in_progress', 'completed', 'archived'])
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical'])
-export const storyStatusEnum = pgEnum('story_status', ['backlog', 'ready', 'in_progress', 'review', 'done', 'archived'])
+export const storyStatusEnum = pgEnum('story_status', ['backlog', 'ready', 'in_progress', 'review', 'done', 'blocked'])
 export const storyTypeEnum = pgEnum('story_type', ['feature', 'bug', 'task', 'spike'])
 export const sprintStatusEnum = pgEnum('sprint_status', ['planning', 'active', 'completed', 'cancelled'])
 export const aiGenerationTypeEnum = pgEnum('ai_generation_type', ['story_generation', 'story_validation', 'epic_creation', 'requirements_analysis'])
@@ -140,6 +140,7 @@ export const stories = pgTable(
   'stories',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
     epicId: varchar('epic_id', { length: 36 }),
     projectId: varchar('project_id', { length: 36 }).notNull(),
     title: varchar('title', { length: 255 }).notNull(),
@@ -148,16 +149,21 @@ export const stories = pgTable(
     storyPoints: smallint('story_points'),
     priority: priorityEnum('priority').default('medium'),
     status: storyStatusEnum('status').default('backlog'),
+    storyType: storyTypeEnum('story_type').default('feature'),
     tags: json('tags').$type<string[]>(),
+    labels: json('labels').$type<string[]>(),
     aiGenerated: boolean('ai_generated').default(false),
     aiPrompt: text('ai_prompt'),
     aiModelUsed: varchar('ai_model_used', { length: 100 }),
+    aiValidationScore: smallint('ai_validation_score'),
+    aiSuggestions: json('ai_suggestions').$type<string[]>(),
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     assigneeId: varchar('assignee_id', { length: 36 }),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   (table) => ({
+    orgIdx: index('idx_stories_org').on(table.organizationId),
     epicIdx: index('idx_stories_epic').on(table.epicId),
     projectIdx: index('idx_stories_project').on(table.projectId),
     statusIdx: index('idx_stories_status').on(table.projectId, table.status),

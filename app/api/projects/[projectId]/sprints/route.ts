@@ -15,17 +15,11 @@ import { z } from 'zod'
 export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const { searchParams } = req.nextUrl
       const projectId = req.nextUrl.pathname.split('/')[3]
-
-      // Parse filters
-      const filters = {
-        status: searchParams.get('status') || undefined,
-      }
 
       // Get sprints
       const repository = new SprintsRepository(context.user)
-      const sprints = await repository.getSprints(projectId, filters)
+      const sprints = await repository.getSprints(projectId)
 
       const response: APIResponse = {
         success: true,

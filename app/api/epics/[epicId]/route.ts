@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { EpicsRepository } from '@/lib/repositories/epics'
 import { UpdateEpicSchema } from '@/lib/types'
-import { successResponse, errorResponse, parseRequestBody } from '@/lib/utils/api-helpers'
+import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
 
 /**
  * GET /api/epics/[epicId]
@@ -32,7 +32,8 @@ export const PUT = withAuth(
   async (req: NextRequest, { user }) => {
     try {
       const epicId = req.nextUrl.pathname.split('/')[3]
-      const updates = await parseRequestBody(req, UpdateEpicSchema)
+      const body = await req.json()
+      const updates = UpdateEpicSchema.parse(body)
 
       const repository = new EpicsRepository(user)
       const epic = await repository.updateEpic(epicId, updates)
@@ -53,7 +54,8 @@ export const PATCH = withAuth(
   async (req: NextRequest, { user }) => {
     try {
       const epicId = req.nextUrl.pathname.split('/')[3]
-      const updates = await parseRequestBody(req, UpdateEpicSchema)
+      const body = await req.json()
+      const updates = UpdateEpicSchema.parse(body)
 
       const repository = new EpicsRepository(user)
       const epic = await repository.updateEpic(epicId, updates)

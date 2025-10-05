@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
-import { CreateProjectInput, UpdateProjectInput } from '@/lib/types'
+import { CreateProjectInput } from '@/lib/types'
 
 /**
  * GET /api/projects
  * Get all projects for the current user's organization
  */
-async function getProjects(req: NextRequest, context: any) {
+async function getProjects(_req: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
@@ -33,6 +33,7 @@ async function createProject(req: NextRequest, context: any) {
     const body = await req.json()
     const projectData: CreateProjectInput = {
       name: body.name,
+      key: body.key,
       description: body.description,
       slug: body.slug,
       ownerId: body.ownerId || context.user.id,

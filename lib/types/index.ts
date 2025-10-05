@@ -77,6 +77,7 @@ export type UpdateEpicInput = z.infer<typeof UpdateEpicSchema>
 
 export const CreateProjectSchema = z.object({
   name: z.string().min(1).max(255),
+  key: z.string().min(1).max(10).regex(/^[A-Z0-9]+$/, 'Project key must be uppercase letters and numbers only'),
   description: z.string().optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   ownerId: z.string().uuid(),
@@ -94,6 +95,18 @@ export const UpdateProjectSchema = z.object({
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>
 export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>
+
+// ============================================
+// USER TYPES
+// ============================================
+
+export const UpdateUserSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  avatar: z.string().url().nullable().optional(),
+  preferences: z.record(z.any()).optional(),
+})
+
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>
 
 // ============================================
 // SPRINT TYPES

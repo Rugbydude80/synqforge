@@ -1,18 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
 import { validateStorySchema } from '@/lib/validations/ai';
-import { successResponse, errorResponse, parseRequestBody } from '@/lib/utils/api-helpers';
+import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
 
 /**
  * POST /api/ai/validate-story
  * Validate a user story using AI
  */
 export const POST = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest) => {
     try {
       // Parse and validate request body
-      const validatedData = await parseRequestBody(req, validateStorySchema);
+      const body = await req.json();
+      const validatedData = validateStorySchema.parse(body);
 
       // Prepare story data for validation
       const storyData = {

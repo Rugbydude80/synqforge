@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { aiUsage } from '@/lib/db/schema';
+import { aiGenerations } from '@/lib/db/schema';
 import { generateId } from '@/lib/db';
 
 export interface AIGenerationRequest {
@@ -206,23 +206,26 @@ export class AIService {
     organizationId: string,
     model: string,
     usage: { promptTokens: number; completionTokens: number; totalTokens: number },
-    requestType: 'story_generation' | 'epic_generation' | 'story_validation' | 'document_analysis',
+    requestType: 'story_generation' | 'story_validation' | 'epic_creation' | 'requirements_analysis',
+    promptText: string,
+    responseText?: string,
     metadata?: Record<string, any>
   ): Promise<void> {
     // Calculate cost (rough estimate - you should use actual pricing)
     const costPerToken = 0.00001; // $0.01 per 1000 tokens
     const cost = usage.totalTokens * costPerToken;
 
-    await db.insert(aiUsage).values({
+    await db.insert(aiGenerations).values({
       id: generateId(),
       userId,
       organizationId,
+      type: requestType,
       model,
-      promptTokens: usage.promptTokens,
-      completionTokens: usage.completionTokens,
-      totalTokens: usage.totalTokens,
-      cost,
-      requestType,
+      promptText,
+      responseText,
+      tokensUsed: usage.totalTokens,
+      costUsd: cost.toString(),
+      status: 'completed',
       metadata,
     });
   }

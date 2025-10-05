@@ -8,7 +8,7 @@ import { z } from 'zod'
  * GET /api/users/me
  * Get current user profile
  */
-export const GET = withAuth(async (req: NextRequest, context) => {
+export const GET = withAuth(async (_req: NextRequest, context) => {
   try {
     const repository = new UsersRepository(context.user)
     const user = await repository.getCurrentUser()

@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MoreVertical,
   Plus,
-  User,
   Calendar,
   MessageSquare,
   Paperclip,

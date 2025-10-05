@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateProjectStats,
-  safeValidateProjectStats,
-  ProjectStatsInput
+  safeValidateProjectStats
 } from '@/lib/validations/story';
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';

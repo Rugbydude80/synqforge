@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
+import { withAuth } from '@/lib/middleware/auth';
 import { db } from '@/lib/db';
-import { aiUsage } from '@/lib/db/schema';
+import { aiGenerations } from '@/lib/db/schema';
 import { and, eq, gte, sql } from 'drizzle-orm';
 
-export async function GET(req: NextRequest) {
+async function getAIUsage(req: NextRequest, context: any) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     // Get query parameters
     const organizationId = req.nextUrl.searchParams.get('organizationId');
     const days = parseInt(req.nextUrl.searchParams.get('days') || '30');
@@ -26,48 +16,47 @@ export async function GET(req: NextRequest) {
 
     // Build query conditions
     const conditions = [
-      gte(aiUsage.createdAt, startDate),
+      gte(aiGenerations.createdAt, startDate),
     ];
 
     if (organizationId) {
-      conditions.push(eq(aiUsage.organizationId, organizationId));
+      conditions.push(eq(aiGenerations.organizationId, organizationId));
     } else {
-      conditions.push(eq(aiUsage.userId, session.user.id));
+      conditions.push(eq(aiGenerations.userId, context.user.id));
     }
 
     // Get usage statistics
     const usageStats = await db
       .select({
         totalRequests: sql<number>`count(*)`,
-        totalTokens: sql<number>`sum(${aiUsage.totalTokens})`,
-        totalPromptTokens: sql<number>`sum(${aiUsage.promptTokens})`,
-        totalCompletionTokens: sql<number>`sum(${aiUsage.completionTokens})`,
+        totalTokens: sql<number>`sum(${aiGenerations.tokensUsed})`,
+        totalCost: sql<number>`sum(${aiGenerations.costUsd})`,
       })
-      .from(aiUsage)
+      .from(aiGenerations)
       .where(and(...conditions));
 
     // Get usage by model
     const usageByModel = await db
       .select({
-        model: aiUsage.model,
+        model: aiGenerations.model,
         requests: sql<number>`count(*)`,
-        tokens: sql<number>`sum(${aiUsage.totalTokens})`,
+        tokens: sql<number>`sum(${aiGenerations.tokensUsed})`,
       })
-      .from(aiUsage)
+      .from(aiGenerations)
       .where(and(...conditions))
-      .groupBy(aiUsage.model);
+      .groupBy(aiGenerations.model);
 
     // Get daily usage for chart data
     const dailyUsage = await db
       .select({
-        date: sql<string>`DATE(${aiUsage.createdAt})`,
+        date: sql<string>`DATE(${aiGenerations.createdAt})`,
         requests: sql<number>`count(*)`,
-        tokens: sql<number>`sum(${aiUsage.totalTokens})`,
+        tokens: sql<number>`sum(${aiGenerations.tokensUsed})`,
       })
-      .from(aiUsage)
+      .from(aiGenerations)
       .where(and(...conditions))
-      .groupBy(sql`DATE(${aiUsage.createdAt})`)
-      .orderBy(sql`DATE(${aiUsage.createdAt})`);
+      .groupBy(sql`DATE(${aiGenerations.createdAt})`)
+      .orderBy(sql`DATE(${aiGenerations.createdAt})`);
 
     return NextResponse.json({
       success: true,
@@ -79,8 +68,7 @@ export async function GET(req: NextRequest) {
       summary: usageStats[0] || {
         totalRequests: 0,
         totalTokens: 0,
-        totalPromptTokens: 0,
-        totalCompletionTokens: 0,
+        totalCost: 0,
       },
       byModel: usageByModel,
       daily: dailyUsage,
@@ -90,7 +78,7 @@ export async function GET(req: NextRequest) {
     console.error('Get AI usage error:', error);
 
     return NextResponse.json(
-      { 
+      {
         error: error instanceof Error ? error.message : 'Failed to get AI usage',
         details: process.env.NODE_ENV === 'development' ? error : undefined
       },
@@ -98,3 +86,5 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = withAuth(getAIUsage);

@@ -1,143 +1,152 @@
 'use client'
 
-import { useState } from 'react'
+import * as React from 'react'
+import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api-client'
+import type { Project } from '@/lib/api-client'
 import {
   FolderKanban,
   Plus,
   Search,
-  Filter,
-  MoreVertical,
-  Archive,
-  Edit,
-  Users,
-  TrendingUp,
-  Calendar,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { cn, formatRelativeTime } from '@/lib/utils'
-
-interface Project {
-  id: string
-  name: string
-  description: string
-  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'archived'
-  owner: string
-  epicCount: number
-  storyCount: number
-  activeSprintCount: number
-  updatedAt: Date
-}
+import { CreateProjectModal } from '@/components/create-project-modal'
+import { cn } from '@/lib/utils'
 
 export default function ProjectsPage() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const router = useRouter()
+  const [projects, setProjects] = React.useState<Project[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const [statusFilter, setStatusFilter] = React.useState<string>('all')
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false)
 
-  const mockProjects: Project[] = [
-    {
-      id: '1',
-      name: 'SynqForge Backend',
-      description: 'Core API and database development for project management platform',
-      status: 'active',
-      owner: 'John Doe',
-      epicCount: 8,
-      storyCount: 47,
-      activeSprintCount: 2,
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: '2',
-      name: 'Mobile App',
-      description: 'React Native mobile application for iOS and Android',
-      status: 'active',
-      owner: 'Sarah Chen',
-      epicCount: 5,
-      storyCount: 23,
-      activeSprintCount: 1,
-      updatedAt: new Date(Date.now() - 1000 * 60 * 120),
-    },
-    {
-      id: '3',
-      name: 'Enterprise Platform',
-      description: 'Scalable platform for enterprise customers',
-      status: 'planning',
-      owner: 'Mike Ross',
-      epicCount: 12,
-      storyCount: 89,
-      activeSprintCount: 0,
-      updatedAt: new Date(Date.now() - 1000 * 60 * 240),
-    },
-    {
-      id: '4',
-      name: 'Legacy System Migration',
-      description: 'Migration from legacy system to new architecture',
-      status: 'completed',
-      owner: 'Emma Wilson',
-      epicCount: 6,
-      storyCount: 34,
-      activeSprintCount: 0,
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-    },
-  ]
+  React.useEffect(() => {
+    fetchProjects()
+  }, [])
 
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await api.projects.list()
+      setProjects(response.data)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load projects')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         project.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (project.description?.toLowerCase().includes(searchQuery.toLowerCase()))
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      planning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      active: 'bg-brand-purple-500/10 text-brand-purple-400 border-brand-purple-500/20',
-      on_hold: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-      completed: 'bg-brand-emerald-500/10 text-brand-emerald-400 border-brand-emerald-500/20',
-      archived: 'bg-muted text-muted-foreground border-border',
+  const getStatusColor = (status: Project['status']) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-500/10 text-green-400 border-green-500/20'
+      case 'planning':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+      case 'on_hold':
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+      case 'completed':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      case 'archived':
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+      default:
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
     }
-    return colors[status as keyof typeof colors] || colors.planning
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffInDays === 0) return 'Today'
+    if (diffInDays === 1) return 'Yesterday'
+    if (diffInDays < 7) return `${diffInDays} days ago`
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`
+    return `${Math.floor(diffInDays / 365)} years ago`
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+        <div className="container mx-auto px-6 py-8">
+          <div className="mb-8">
+            <div className="h-8 w-48 bg-gray-700/50 rounded animate-pulse mb-2" />
+            <div className="h-4 w-96 bg-gray-700/50 rounded animate-pulse" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-64 bg-gray-800/50 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Something went wrong</h3>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <Button onClick={fetchProjects}>Try Again</Button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold">Projects</h1>
-              <p className="text-muted-foreground">Manage your projects and track progress</p>
+              <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
+              <p className="text-gray-400">Manage your projects and track progress</p>
             </div>
-            <Button size="lg">
+            <Button onClick={() => setIsCreateOpen(true)} size="lg">
               <Plus className="h-5 w-5 mr-2" />
               New Project
             </Button>
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* Filters */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
-            />
-          </div>
+          {/* Search & Filters */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <select
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
             >
               <option value="all">All Status</option>
               <option value="planning">Planning</option>
@@ -145,84 +154,114 @@ export default function ProjectsPage() {
               <option value="on_hold">On Hold</option>
               <option value="completed">Completed</option>
               <option value="archived">Archived</option>
-            </select>
+            </Select>
           </div>
         </div>
 
         {/* Projects Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg group-hover:text-brand-purple-400 transition-colors">
-                      {project.name}
-                    </CardTitle>
-                    <CardDescription className="mt-1 line-clamp-2">
-                      {project.description}
-                    </CardDescription>
-                  </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Status Badge */}
-                <Badge className={getStatusColor(project.status)}>
-                  {project.status.replace('_', ' ')}
-                </Badge>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-brand-purple-400">{project.epicCount}</div>
-                    <div className="text-xs text-muted-foreground">Epics</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-brand-emerald-400">{project.storyCount}</div>
-                    <div className="text-xs text-muted-foreground">Stories</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-orange-400">{project.activeSprintCount}</div>
-                    <div className="text-xs text-muted-foreground">Active</div>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{project.owner}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatRelativeTime(project.updatedAt)}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredProjects.length === 0 && (
+        {filteredProjects.length === 0 ? (
           <div className="text-center py-16">
-            <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No projects found</h3>
-            <p className="text-muted-foreground mb-6">
-              {searchTerm || statusFilter !== 'all'
+            <FolderKanban className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {searchQuery || statusFilter !== 'all' ? 'No projects found' : 'No projects yet'}
+            </h3>
+            <p className="text-gray-400 mb-6">
+              {searchQuery || statusFilter !== 'all'
                 ? 'Try adjusting your search or filter criteria'
-                : 'Get started by creating your first project'
-              }
+                : 'Get started by creating your first project'}
             </p>
-            <Button>
-              <Plus className="h-5 w-5 mr-2" />
-              Create Project
-            </Button>
+            {!searchQuery && statusFilter === 'all' && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-5 w-5 mr-2" />
+                Create Project
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project) => (
+              <Card
+                key={project.id}
+                className="group hover:shadow-2xl hover:shadow-purple-500/10 transition-all cursor-pointer"
+                onClick={() => router.push(`/projects/${project.id}`)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between mb-2">
+                    <Badge variant="outline" className="font-mono">
+                      {project.key}
+                    </Badge>
+                    <Badge className={cn('border', getStatusColor(project.status))}>
+                      {project.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl group-hover:text-purple-400 transition-colors">
+                    {project.name}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2">
+                    {project.description || 'No description provided'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Progress Bar */}
+                  {project.totalStories !== undefined && project.totalStories > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-gray-400">Progress</span>
+                        <span className="text-white font-medium">
+                          {project.progressPercentage || 0}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-emerald-500 transition-all"
+                          style={{ width: `${project.progressPercentage || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-gray-400 mb-1">
+                        <FolderKanban className="h-4 w-4" />
+                        <span>Total Stories</span>
+                      </div>
+                      <div className="text-white font-semibold">
+                        {project.totalStories || 0}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 text-gray-400 mb-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Completed</span>
+                      </div>
+                      <div className="text-white font-semibold">
+                        {project.completedStories || 0}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="pt-4 border-t border-gray-700 flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Updated {formatDate(project.updatedAt)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={fetchProjects}
+      />
     </div>
   )
 }

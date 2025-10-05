@@ -31,7 +31,7 @@ export const GET = withAuth(
         data: stories,
         meta: {
           limit,
-          offset,
+          page: Math.floor(offset / limit) + 1,
           total: stories.length,
         },
       }

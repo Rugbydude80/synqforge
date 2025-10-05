@@ -34,7 +34,6 @@ export const GET = withAuth(
         data: users,
         meta: {
           total: users.length,
-          query,
         },
       }
 

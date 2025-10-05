@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateBulkCreateStories,
   safeValidateBulkCreateStories,
   BulkCreateStoriesInput
 } from '@/lib/validations/story';

@@ -73,7 +73,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: user.role || 'viewer',
           organizationId: user.organizationId,
           organizationName: org?.name || 'Unknown Organization',
         }
@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -101,7 +101,7 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === 'google') {
         // Check if user exists
         const [existingUser] = await db
@@ -133,7 +133,7 @@ export const authOptions: NextAuthOptions = {
           .limit(1)
 
         // Add organization info to user object for JWT callback
-        user.role = existingUser.role
+        user.role = existingUser.role || 'viewer'
         user.organizationId = existingUser.organizationId
         user.organizationName = org?.name || 'Unknown Organization'
       }

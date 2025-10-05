@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateMoveStory,
   safeValidateMoveStory,
   MoveStoryInput
 } from '@/lib/validations/story';
@@ -13,9 +12,9 @@ import { eq } from 'drizzle-orm';
 /**
  * PATCH /api/stories/[storyId]/move - Move story to different status (Kanban board)
  */
-async function moveStory(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function moveStory(req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
+    const storyId = req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(

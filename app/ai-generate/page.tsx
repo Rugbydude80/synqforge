@@ -5,7 +5,6 @@ import { useDropzone } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload,
-  File,
   FileText,
   Sparkles,
   Loader2,

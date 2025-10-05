@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { projectsAPI } from '@/lib/api/client'
+import { api } from '@/lib/api-client'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -12,25 +12,26 @@ import {
   Users,
   Settings,
   Plus,
-  TrendingUp,
-  Clock,
   CheckCircle2,
-  ArrowUpRight,
   Zap,
   Upload,
+  Clock,
+  ArrowUpRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { cn, formatRelativeTime, getStatusColor } from '@/lib/utils'
+import { CreateProjectModal } from '@/components/create-project-modal'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [activeNav, setActiveNav] = useState('dashboard')
-  const [projects, setProjects] = useState([])
+  const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -39,29 +40,38 @@ export default function DashboardPage() {
     }
 
     if (status === 'authenticated') {
-      const fetchProjects = async () => {
-        try {
-          const data = await projectsAPI.getAll()
-          setProjects(data)
-        } catch (error) {
-          console.error('Failed to fetch projects:', error)
-          setError('Failed to load projects')
-        } finally {
-          setLoading(false)
-        }
-      }
-
       fetchProjects()
     }
   }, [status, router])
 
+  const fetchProjects = async () => {
+    try {
+      setLoading(true)
+      const { data } = await api.projects.list()
+      setProjects(data)
+      setError('')
+    } catch (error: any) {
+      console.error('Failed to fetch projects:', error)
+      setError(error.message || 'Failed to load projects')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'projects', icon: FolderKanban, label: 'Projects' },
-    { id: 'stories', icon: FileText, label: 'Stories' },
-    { id: 'ai', icon: Sparkles, label: 'AI Tools' },
-    { id: 'team', icon: Users, label: 'Team' },
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { id: 'projects', icon: FolderKanban, label: 'Projects', href: '/projects' },
+    { id: 'stories', icon: FileText, label: 'Stories', href: '/stories' },
+    { id: 'ai', icon: Sparkles, label: 'AI Tools', href: '/ai-generate' },
+    { id: 'team', icon: Users, label: 'Team', href: '/team' },
   ]
+
+  const handleNavClick = (item: typeof navItems[0]) => {
+    setActiveNav(item.id)
+    if (item.href) {
+      router.push(item.href)
+    }
+  }
 
   const calculateMetrics = () => {
     if (projects.length === 0) {
@@ -173,18 +183,21 @@ export default function DashboardPage() {
       label: 'New Project',
       description: 'Start a new project',
       gradient: true,
+      onClick: () => setIsCreateProjectOpen(true),
     },
     {
       icon: Sparkles,
       label: 'AI Generate',
       description: 'Generate stories with AI',
       gradient: true,
+      onClick: () => router.push('/ai-generate'),
     },
     {
       icon: Upload,
       label: 'Upload Document',
       description: 'Upload requirements doc',
       gradient: false,
+      onClick: () => router.push('/ai-generate'),
     },
   ]
 
@@ -203,7 +216,7 @@ export default function DashboardPage() {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => handleNavClick(item)}
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                 activeNav === item.id
@@ -309,6 +322,7 @@ export default function DashboardPage() {
                   key={i}
                   variant={action.gradient ? 'default' : 'outline'}
                   className="h-auto flex-col items-start gap-2 p-6 group"
+                  onClick={action.onClick}
                 >
                   <div
                     className={cn(
@@ -382,6 +396,13 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={isCreateProjectOpen}
+        onOpenChange={setIsCreateProjectOpen}
+        onSuccess={fetchProjects}
+      />
     </div>
   )
 }

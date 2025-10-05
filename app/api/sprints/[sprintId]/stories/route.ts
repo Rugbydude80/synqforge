@@ -11,24 +11,18 @@ import { APIResponse } from '@/lib/types'
 export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const { searchParams } = req.nextUrl
       const sprintId = req.nextUrl.pathname.split('/')[3]
-
-      // Parse filters for Kanban columns
-      const filters = {
-        status: searchParams.get('status') || undefined,
-      }
 
       // Get sprint stories
       const repository = new SprintsRepository(context.user)
-      const stories = await repository.getSprintStories(sprintId, filters)
+      const stories = await repository.getSprintStories(sprintId)
 
-      // Group by status for Kanban board if no filter
-      const grouped = filters.status ? null : groupStoriesByStatus(stories)
+      // Group by status for Kanban board
+      const grouped = groupStoriesByStatus(stories)
 
       const response: APIResponse = {
         success: true,
-        data: filters.status ? stories : grouped,
+        data: grouped,
         meta: {
           total: stories.length,
         },

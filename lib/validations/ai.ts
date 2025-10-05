@@ -34,7 +34,7 @@ export const batchCreateStoriesSchema = z.object({
       title: z.string().min(1),
       description: z.string().min(1),
       acceptanceCriteria: z.array(z.string()).optional(),
-      priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+      priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
       storyPoints: z.number().int().min(0).max(100).nullable().optional(),
     })
   ).min(1, 'At least one story is required'),

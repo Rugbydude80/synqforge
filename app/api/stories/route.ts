@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateCreateStory,
-  validateStoryFilters,
   safeValidateCreateStory,
   safeValidateStoryFilters,
   CreateStoryInput,
@@ -21,7 +19,7 @@ async function getStories(req: NextRequest, context: { user: any }) {
     const { searchParams } = new URL(req.url);
 
     // Extract query parameters
-    const queryParams: Record<string, string | string[]> = {};
+    const queryParams: Record<string, any> = {};
 
     for (const [key, value] of searchParams.entries()) {
       if (queryParams[key]) {
@@ -32,7 +30,14 @@ async function getStories(req: NextRequest, context: { user: any }) {
           queryParams[key] = [queryParams[key] as string, value];
         }
       } else {
-        queryParams[key] = value;
+        // Convert numeric params
+        if (key === 'limit' || key === 'offset') {
+          queryParams[key] = parseInt(value, 10);
+        } else if (key === 'aiGenerated') {
+          queryParams[key] = value === 'true';
+        } else {
+          queryParams[key] = value;
+        }
       }
     }
 

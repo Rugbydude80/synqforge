@@ -4,8 +4,7 @@ import { aiService } from '@/lib/services/ai.service';
 import { EpicsRepository } from '@/lib/repositories/epics';
 import { ProjectsRepository } from '@/lib/repositories/projects';
 import { generateEpicSchema } from '@/lib/validations/ai';
-import { successResponse, errorResponse, parseRequestBody } from '@/lib/utils/api-helpers';
-import { z } from 'zod';
+import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
 
 /**
  * POST /api/ai/generate-epic
@@ -15,7 +14,8 @@ export const POST = withAuth(
   async (req: NextRequest, { user }) => {
     try {
       // Parse and validate request body
-      const validatedData = await parseRequestBody(req, generateEpicSchema);
+      const body = await req.json();
+      const validatedData = generateEpicSchema.parse(body);
 
       // Initialize repositories
       const projectsRepository = new ProjectsRepository(user);
@@ -25,7 +25,7 @@ export const POST = withAuth(
       const project = await projectsRepository.getProjectById(validatedData.projectId);
       if (!project) {
         return NextResponse.json(
-          { 
+          {
             success: false,
             error: {
               code: 'NOT_FOUND',
@@ -37,14 +37,13 @@ export const POST = withAuth(
       }
 
       // Build project context
-      const projectContext = validatedData.context || 
+      const projectContext = validatedData.projectContext ||
         `Project: ${project.name}\nDescription: ${project.description || 'No description'}`;
 
       // Generate epic using AI
       const generatedEpic = await aiService.generateEpic(
-        validatedData.requirements,
-        projectContext,
-        validatedData.model
+        validatedData.description,
+        projectContext
       );
 
       // Note: AI usage tracking is handled internally by the aiService
@@ -59,11 +58,10 @@ export const POST = withAuth(
           projectId: validatedData.projectId,
           title: generatedEpic.title,
           description: generatedEpic.description,
-          goals: generatedEpic.goals,
+          goals: generatedEpic.goals.join('\n'),
           priority: generatedEpic.priority,
-          status: 'planned',
           aiGenerated: true,
-          aiGenerationPrompt: validatedData.requirements,
+          aiGenerationPrompt: validatedData.description,
         });
       }
 

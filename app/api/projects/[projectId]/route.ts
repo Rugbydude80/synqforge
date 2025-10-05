@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
-import { UpdateProjectInput } from '@/lib/types'
+import type { UpdateProjectInput } from '@/lib/types'
 
 /**
  * GET /api/projects/[projectId]
  * Get a specific project by ID
  */
-async function getProject(req: NextRequest, context: any) {
+async function getProject(_req: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -95,7 +95,7 @@ async function updateProject(req: NextRequest, context: any) {
  * DELETE /api/projects/[projectId]
  * Delete a specific project
  */
-async function deleteProject(req: NextRequest, context: any) {
+async function deleteProject(_req: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -133,6 +133,6 @@ async function deleteProject(req: NextRequest, context: any) {
   }
 }
 
-export const GET = withAuth(getProject, { requireOrg: true, requireProject: true })
-export const PUT = withAuth(updateProject, { requireOrg: true, requireProject: true })
-export const DELETE = withAuth(deleteProject, { requireOrg: true, requireProject: true })
+export const GET = withAuth(getProject)
+export const PUT = withAuth(updateProject)
+export const DELETE = withAuth(deleteProject)

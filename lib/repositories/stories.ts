@@ -31,14 +31,14 @@ export class StoriesRepository {
         description: stories.description,
         acceptanceCriteria: stories.acceptanceCriteria,
         storyPoints: stories.storyPoints,
-        priorityRank: stories.priorityRank,
+        priority: stories.priority,
         status: stories.status,
         storyType: stories.storyType,
         aiGenerated: stories.aiGenerated,
         aiValidationScore: stories.aiValidationScore,
         aiSuggestions: stories.aiSuggestions,
         createdBy: stories.createdBy,
-        assignedTo: stories.assignedTo,
+        assignedTo: stories.assigneeId,
         labels: stories.labels,
         createdAt: stories.createdAt,
         updatedAt: stories.updatedAt,
@@ -51,7 +51,7 @@ export class StoriesRepository {
       })
       .from(stories)
       .leftJoin(users, eq(stories.createdBy, users.id))
-      .leftJoin(users, eq(stories.assignedTo, users.id))
+      .leftJoin(users, eq(stories.assigneeId, users.id))
       .where(eq(stories.epicId, epicId))
 
     // Apply filters
@@ -62,7 +62,7 @@ export class StoriesRepository {
         conditions.push(eq(stories.status, filters.status as any))
       }
       if (filters.assignedTo) {
-        conditions.push(eq(stories.assignedTo, filters.assignedTo))
+        conditions.push(eq(stories.assigneeId, filters.assignedTo))
       }
       if (filters.storyType) {
         conditions.push(eq(stories.storyType, filters.storyType as any))
@@ -73,7 +73,7 @@ export class StoriesRepository {
       }
     }
 
-    const result = await query.orderBy(desc(stories.priorityRank))
+    const result = await query.orderBy(desc(stories.priority))
 
     return result
   }
@@ -92,14 +92,14 @@ export class StoriesRepository {
         description: stories.description,
         acceptanceCriteria: stories.acceptanceCriteria,
         storyPoints: stories.storyPoints,
-        priorityRank: stories.priorityRank,
+        priority: stories.priority,
         status: stories.status,
         storyType: stories.storyType,
         aiGenerated: stories.aiGenerated,
         aiValidationScore: stories.aiValidationScore,
         aiSuggestions: stories.aiSuggestions,
         createdBy: stories.createdBy,
-        assignedTo: stories.assignedTo,
+        assignedTo: stories.assigneeId,
         labels: stories.labels,
         createdAt: stories.createdAt,
         updatedAt: stories.updatedAt,
@@ -118,7 +118,7 @@ export class StoriesRepository {
       })
       .from(stories)
       .leftJoin(users, eq(stories.createdBy, users.id))
-      .leftJoin(users, eq(stories.assignedTo, users.id))
+      .leftJoin(users, eq(stories.assigneeId, users.id))
       .leftJoin(epics, eq(stories.epicId, epics.id))
       .leftJoin(projects, eq(stories.projectId, projects.id))
       .where(eq(stories.id, storyId))
@@ -153,14 +153,14 @@ export class StoriesRepository {
         description: stories.description,
         acceptanceCriteria: stories.acceptanceCriteria,
         storyPoints: stories.storyPoints,
-        priorityRank: stories.priorityRank,
+        priority: stories.priority,
         status: stories.status,
         storyType: stories.storyType,
         aiGenerated: stories.aiGenerated,
         aiValidationScore: stories.aiValidationScore,
         aiSuggestions: stories.aiSuggestions,
         createdBy: stories.createdBy,
-        assignedTo: stories.assignedTo,
+        assignedTo: stories.assigneeId,
         labels: stories.labels,
         createdAt: stories.createdAt,
         updatedAt: stories.updatedAt,
@@ -176,7 +176,7 @@ export class StoriesRepository {
       })
       .from(stories)
       .leftJoin(users, eq(stories.createdBy, users.id))
-      .leftJoin(users, eq(stories.assignedTo, users.id))
+      .leftJoin(users, eq(stories.assigneeId, users.id))
       .leftJoin(epics, eq(stories.epicId, epics.id))
       .where(eq(stories.projectId, projectId))
 
@@ -188,7 +188,7 @@ export class StoriesRepository {
         conditions.push(eq(stories.status, filters.status as any))
       }
       if (filters.assignedTo) {
-        conditions.push(eq(stories.assignedTo, filters.assignedTo))
+        conditions.push(eq(stories.assigneeId, filters.assignedTo))
       }
       if (filters.storyType) {
         conditions.push(eq(stories.storyType, filters.storyType as any))
@@ -202,7 +202,7 @@ export class StoriesRepository {
       }
     }
 
-    const result = await query.orderBy(desc(stories.priorityRank))
+    const result = await query.orderBy(desc(stories.priority))
 
     return result
   }
@@ -233,7 +233,7 @@ export class StoriesRepository {
         organizationId: epic.organizationId,
         projectId: epic.projectId,
         createdBy: this.userContext.id,
-        priorityRank: data.priorityRank || this.calculatePriorityRank(data),
+        priority: data.priority || this.calculatePriorityRank(data),
       })
       .$returningId()
 
@@ -270,8 +270,8 @@ export class StoriesRepository {
 
     // Calculate new priority rank if needed
     const updateData: any = { ...updates }
-    if (updates.priorityRank !== undefined) {
-      updateData.priorityRank = updates.priorityRank
+    if (updates.priority !== undefined) {
+      updateData.priority = updates.priority
     }
 
     await db
@@ -453,7 +453,7 @@ export class StoriesRepository {
         }
 
         const storyId = generateId()
-        const priorityRank = data.priorityRank || this.calculatePriorityRank(data)
+        const priority = data.priority || this.calculatePriorityRank(data)
 
         await db.insert(stories).values({
           id: storyId,
@@ -462,7 +462,7 @@ export class StoriesRepository {
           organizationId: epic.organizationId,
           projectId: epic.projectId,
           createdBy: this.userContext.id,
-          priorityRank,
+          priority,
         })
 
         const createdStory = await this.getStoryById(storyId)

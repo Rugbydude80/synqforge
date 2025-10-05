@@ -2,22 +2,17 @@ import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { CreateProjectSchema } from '@/lib/types'
-import { successResponse, errorResponse, parseRequestBody, getQueryParams } from '@/lib/utils/api-helpers'
+import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
 
 /**
  * GET /api/organizations/[orgId]/projects
  * List all projects for the organization
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (_req: NextRequest, { user }) => {
     try {
-      const { searchParams } = new URL(req.url)
-      const filters = {
-        status: searchParams.get('status') || undefined,
-      }
-
       const repository = new ProjectsRepository(user)
-      const projects = await repository.getProjects(filters)
+      const projects = await repository.getProjects()
 
       return successResponse(projects, { total: projects.length })
     } catch (error) {
@@ -34,7 +29,8 @@ export const GET = withAuth(
 export const POST = withAuth(
   async (req: NextRequest, { user }) => {
     try {
-      const data = await parseRequestBody(req, CreateProjectSchema)
+      const body = await req.json()
+      const data = CreateProjectSchema.parse(body)
 
       const repository = new ProjectsRepository(user)
       const project = await repository.createProject(data)

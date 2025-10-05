@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateUpdateStory,
-  safeValidateUpdateStory,
-  UpdateStoryInput
+  safeValidateUpdateStory
 } from '@/lib/validations/story';
 import { db } from '@/lib/db';
 import { stories, projects } from '@/lib/db/schema';
@@ -13,9 +11,9 @@ import { eq } from 'drizzle-orm';
 /**
  * GET /api/stories/[storyId] - Get a single story by ID
  */
-async function getStory(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function getStory(req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
+    const storyId = req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(
@@ -69,9 +67,9 @@ async function getStory(req: NextRequest, context: { user: any }, routeParams: {
 /**
  * PATCH /api/stories/[storyId] - Update a story
  */
-async function updateStory(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function updateStory(req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
+    const storyId = req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(
@@ -104,7 +102,7 @@ async function updateStory(req: NextRequest, context: { user: any }, routeParams
       );
     }
 
-    const updateData = validationResult.data as UpdateStoryInput;
+    const { projectId: _projectId, ...updateData } = validationResult.data as any;
 
     // Get the existing story to verify project access
     const existingStory = await db.query.stories.findFirst({
@@ -176,9 +174,9 @@ async function updateStory(req: NextRequest, context: { user: any }, routeParams
 /**
  * DELETE /api/stories/[storyId] - Delete a story
  */
-async function deleteStory(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function deleteStory(_req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
+    const storyId = _req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(

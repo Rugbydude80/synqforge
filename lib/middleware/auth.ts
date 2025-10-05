@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm'
 
 export interface AuthContext {
   user: UserContext
+  params: any
 }
 
 export interface UserContext {
@@ -32,7 +33,7 @@ export function withAuth(
   handler: (req: NextRequest, context: AuthContext) => Promise<Response>,
   options: AuthOptions = {}
 ) {
-  return async (req: NextRequest, routeParams?: any) => {
+  return async (req: NextRequest, routeContext?: { params: Promise<any> }) => {
     try {
       // Get session from NextAuth
       const session = await auth()
@@ -109,8 +110,11 @@ export function withAuth(
         )
       }
 
+      // Resolve params if they exist
+      const params = routeContext?.params ? await routeContext.params : {}
+
       // Call the actual route handler with context
-      return await handler(req, { user: userContext })
+      return await handler(req, { user: userContext, params })
       
     } catch (error) {
       console.error('Auth middleware error:', error)
@@ -140,7 +144,13 @@ async function getUserContext(userId: string): Promise<UserContext | null> {
       .where(eq(users.id, userId))
       .limit(1)
 
-    return user || null
+    if (!user) return null
+
+    return {
+      ...user,
+      role: user.role || 'viewer',
+      isActive: user.isActive ?? true,
+    }
   } catch (error) {
     console.error('Error fetching user context:', error)
     return null

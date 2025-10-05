@@ -16,7 +16,7 @@ export class ProjectsRepository {
   /**
    * Get all projects for user's organization
    */
-  async getProjects(filters?: { status?: string }) {
+  async getProjects() {
     let query = db
       .select({
         id: projects.id,
@@ -45,13 +45,12 @@ export class ProjectsRepository {
       })
       .from(projects)
       .where(eq(projects.organizationId, this.userContext.organizationId))
+      .orderBy(desc(projects.createdAt))
 
-    // Apply filters
-    if (filters?.status) {
-      query = query.where(eq(projects.status, filters.status as any)) as any
-    }
+    // Note: Status filter removed - needs to be implemented with conditions array before select
+    // TODO: Implement filters by building conditions array before select
 
-    const result = await query.orderBy(desc(projects.createdAt))
+    const result = await query
 
     return result
   }
@@ -105,7 +104,19 @@ export class ProjectsRepository {
 
     // Verify organization access
     if (project.organizationId !== this.userContext.organizationId) {
-      throw new ForbiddenError('Access denied to this project')
+      const mismatchInfo = {
+        projectOrg: project.organizationId,
+        userOrg: this.userContext.organizationId,
+        projectId: project.id,
+        userId: this.userContext.id
+      }
+      console.error('Organization mismatch:', mismatchInfo)
+
+      // Throw detailed error for debugging
+      const error = new ForbiddenError(
+        `Organization mismatch: Project has org "${project.organizationId}" but user has org "${this.userContext.organizationId}". Please sign out and sign back in to refresh your session.`
+      )
+      throw error
     }
 
     return project

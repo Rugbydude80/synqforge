@@ -8,7 +8,7 @@ import {
   sprints,
   activities
 } from '@/lib/db/schema';
-import { eq, and, desc, asc, sql, inArray, isNull, or } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, inArray, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 export interface CreateStoryInput {
@@ -19,12 +19,16 @@ export interface CreateStoryInput {
   acceptanceCriteria?: string[];
   storyPoints?: number;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  storyType?: 'feature' | 'bug' | 'task' | 'spike';
   assigneeId?: string;
   status?: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked';
   tags?: string[];
+  labels?: string[];
   aiGenerated?: boolean;
   aiPrompt?: string;
   aiModelUsed?: string;
+  aiValidationScore?: number;
+  aiSuggestions?: string[];
 }
 
 export interface UpdateStoryInput {
@@ -140,6 +144,7 @@ export class StoriesRepository {
     // Create story
     await db.insert(stories).values({
       id: storyId,
+      organizationId: project.organizationId,
       projectId: input.projectId,
       epicId: input.epicId || null,
       title: input.title,
@@ -148,11 +153,15 @@ export class StoriesRepository {
       storyPoints: input.storyPoints || null,
       priority: input.priority,
       status: input.status || 'backlog',
+      storyType: input.storyType || 'feature',
       assigneeId: input.assigneeId || null,
       tags: input.tags || null,
+      labels: input.labels || null,
       aiGenerated: input.aiGenerated || false,
       aiPrompt: input.aiPrompt || null,
       aiModelUsed: input.aiModelUsed || null,
+      aiValidationScore: input.aiValidationScore || null,
+      aiSuggestions: input.aiSuggestions || null,
       createdBy: userId,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -161,11 +170,18 @@ export class StoriesRepository {
     // Log activity
     await db.insert(activities).values({
       id: nanoid(),
+      organizationId: project.organizationId,
       userId,
       projectId: input.projectId,
-      type: 'story_created',
-      entityType: 'story',
-      entityId: storyId,
+      action: 'story_created',
+      resourceType: 'story',
+      resourceId: storyId,
+      newValues: {
+        title: input.title,
+        priority: input.priority,
+        status: input.status || 'backlog',
+        aiGenerated: input.aiGenerated || false
+      },
       metadata: {
         storyTitle: input.title,
         priority: input.priority,

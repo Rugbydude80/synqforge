@@ -25,7 +25,7 @@ export const GET = withAuth(
         data: activities,
         meta: {
           limit,
-          offset,
+          page: Math.floor(offset / limit) + 1,
           total: activities.length,
         },
       }

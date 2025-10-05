@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
-  validateAssignToSprint,
   safeValidateAssignToSprint,
   AssignToSprintInput
 } from '@/lib/validations/story';
@@ -13,9 +12,9 @@ import { eq, and } from 'drizzle-orm';
 /**
  * POST /api/stories/[storyId]/sprint - Assign story to a sprint
  */
-async function assignToSprint(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function assignToSprint(req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
+    const storyId = req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(
@@ -145,10 +144,10 @@ async function assignToSprint(req: NextRequest, context: { user: any }, routePar
 /**
  * DELETE /api/stories/[storyId]/sprint?sprintId=xxx - Remove story from a sprint
  */
-async function removeFromSprint(req: NextRequest, context: { user: any }, routeParams: { storyId: string }) {
+async function removeFromSprint(_req: NextRequest, context: { user: any }) {
   try {
-    const { storyId } = routeParams;
-    const { searchParams } = new URL(req.url);
+    const storyId = _req.nextUrl.pathname.split('/')[3];
+    const { searchParams } = new URL(_req.url);
     const sprintId = searchParams.get('sprintId');
 
     if (!storyId) {

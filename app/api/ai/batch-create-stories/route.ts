@@ -1,32 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
+import { withAuth } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
-import { projectsRepository } from '@/lib/repositories/projects.repository';
-import { epicsRepository } from '@/lib/repositories/epics.repository';
+import { ProjectsRepository } from '@/lib/repositories/projects';
+import { EpicsRepository } from '@/lib/repositories/epics';
 import { batchCreateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
 
-export async function POST(req: NextRequest) {
-  try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+async function batchCreateStories(req: NextRequest, context: any) {
+  const projectsRepo = new ProjectsRepository(context.user);
+  const epicsRepo = new EpicsRepository(context.user);
 
+  try {
     // Parse and validate request body
     const body = await req.json();
     const validatedData = batchCreateStoriesSchema.parse(body);
 
     // Verify user has access to the project
-    const project = await projectsRepository.getById(
-      validatedData.projectId,
-      session.user.id
-    );
+    const project = await projectsRepo.getProjectById(validatedData.projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -37,10 +27,7 @@ export async function POST(req: NextRequest) {
 
     // If epicId provided, verify it exists and belongs to the project
     if (validatedData.epicId) {
-      const epic = await epicsRepository.getById(
-        validatedData.epicId,
-        session.user.id
-      );
+      const epic = await epicsRepo.getEpicById(validatedData.epicId);
 
       if (!epic || epic.projectId !== validatedData.projectId) {
         return NextResponse.json(
@@ -58,15 +45,14 @@ export async function POST(req: NextRequest) {
       try {
         const story = await storiesRepository.create({
           projectId: validatedData.projectId,
-          epicId: validatedData.epicId || null,
+          epicId: validatedData.epicId,
           title: storyData.title,
           description: storyData.description,
           acceptanceCriteria: storyData.acceptanceCriteria || [],
           priority: storyData.priority,
-          storyPoints: storyData.storyPoints || null,
-          status: 'todo',
-          createdBy: session.user.id,
-        });
+          storyPoints: storyData.storyPoints ?? undefined,
+          status: 'backlog',
+        }, context.user.id);
 
         createdStories.push(story);
       } catch (error) {
@@ -96,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
+      {
         error: error instanceof Error ? error.message : 'Failed to create stories',
         details: process.env.NODE_ENV === 'development' ? error : undefined
       },
@@ -104,3 +90,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withAuth(batchCreateStories);
