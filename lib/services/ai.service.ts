@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { aiGenerations } from '@/lib/db/schema';
 import { generateId } from '@/lib/db';
@@ -55,16 +56,18 @@ export interface DocumentAnalysisResult {
 }
 
 export class AIService {
-  private apiKey: string;
-  private baseUrl: string;
+  private anthropic: Anthropic;
 
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY || '';
-    this.baseUrl = 'https://openrouter.ai/api/v1';
-    
-    if (!this.apiKey) {
-      throw new Error('OPENROUTER_API_KEY is required');
+    const apiKey = process.env.ANTHROPIC_API_KEY || '';
+
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is required');
     }
+
+    this.anthropic = new Anthropic({
+      apiKey,
+    });
   }
 
   /**
@@ -74,10 +77,10 @@ export class AIService {
     requirements: string,
     context?: string,
     count: number = 5,
-    model: string = 'claude-3-sonnet'
+    model: string = 'claude-3-5-sonnet-20241022'
   ): Promise<StoryGenerationResult[]> {
     const prompt = this.buildStoryGenerationPrompt(requirements, context, count);
-    
+
     const response = await this.generate({
       model,
       prompt,
@@ -94,10 +97,10 @@ export class AIService {
   async generateEpic(
     requirements: string,
     context?: string,
-    model: string = 'claude-3-sonnet'
+    model: string = 'claude-3-5-sonnet-20241022'
   ): Promise<EpicGenerationResult> {
     const prompt = this.buildEpicGenerationPrompt(requirements, context);
-    
+
     const response = await this.generate({
       model,
       prompt,
@@ -115,14 +118,14 @@ export class AIService {
     storyTitle: string,
     storyDescription: string,
     acceptanceCriteria: string[],
-    model: string = 'claude-3-sonnet'
+    model: string = 'claude-3-5-sonnet-20241022'
   ): Promise<StoryValidationResult> {
     const prompt = this.buildStoryValidationPrompt(
       storyTitle,
       storyDescription,
       acceptanceCriteria
     );
-    
+
     const response = await this.generate({
       model,
       prompt,
@@ -139,10 +142,10 @@ export class AIService {
   async analyzeDocument(
     documentText: string,
     analysisType: 'requirements' | 'stories' | 'epics' | 'general' = 'requirements',
-    model: string = 'claude-3-sonnet'
+    model: string = 'claude-3-5-sonnet-20241022'
   ): Promise<DocumentAnalysisResult> {
     const prompt = this.buildDocumentAnalysisPrompt(documentText, analysisType);
-    
+
     const response = await this.generate({
       model,
       prompt,
@@ -157,45 +160,38 @@ export class AIService {
    * Core AI generation method
    */
   private async generate(request: AIGenerationRequest): Promise<AIGenerationResponse> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'SynqForge AI',
-      },
-      body: JSON.stringify({
+    try {
+      const message = await this.anthropic.messages.create({
         model: request.model,
+        max_tokens: request.maxTokens || 2000,
+        temperature: request.temperature || 0.7,
         messages: [
           {
             role: 'user',
             content: request.prompt,
           },
         ],
-        max_tokens: request.maxTokens || 2000,
-        temperature: request.temperature || 0.7,
-      }),
-    });
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`AI generation failed: ${error}`);
+      // Extract text content from the response
+      const textContent = message.content.find(block => block.type === 'text');
+      if (!textContent || textContent.type !== 'text') {
+        throw new Error('No text content in AI response');
+      }
+
+      return {
+        content: textContent.text,
+        usage: {
+          promptTokens: message.usage.input_tokens,
+          completionTokens: message.usage.output_tokens,
+          totalTokens: message.usage.input_tokens + message.usage.output_tokens,
+        },
+        model: request.model,
+      };
+    } catch (error) {
+      console.error('AI generation failed:', error);
+      throw new Error(`AI generation failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    const data = await response.json();
-    const choice = data.choices[0];
-    const usage = data.usage;
-
-    return {
-      content: choice.message.content,
-      usage: {
-        promptTokens: usage.prompt_tokens,
-        completionTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-      },
-      model: request.model,
-    };
   }
 
   /**

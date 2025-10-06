@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware/auth';
+import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { db } from '@/lib/db';
 import { aiGenerations } from '@/lib/db/schema';
 import { and, eq, gte, sql } from 'drizzle-orm';
 
-async function getAIUsage(req: NextRequest, context: any) {
+async function getAIUsage(req: NextRequest, context: AuthContext) {
   try {
     // Get query parameters
     const organizationId = req.nextUrl.searchParams.get('organizationId');

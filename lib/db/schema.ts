@@ -13,8 +13,16 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  customType,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+
+// Custom bytea type for binary data storage
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 // ============================================
 // ENUMS - Define before tables
@@ -32,6 +40,19 @@ export const aiGenerationTypeEnum = pgEnum('ai_generation_type', ['story_generat
 export const generationStatusEnum = pgEnum('generation_status', ['pending', 'completed', 'failed'])
 export const processingStatusEnum = pgEnum('processing_status', ['uploaded', 'processing', 'completed', 'failed'])
 export const transactionTypeEnum = pgEnum('transaction_type', ['purchase', 'usage', 'refund', 'bonus'])
+export const fileTypeEnum = pgEnum('file_type', ['pdf', 'docx', 'txt', 'md'])
+export const notificationTypeEnum = pgEnum('notification_type', ['story_assigned', 'comment_mention', 'sprint_starting', 'story_blocked', 'epic_completed', 'comment_reply'])
+export const notificationEntityEnum = pgEnum('notification_entity', ['story', 'epic', 'sprint', 'comment', 'project'])
+export const digestFrequencyEnum = pgEnum('digest_frequency', ['real_time', 'daily', 'weekly'])
+export const templateCategoryEnum = pgEnum('template_category', [
+  'authentication',
+  'crud',
+  'payments',
+  'notifications',
+  'admin',
+  'api',
+  'custom'
+])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -157,6 +178,8 @@ export const stories = pgTable(
     aiModelUsed: varchar('ai_model_used', { length: 100 }),
     aiValidationScore: smallint('ai_validation_score'),
     aiSuggestions: json('ai_suggestions').$type<string[]>(),
+    sourceDocumentId: varchar('source_document_id', { length: 36 }),
+    aiConfidenceScore: smallint('ai_confidence_score'),
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     assigneeId: varchar('assignee_id', { length: 36 }),
     createdAt: timestamp('created_at').defaultNow(),
@@ -169,6 +192,7 @@ export const stories = pgTable(
     statusIdx: index('idx_stories_status').on(table.projectId, table.status),
     assigneeIdx: index('idx_stories_assignee').on(table.assigneeId),
     priorityIdx: index('idx_stories_priority').on(table.projectId, table.priority),
+    sourceDocIdx: index('idx_stories_source_doc').on(table.sourceDocumentId),
   })
 )
 
@@ -187,6 +211,10 @@ export const sprints = pgTable(
     startDate: date('start_date').notNull(),
     endDate: date('end_date').notNull(),
     capacityPoints: integer('capacity_points'),
+    plannedPoints: integer('planned_points').default(0),
+    completedPoints: integer('completed_points').default(0),
+    velocity: integer('velocity'),
+    completionPercentage: smallint('completion_percentage').default(0),
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -244,9 +272,31 @@ export const aiGenerations = pgTable(
 )
 
 // ============================================
-// DOCUMENTS
+// DOCUMENTS - Project-scoped with binary storage
 // ============================================
 
+export const projectDocuments = pgTable(
+  'project_documents',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    uploadedBy: varchar('uploaded_by', { length: 36 }).notNull(),
+    fileName: varchar('file_name', { length: 255 }).notNull(),
+    fileType: fileTypeEnum('file_type').notNull(),
+    fileSize: integer('file_size').notNull(),
+    fileBytes: bytea('file_bytes').notNull(),
+    extractedContent: text('extracted_content'),
+    generatedStoryIds: json('generated_story_ids').$type<string[]>().default([]),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    projectIdx: index('idx_project_docs_project').on(table.projectId),
+    uploaderIdx: index('idx_project_docs_uploader').on(table.uploadedBy),
+    typeIdx: index('idx_project_docs_type').on(table.fileType),
+  })
+)
+
+// Keep old documents table for backward compatibility (deprecated)
 export const documents = pgTable(
   'documents',
   {
@@ -350,9 +400,106 @@ export const creditTransactions = pgTable(
 )
 
 // ============================================
-// METRICS (Materialized View)
+// COMMENTS & COLLABORATION
 // ============================================
 
+export const storyComments = pgTable(
+  'story_comments',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    content: text('content').notNull(),
+    parentCommentId: varchar('parent_comment_id', { length: 36 }),
+    mentions: json('mentions').$type<string[]>().default([]),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_comments_story').on(table.storyId),
+    userIdx: index('idx_comments_user').on(table.userId),
+    parentIdx: index('idx_comments_parent').on(table.parentCommentId),
+    createdIdx: index('idx_comments_created').on(table.createdAt),
+  })
+)
+
+export const commentReactions = pgTable(
+  'comment_reactions',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    commentId: varchar('comment_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    emoji: varchar('emoji', { length: 20 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    commentIdx: index('idx_reactions_comment').on(table.commentId),
+    userIdx: index('idx_reactions_user').on(table.userId),
+    uniqueReaction: uniqueIndex('idx_unique_reaction').on(table.commentId, table.userId, table.emoji),
+  })
+)
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    type: notificationTypeEnum('type').notNull(),
+    entityType: notificationEntityEnum('entity_type').notNull(),
+    entityId: varchar('entity_id', { length: 36 }).notNull(),
+    message: text('message').notNull(),
+    read: boolean('read').default(false),
+    actionUrl: text('action_url'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_notifications_user').on(table.userId),
+    readIdx: index('idx_notifications_read').on(table.userId, table.read),
+    typeIdx: index('idx_notifications_type').on(table.type),
+    createdIdx: index('idx_notifications_created').on(table.createdAt),
+  })
+)
+
+export const notificationPreferences = pgTable(
+  'notification_preferences',
+  {
+    userId: varchar('user_id', { length: 36 }).primaryKey(),
+    emailEnabled: boolean('email_enabled').default(true),
+    inAppEnabled: boolean('in_app_enabled').default(true),
+    notifyOnMention: boolean('notify_on_mention').default(true),
+    notifyOnAssignment: boolean('notify_on_assignment').default(true),
+    notifyOnSprintChanges: boolean('notify_on_sprint_changes').default(true),
+    digestFrequency: digestFrequencyEnum('digest_frequency').default('real_time'),
+  }
+)
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+export const sprintAnalytics = pgTable(
+  'sprint_analytics',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    sprintId: varchar('sprint_id', { length: 36 }).notNull(),
+    dayNumber: smallint('day_number').notNull(),
+    remainingPoints: integer('remaining_points').notNull(),
+    completedPoints: integer('completed_points').notNull(),
+    scopeChanges: integer('scope_changes').default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    sprintIdx: index('idx_analytics_sprint').on(table.sprintId),
+    dayIdx: index('idx_analytics_day').on(table.sprintId, table.dayNumber),
+    uniqueDay: uniqueIndex('idx_unique_sprint_day').on(table.sprintId, table.dayNumber),
+  })
+)
+
+// Keep old sprint_metrics for backward compatibility (deprecated)
 export const sprintMetrics = pgTable(
   'sprint_metrics',
   {
@@ -367,6 +514,52 @@ export const sprintMetrics = pgTable(
   },
   (table) => ({
     calculatedIdx: index('idx_metrics_calculated').on(table.lastCalculated),
+  })
+)
+
+// ============================================
+// STORY TEMPLATES - Consultant productivity
+// ============================================
+
+export const storyTemplates = pgTable(
+  'story_templates',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    templateName: varchar('template_name', { length: 255 }).notNull(),
+    category: templateCategoryEnum('category').notNull(),
+    description: text('description'),
+    isPublic: boolean('is_public').default(false),
+    usageCount: integer('usage_count').default(0),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_templates_org').on(table.organizationId),
+    categoryIdx: index('idx_templates_category').on(table.category),
+    publicIdx: index('idx_templates_public').on(table.isPublic),
+    creatorIdx: index('idx_templates_creator').on(table.createdBy),
+  })
+)
+
+export const templateStories = pgTable(
+  'template_stories',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    templateId: varchar('template_id', { length: 36 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    description: text('description'),
+    acceptanceCriteria: json('acceptance_criteria').$type<string[]>(),
+    storyPoints: smallint('story_points'),
+    storyType: storyTypeEnum('story_type').default('feature'),
+    tags: json('tags').$type<string[]>(),
+    order: integer('order').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    templateIdx: index('idx_template_stories_template').on(table.templateId),
+    orderIdx: index('idx_template_stories_order').on(table.templateId, table.order),
   })
 )
 
@@ -444,5 +637,87 @@ export const sprintStoriesRelations = relations(sprintStories, ({ one }) => ({
   story: one(stories, {
     fields: [sprintStories.storyId],
     references: [stories.id],
+  }),
+}))
+
+export const projectDocumentsRelations = relations(projectDocuments, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectDocuments.projectId],
+    references: [projects.id],
+  }),
+  uploader: one(users, {
+    fields: [projectDocuments.uploadedBy],
+    references: [users.id],
+  }),
+}))
+
+export const storyCommentsRelations = relations(storyComments, ({ one, many }) => ({
+  story: one(stories, {
+    fields: [storyComments.storyId],
+    references: [stories.id],
+  }),
+  author: one(users, {
+    fields: [storyComments.userId],
+    references: [users.id],
+  }),
+  parentComment: one(storyComments, {
+    fields: [storyComments.parentCommentId],
+    references: [storyComments.id],
+    relationName: 'commentThread',
+  }),
+  replies: many(storyComments, {
+    relationName: 'commentThread',
+  }),
+  reactions: many(commentReactions),
+}))
+
+export const commentReactionsRelations = relations(commentReactions, ({ one }) => ({
+  comment: one(storyComments, {
+    fields: [commentReactions.commentId],
+    references: [storyComments.id],
+  }),
+  user: one(users, {
+    fields: [commentReactions.userId],
+    references: [users.id],
+  }),
+}))
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}))
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
+    references: [users.id],
+  }),
+}))
+
+export const sprintAnalyticsRelations = relations(sprintAnalytics, ({ one }) => ({
+  sprint: one(sprints, {
+    fields: [sprintAnalytics.sprintId],
+    references: [sprints.id],
+  }),
+}))
+
+export const storyTemplatesRelations = relations(storyTemplates, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [storyTemplates.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [storyTemplates.createdBy],
+    references: [users.id],
+  }),
+  stories: many(templateStories),
+}))
+
+export const templateStoriesRelations = relations(templateStories, ({ one }) => ({
+  template: one(storyTemplates, {
+    fields: [templateStories.templateId],
+    references: [storyTemplates.id],
   }),
 }))

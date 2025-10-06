@@ -1,11 +1,10 @@
 import { db, generateId } from '@/lib/db'
-import { users, activities, stories, projects, sprints } from '@/lib/db/schema'
-import { eq, and, desc, sql, count, like, or, asc } from 'drizzle-orm'
+import { users, activities, stories, projects } from '@/lib/db/schema'
+import { eq, and, desc, sql, like, or, asc } from 'drizzle-orm'
 import {
   UpdateUserInput,
   NotFoundError,
   ForbiddenError,
-  ValidationError,
 } from '@/lib/types'
 import { UserContext } from '@/lib/middleware/auth'
 
@@ -14,11 +13,11 @@ export interface UserProfile {
   email: string
   name: string | null
   avatarUrl: string | null
-  role: 'admin' | 'member' | 'viewer'
-  isActive: boolean
+  role: 'admin' | 'member' | 'viewer' | null
+  isActive: boolean | null
   preferences: Record<string, any> | null
   lastActiveAt: Date | null
-  createdAt: Date
+  createdAt: Date | null
   // Extended info
   projectsOwned: number
   storiesCreated: number
@@ -36,7 +35,7 @@ export interface UserStats {
   completionRate: number
   activitiesCount: number
   lastActiveAt: Date | null
-  memberSince: Date
+  memberSince: Date | null
 }
 
 export interface UserActivity {
@@ -48,7 +47,7 @@ export interface UserActivity {
   oldValues: Record<string, any> | null
   newValues: Record<string, any> | null
   metadata: Record<string, any> | null
-  createdAt: Date
+  createdAt: Date | null
 }
 
 export class UsersRepository {
@@ -63,7 +62,7 @@ export class UsersRepository {
         id: users.id,
         email: users.email,
         name: users.name,
-        avatarUrl: users.avatarUrl,
+        avatarUrl: users.avatar,
         role: users.role,
         isActive: users.isActive,
         preferences: users.preferences,
@@ -79,8 +78,8 @@ export class UsersRepository {
           WHERE ${stories.createdBy} = ${users.id}
         )`,
         storiesAssigned: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${users.id}
+          SELECT COUNT(*) FROM ${stories}
+          WHERE ${stories.assigneeId} = ${users.id}
         )`,
         activitiesCount: sql<number>`(
           SELECT COUNT(*) FROM ${activities} 
@@ -107,7 +106,7 @@ export class UsersRepository {
         id: users.id,
         email: users.email,
         name: users.name,
-        avatarUrl: users.avatarUrl,
+        avatarUrl: users.avatar,
         role: users.role,
         isActive: users.isActive,
         preferences: users.preferences,
@@ -123,8 +122,8 @@ export class UsersRepository {
           WHERE ${stories.createdBy} = ${users.id}
         )`,
         storiesAssigned: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${users.id}
+          SELECT COUNT(*) FROM ${stories}
+          WHERE ${stories.assigneeId} = ${users.id}
         )`,
         activitiesCount: sql<number>`(
           SELECT COUNT(*) FROM ${activities} 
@@ -154,10 +153,7 @@ export class UsersRepository {
     // Update user
     await db
       .update(users)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(users.id, this.userContext.id))
 
     // Log activity
@@ -186,10 +182,7 @@ export class UsersRepository {
     // Update user
     await db
       .update(users)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(users.id, userId))
 
     // Log activity
@@ -216,7 +209,7 @@ export class UsersRepository {
     // Verify user exists and is in same organization
     await this.getUserById(userId)
 
-    const activities = await db
+    const userActivities = await db
       .select({
         id: activities.id,
         action: activities.action,
@@ -239,7 +232,7 @@ export class UsersRepository {
       .limit(pagination.limit)
       .offset(pagination.offset)
 
-    return activities
+    return userActivities
   }
 
   /**
@@ -261,21 +254,21 @@ export class UsersRepository {
         )`,
         storiesAssigned: sql<number>`(
           SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${userId}
+          WHERE ${stories.assigneeId} = ${userId}
         )`,
         storiesCompleted: sql<number>`(
           SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${userId} 
+          WHERE ${stories.assigneeId} = ${userId} 
           AND ${stories.status} = 'done'
         )`,
         storiesInProgress: sql<number>`(
           SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${userId} 
+          WHERE ${stories.assigneeId} = ${userId} 
           AND ${stories.status} = 'in_progress'
         )`,
         totalStoryPoints: sql<number>`(
           SELECT COALESCE(SUM(${stories.storyPoints}), 0) FROM ${stories} 
-          WHERE ${stories.assignedTo} = ${userId}
+          WHERE ${stories.assigneeId} = ${userId}
         )`,
         activitiesCount: sql<number>`(
           SELECT COUNT(*) FROM ${activities} 
@@ -325,7 +318,7 @@ export class UsersRepository {
 
     // Build where conditions
     const whereConditions = [
-      eq(stories.assignedTo, userId),
+      eq(stories.assigneeId, userId),
       eq(stories.organizationId, this.userContext.organizationId),
     ]
 
@@ -373,7 +366,7 @@ export class UsersRepository {
         id: users.id,
         email: users.email,
         name: users.name,
-        avatarUrl: users.avatarUrl,
+        avatarUrl: users.avatar,
         role: users.role,
         isActive: users.isActive,
         lastActiveAt: users.lastActiveAt,

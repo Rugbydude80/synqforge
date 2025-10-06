@@ -61,16 +61,16 @@ export interface StoryWithRelations {
   description: string | null;
   acceptanceCriteria: string[] | null;
   storyPoints: number | null;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked';
+  priority: 'low' | 'medium' | 'high' | 'critical' | null;
+  status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked' | null;
   assigneeId: string | null;
   tags: string[] | null;
-  aiGenerated: boolean;
+  aiGenerated: boolean | null;
   aiPrompt: string | null;
   aiModelUsed: string | null;
   createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | null;
+  updatedAt: Date | null;
   project?: {
     id: string;
     name: string;
@@ -79,17 +79,17 @@ export interface StoryWithRelations {
   epic?: {
     id: string;
     title: string;
-    color: string;
+    color: string | null;
   } | null;
   assignee?: {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
     avatar: string | null;
   } | null;
   creator?: {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
   };
   currentSprint?: {
@@ -256,7 +256,12 @@ export class StoriesRepository {
     return {
       ...story,
       currentSprint: currentSprintRelation?.sprint.status === 'active'
-        ? currentSprintRelation.sprint
+        ? {
+            id: currentSprintRelation.sprint.id,
+            name: currentSprintRelation.sprint.name,
+            startDate: new Date(currentSprintRelation.sprint.startDate),
+            endDate: new Date(currentSprintRelation.sprint.endDate)
+          }
         : null
     };
   }
@@ -329,19 +334,30 @@ export class StoriesRepository {
 
     // Log activity if there were changes
     if (Object.keys(changes).length > 0) {
-      await db.insert(activities).values({
-        id: nanoid(),
-        userId,
-        projectId: existingStory.projectId,
-        type: 'story_updated',
-        entityType: 'story',
-        entityId: storyId,
-        metadata: {
-          storyTitle: existingStory.title,
-          changes
-        },
-        createdAt: new Date()
-      });
+      // Get the organization ID from the project
+      const [project] = await db
+        .select({ organizationId: projects.organizationId })
+        .from(projects)
+        .where(eq(projects.id, existingStory.projectId))
+        .limit(1);
+
+      if (project) {
+        await db.insert(activities).values({
+          id: nanoid(),
+          organizationId: project.organizationId,
+          userId,
+          projectId: existingStory.projectId,
+          action: 'story_updated',
+          resourceType: 'story',
+          resourceId: storyId,
+          newValues: changes,
+          metadata: {
+            storyTitle: existingStory.title,
+            changes
+          },
+          createdAt: new Date()
+        });
+      }
     }
 
     return this.getById(storyId);
@@ -372,18 +388,27 @@ export class StoriesRepository {
       .where(eq(stories.id, storyId));
 
     // Log activity
-    await db.insert(activities).values({
-      id: nanoid(),
-      userId,
-      projectId: story.projectId,
-      type: 'story_deleted',
-      entityType: 'story',
-      entityId: storyId,
-      metadata: {
-        storyTitle: story.title
-      },
-      createdAt: new Date()
-    });
+    const [project] = await db
+      .select({ organizationId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.id, story.projectId))
+      .limit(1);
+
+    if (project) {
+      await db.insert(activities).values({
+        id: nanoid(),
+        organizationId: project.organizationId,
+        userId,
+        projectId: story.projectId,
+        action: 'story_deleted',
+        resourceType: 'story',
+        resourceId: storyId,
+        metadata: {
+          storyTitle: story.title
+        },
+        createdAt: new Date()
+      });
+    }
   }
 
   /**
@@ -524,10 +549,18 @@ export class StoriesRepository {
     );
 
     return {
-      stories: storiesData.map(story => ({
-        ...story,
-        currentSprint: sprintMap.get(story.id) || null
-      })),
+      stories: storiesData.map(story => {
+        const sprint = sprintMap.get(story.id);
+        return {
+          ...story,
+          currentSprint: sprint ? {
+            id: sprint.id,
+            name: sprint.name,
+            startDate: new Date(sprint.startDate),
+            endDate: new Date(sprint.endDate)
+          } : null
+        };
+      }),
       total: count
     };
   }
@@ -593,7 +626,12 @@ export class StoriesRepository {
 
     return sprintStoryRelations.map(relation => ({
       ...relation.story,
-      currentSprint: relation.sprint
+      currentSprint: {
+        id: relation.sprint.id,
+        name: relation.sprint.name,
+        startDate: new Date(relation.sprint.startDate),
+        endDate: new Date(relation.sprint.endDate)
+      }
     }));
   }
 
@@ -647,19 +685,28 @@ export class StoriesRepository {
     });
 
     // Log activity
-    await db.insert(activities).values({
-      id: nanoid(),
-      userId,
-      projectId: story.projectId,
-      type: 'story_sprint_assigned',
-      entityType: 'story',
-      entityId: storyId,
-      metadata: {
-        storyTitle: story.title,
-        sprintName: sprint.name
-      },
-      createdAt: new Date()
-    });
+    const [project] = await db
+      .select({ organizationId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.id, story.projectId))
+      .limit(1);
+
+    if (project) {
+      await db.insert(activities).values({
+        id: nanoid(),
+        organizationId: project.organizationId,
+        userId,
+        projectId: story.projectId,
+        action: 'story_sprint_assigned',
+        resourceType: 'story',
+        resourceId: storyId,
+        metadata: {
+          storyTitle: story.title,
+          sprintName: sprint.name
+        },
+        createdAt: new Date()
+      });
+    }
   }
 
   /**
@@ -685,18 +732,27 @@ export class StoriesRepository {
       ));
 
     // Log activity
-    await db.insert(activities).values({
-      id: nanoid(),
-      userId,
-      projectId: story.projectId,
-      type: 'story_sprint_removed',
-      entityType: 'story',
-      entityId: storyId,
-      metadata: {
-        storyTitle: story.title
-      },
-      createdAt: new Date()
-    });
+    const [project] = await db
+      .select({ organizationId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.id, story.projectId))
+      .limit(1);
+
+    if (project) {
+      await db.insert(activities).values({
+        id: nanoid(),
+        organizationId: project.organizationId,
+        userId,
+        projectId: story.projectId,
+        action: 'story_sprint_removed',
+        resourceType: 'story',
+        resourceId: storyId,
+        metadata: {
+          storyTitle: story.title
+        },
+        createdAt: new Date()
+      });
+    }
   }
 
   /**
@@ -742,10 +798,14 @@ export class StoriesRepository {
 
     projectStories.forEach(story => {
       // Status counts
-      stats.byStatus[story.status] = (stats.byStatus[story.status] || 0) + 1;
+      if (story.status) {
+        stats.byStatus[story.status] = (stats.byStatus[story.status] || 0) + 1;
+      }
 
       // Priority counts
-      stats.byPriority[story.priority] = (stats.byPriority[story.priority] || 0) + 1;
+      if (story.priority) {
+        stats.byPriority[story.priority] = (stats.byPriority[story.priority] || 0) + 1;
+      }
 
       // Points
       if (story.storyPoints) {

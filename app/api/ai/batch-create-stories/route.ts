@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware/auth';
+import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { ProjectsRepository } from '@/lib/repositories/projects';
 import { EpicsRepository } from '@/lib/repositories/epics';
 import { batchCreateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
 
-async function batchCreateStories(req: NextRequest, context: any) {
+async function batchCreateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
   const epicsRepo = new EpicsRepository(context.user);
 

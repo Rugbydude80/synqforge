@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware/auth';
+import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
 import { ProjectsRepository } from '@/lib/repositories/projects';
 import { EpicsRepository } from '@/lib/repositories/epics';
 import { generateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
 
-async function generateStories(req: NextRequest, context: any) {
+async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
   const epicsRepo = new EpicsRepository(context.user);
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware/auth';
+import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
 import { fileProcessorService } from '@/lib/services/file-processor.service';
 import { z } from 'zod';
 
-async function analyzeDocument(req: NextRequest, context: any) {
+async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;

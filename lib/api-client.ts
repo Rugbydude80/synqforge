@@ -206,10 +206,29 @@ export interface GenerateStoriesResponse {
 }
 
 export interface AnalyzeDocumentResponse {
-  analysis: string
-  suggestedStories: Partial<Story>[]
-  extractedRequirements: string[]
-  documentId: string
+  success: boolean
+  analysis: {
+    summary: string
+    keyPoints: string[]
+    requirements: string[]
+    suggestedStories: Array<{
+      title: string
+      description: string
+      acceptanceCriteria: string[]
+      priority: 'low' | 'medium' | 'high' | 'critical'
+      storyPoints: number
+      reasoning: string
+    }>
+    suggestedEpics: Array<{
+      title: string
+      description: string
+      goals: string[]
+      priority: 'low' | 'medium' | 'high' | 'critical'
+      estimatedDuration: string
+      reasoning: string
+    }>
+    confidence: number
+  }
 }
 
 // ============================================
@@ -619,6 +638,26 @@ export const api = {
           throw new APIError(error.error || 'Failed to analyze document', response.status, error.details)
         }
         return response.json()
+      })
+    },
+
+    /**
+     * Batch create stories from AI generation
+     */
+    batchCreateStories: async (data: {
+      projectId: string
+      epicId?: string
+      stories: Array<{
+        title: string
+        description: string
+        acceptanceCriteria?: string[]
+        priority: 'low' | 'medium' | 'high' | 'critical'
+        storyPoints?: number
+      }>
+    }): Promise<{ success: boolean; created: Story[]; errors: any[] }> => {
+      return fetchAPI<{ success: boolean; created: Story[]; errors: any[] }>('/api/ai/batch-create-stories', {
+        method: 'POST',
+        body: JSON.stringify(data),
       })
     },
   },

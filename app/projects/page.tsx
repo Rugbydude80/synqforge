@@ -11,6 +11,7 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -126,10 +127,20 @@ export default function ProjectsPage() {
               <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
               <p className="text-gray-400">Manage your projects and track progress</p>
             </div>
-            <Button onClick={() => setIsCreateOpen(true)} size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              New Project
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/ai-generate')}
+                className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20 hover:border-purple-500/40"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Generate
+              </Button>
+              <Button onClick={() => setIsCreateOpen(true)} size="lg">
+                <Plus className="h-5 w-5 mr-2" />
+                New Project
+              </Button>
+            </div>
           </div>
 
           {/* Search & Filters */}

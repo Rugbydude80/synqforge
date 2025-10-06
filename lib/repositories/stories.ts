@@ -7,7 +7,6 @@ import {
   StoryFilters,
   NotFoundError,
   ForbiddenError,
-  ConflictError,
 } from '@/lib/types'
 import { UserContext } from '@/lib/middleware/auth'
 
@@ -21,7 +20,22 @@ export class StoriesRepository {
     // Verify epic access
     await this.verifyEpicAccess(epicId)
 
-    let query = db
+    // Build where conditions
+    const conditions = [eq(stories.epicId, epicId)]
+
+    if (filters) {
+      if (filters.status) {
+        conditions.push(eq(stories.status, filters.status as any))
+      }
+      if (filters.assignedTo) {
+        conditions.push(eq(stories.assigneeId, filters.assignedTo))
+      }
+      if (filters.storyType) {
+        conditions.push(eq(stories.storyType, filters.storyType as any))
+      }
+    }
+
+    const result = await db
       .select({
         id: stories.id,
         epicId: stories.epicId,
@@ -52,28 +66,8 @@ export class StoriesRepository {
       .from(stories)
       .leftJoin(users, eq(stories.createdBy, users.id))
       .leftJoin(users, eq(stories.assigneeId, users.id))
-      .where(eq(stories.epicId, epicId))
-
-    // Apply filters
-    if (filters) {
-      const conditions = []
-
-      if (filters.status) {
-        conditions.push(eq(stories.status, filters.status as any))
-      }
-      if (filters.assignedTo) {
-        conditions.push(eq(stories.assigneeId, filters.assignedTo))
-      }
-      if (filters.storyType) {
-        conditions.push(eq(stories.storyType, filters.storyType as any))
-      }
-
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any
-      }
-    }
-
-    const result = await query.orderBy(desc(stories.priority))
+      .where(and(...conditions))
+      .orderBy(desc(stories.priority))
 
     return result
   }
@@ -143,7 +137,25 @@ export class StoriesRepository {
     // Verify project access
     await this.verifyProjectAccess(projectId)
 
-    let query = db
+    // Build where conditions
+    const conditions = [eq(stories.projectId, projectId)]
+
+    if (filters) {
+      if (filters.status) {
+        conditions.push(eq(stories.status, filters.status as any))
+      }
+      if (filters.assignedTo) {
+        conditions.push(eq(stories.assigneeId, filters.assignedTo))
+      }
+      if (filters.storyType) {
+        conditions.push(eq(stories.storyType, filters.storyType as any))
+      }
+      if (filters.epicId) {
+        conditions.push(eq(stories.epicId, filters.epicId))
+      }
+    }
+
+    const result = await db
       .select({
         id: stories.id,
         epicId: stories.epicId,
@@ -178,31 +190,8 @@ export class StoriesRepository {
       .leftJoin(users, eq(stories.createdBy, users.id))
       .leftJoin(users, eq(stories.assigneeId, users.id))
       .leftJoin(epics, eq(stories.epicId, epics.id))
-      .where(eq(stories.projectId, projectId))
-
-    // Apply filters
-    if (filters) {
-      const conditions = []
-
-      if (filters.status) {
-        conditions.push(eq(stories.status, filters.status as any))
-      }
-      if (filters.assignedTo) {
-        conditions.push(eq(stories.assigneeId, filters.assignedTo))
-      }
-      if (filters.storyType) {
-        conditions.push(eq(stories.storyType, filters.storyType as any))
-      }
-      if (filters.epicId) {
-        conditions.push(eq(stories.epicId, filters.epicId))
-      }
-
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any
-      }
-    }
-
-    const result = await query.orderBy(desc(stories.priority))
+      .where(and(...conditions))
+      .orderBy(desc(stories.priority))
 
     return result
   }
@@ -225,17 +214,23 @@ export class StoriesRepository {
 
     const storyId = generateId()
 
-    const [story] = await db
+    await db
       .insert(stories)
       .values({
         id: storyId,
-        ...data,
-        organizationId: epic.organizationId,
+        organizationId: this.userContext.organizationId,
         projectId: epic.projectId,
+        epicId: data.epicId,
+        title: data.title,
+        description: data.description,
+        acceptanceCriteria: data.acceptanceCriteria ? [data.acceptanceCriteria] : undefined,
+        storyType: data.storyType,
+        storyPoints: data.storyPoints,
+        assigneeId: data.assignedTo,
+        labels: data.labels,
         createdBy: this.userContext.id,
-        priority: data.priority || this.calculatePriorityRank(data),
+        aiGenerated: data.aiGenerated,
       })
-      .$returningId()
 
     // Get the created story
     const createdStory = await this.getStoryById(storyId)
@@ -268,11 +263,8 @@ export class StoriesRepository {
       await this.verifyUserInOrg(updates.assignedTo)
     }
 
-    // Calculate new priority rank if needed
+    // Use updates directly
     const updateData: any = { ...updates }
-    if (updates.priority !== undefined) {
-      updateData.priority = updates.priority
-    }
 
     await db
       .update(stories)
@@ -453,16 +445,21 @@ export class StoriesRepository {
         }
 
         const storyId = generateId()
-        const priority = data.priority || this.calculatePriorityRank(data)
 
         await db.insert(stories).values({
           id: storyId,
-          ...data,
           epicId,
-          organizationId: epic.organizationId,
+          organizationId: this.userContext.organizationId,
           projectId: epic.projectId,
+          title: data.title,
+          description: data.description,
+          acceptanceCriteria: data.acceptanceCriteria ? [data.acceptanceCriteria] : undefined,
+          storyType: data.storyType,
+          storyPoints: data.storyPoints,
+          assigneeId: data.assignedTo,
+          labels: data.labels,
+          aiGenerated: data.aiGenerated,
           createdBy: this.userContext.id,
-          priority,
         })
 
         const createdStory = await this.getStoryById(storyId)
@@ -495,24 +492,6 @@ export class StoriesRepository {
     }
   }
 
-  /**
-   * Calculate priority rank for a story
-   */
-  private calculatePriorityRank(data: CreateStoryInput): number {
-    // Simple priority ranking algorithm
-    // Higher priority and story points get higher rank
-    const priorityWeights = {
-      low: 1,
-      medium: 2,
-      high: 3,
-      urgent: 4,
-    }
-
-    const priorityWeight = priorityWeights[data.storyType === 'bug' ? 'high' : data.storyType || 'medium']
-    const pointsWeight = (data.storyPoints || 1) / 10
-
-    return priorityWeight + pointsWeight
-  }
 
   /**
    * Get epic info
