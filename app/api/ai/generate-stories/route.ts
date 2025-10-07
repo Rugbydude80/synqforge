@@ -48,7 +48,7 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'anthropic/claude-sonnet-4',
+      'claude-sonnet-4-5-20250929',
       { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, // Will be updated by the service
       'story_generation',
       validatedData.requirements,
