@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 const generateSingleStorySchema = z.object({
   requirement: z.string().min(10, 'Requirement must be at least 10 characters'),
-  projectId: z.string().uuid('Invalid project ID'),
+  projectId: z.string().min(1, 'Project ID is required'),
   projectContext: z.string().optional(),
 });
 
