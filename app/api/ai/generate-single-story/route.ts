@@ -13,15 +13,20 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
   try {
     // Parse and validate request body
     const body = await req.json();
+    console.log('Request body:', body);
+
     const validatedData = generateSingleStorySchema.parse(body);
+    console.log('Validated data:', validatedData);
 
     // Generate a single story using AI
+    console.log('Calling AI service...');
     const stories = await aiService.generateStories(
       validatedData.requirement,
       validatedData.projectContext,
       1, // Generate only 1 story
       'claude-3-5-sonnet-20241022'
     );
+    console.log('AI response received:', stories);
 
     if (!stories || stories.length === 0) {
       return NextResponse.json(
