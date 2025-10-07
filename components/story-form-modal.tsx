@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { Sparkles, X } from 'lucide-react'
 
 interface StoryFormModalProps {
   open: boolean
@@ -34,8 +35,11 @@ export function StoryFormModal({
   onSuccess,
 }: StoryFormModalProps) {
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isGenerating, setIsGenerating] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [epics, setEpics] = React.useState<Epic[]>([])
+  const [showAIInput, setShowAIInput] = React.useState(false)
+  const [aiRequirement, setAiRequirement] = React.useState('')
 
   const [formData, setFormData] = React.useState({
     title: '',
@@ -147,6 +151,63 @@ export function StoryFormModal({
     }))
   }
 
+  const handleGenerateWithAI = async () => {
+    if (!aiRequirement.trim()) {
+      setError('Please enter a requirement to generate a story')
+      return
+    }
+
+    if (aiRequirement.trim().length < 10) {
+      setError('Requirement must be at least 10 characters')
+      return
+    }
+
+    setIsGenerating(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/ai/generate-single-story', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requirement: aiRequirement.trim(),
+          projectId,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate story')
+      }
+
+      const data = await response.json()
+      const generatedStory = data.story
+
+      // Populate form with AI-generated data
+      setFormData({
+        title: generatedStory.title || '',
+        description: generatedStory.description || '',
+        priority: generatedStory.priority || 'medium',
+        storyPoints: generatedStory.storyPoints || 0,
+        epicId: formData.epicId, // Keep existing epic selection
+        acceptanceCriteria: generatedStory.acceptanceCriteria?.length > 0
+          ? generatedStory.acceptanceCriteria
+          : [''],
+      })
+
+      setShowAIInput(false)
+      setAiRequirement('')
+      toast.success('Story generated successfully! Review and adjust as needed.')
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate story')
+      toast.error(err.message || 'Failed to generate story')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -159,6 +220,75 @@ export function StoryFormModal({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* AI Generation Section */}
+            {!story && !showAIInput && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAIInput(true)}
+                  disabled={isLoading}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate with AI
+                </Button>
+              </div>
+            )}
+
+            {!story && showAIInput && (
+              <div className="grid gap-3 p-4 border border-purple-500/30 bg-purple-500/5 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label className="text-purple-400 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    AI Story Generation
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowAIInput(false)
+                      setAiRequirement('')
+                      setError(null)
+                    }}
+                    disabled={isGenerating}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  placeholder="Describe what you want this story to accomplish... (e.g., 'Allow users to reset their password via email')"
+                  value={aiRequirement}
+                  onChange={(e) => setAiRequirement(e.target.value)}
+                  disabled={isGenerating}
+                  rows={3}
+                  maxLength={500}
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">
+                    {aiRequirement.length}/500 characters
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={handleGenerateWithAI}
+                    disabled={isGenerating || aiRequirement.trim().length < 10}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>Generating...</>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Generate Story
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="title">Title *</Label>
               <Input
