@@ -4,6 +4,7 @@ import { users, passwordResetTokens } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { Resend } from 'resend'
+import { checkRateLimit, passwordResetRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
 
 // Only initialize Resend if API key is configured
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -16,6 +17,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Email is required' },
         { status: 400 }
+      )
+    }
+
+    // Check rate limit (3 requests per email per hour)
+    const rateLimitResult = await checkRateLimit(
+      `password-reset:${email.toLowerCase()}`,
+      passwordResetRateLimit
+    )
+
+    if (!rateLimitResult.success) {
+      const resetTime = getResetTimeMessage(rateLimitResult.reset)
+      return NextResponse.json(
+        {
+          error: 'Too many password reset requests. Please try again later.',
+          retryAfter: resetTime,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+          },
+        }
       )
     }
 

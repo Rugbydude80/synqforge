@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { users, passwordResetTokens } from '@/lib/db/schema'
 import { eq, and, gt, isNull } from 'drizzle-orm'
 import { hashPassword } from '@/lib/utils/auth'
+import { checkRateLimit, resetTokenRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters long' },
         { status: 400 }
+      )
+    }
+
+    // Check rate limit (5 attempts per token per 15 minutes to prevent brute force)
+    const rateLimitResult = await checkRateLimit(
+      `reset-token:${token}`,
+      resetTokenRateLimit
+    )
+
+    if (!rateLimitResult.success) {
+      const resetTime = getResetTimeMessage(rateLimitResult.reset)
+      return NextResponse.json(
+        {
+          error: 'Too many reset attempts. Please try again later.',
+          retryAfter: resetTime,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+          },
+        }
       )
     }
 
