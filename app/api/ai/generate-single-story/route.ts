@@ -29,13 +29,15 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     console.log('AI response received:', stories);
 
     if (!stories || stories.length === 0) {
+      console.error('AI returned empty stories array');
       return NextResponse.json(
-        { error: 'Failed to generate story' },
+        { error: 'AI failed to generate a valid story. Please try again with a more detailed requirement.' },
         { status: 500 }
       );
     }
 
     const story = stories[0];
+    console.log('Story to return:', story);
 
     // Track AI usage
     await aiService.trackUsage(
