@@ -37,12 +37,17 @@ export async function POST(req: NextRequest) {
     const orgId = generateId()
     const userId = generateId()
 
+    // Generate unique slug with timestamp to avoid collisions
+    const timestamp = Date.now()
+    const baseSlug = validatedData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    const slug = `${baseSlug}-${timestamp}`
+
     await db.transaction(async (tx) => {
       // Create organization
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
-        slug: `${validatedData.name.toLowerCase().replace(/\s+/g, '-')}-org`,
+        slug: slug,
         subscriptionTier: 'free',
       })
 
@@ -81,8 +86,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Log the full error for debugging
+    if (error instanceof Error) {
+      console.error('Signup error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      },
       { status: 500 }
     )
   }
