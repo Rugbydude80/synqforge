@@ -24,7 +24,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       validatedData.requirement,
       validatedData.projectContext,
       1, // Generate only 1 story
-      'claude-3-5-sonnet-latest'
+      'claude-sonnet-4-5-20250929'
     );
     console.log('AI response received:', stories);
 
