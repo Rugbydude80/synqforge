@@ -43,7 +43,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'claude-3-5-sonnet-latest',
+      'claude-sonnet-4-5-20250929',
       { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       'story_generation',
       validatedData.requirement,
