@@ -77,7 +77,7 @@ export class AIService {
     requirements: string,
     context?: string,
     count: number = 5,
-    model: string = 'claude-3-5-sonnet-20241022'
+    model: string = 'claude-sonnet-4-5-20250929'
   ): Promise<StoryGenerationResult[]> {
     const prompt = this.buildStoryGenerationPrompt(requirements, context, count);
 
@@ -97,7 +97,7 @@ export class AIService {
   async generateEpic(
     requirements: string,
     context?: string,
-    model: string = 'claude-3-5-sonnet-20241022'
+    model: string = 'claude-sonnet-4-5-20250929'
   ): Promise<EpicGenerationResult> {
     const prompt = this.buildEpicGenerationPrompt(requirements, context);
 
@@ -118,7 +118,7 @@ export class AIService {
     storyTitle: string,
     storyDescription: string,
     acceptanceCriteria: string[],
-    model: string = 'claude-3-5-sonnet-20241022'
+    model: string = 'claude-sonnet-4-5-20250929'
   ): Promise<StoryValidationResult> {
     const prompt = this.buildStoryValidationPrompt(
       storyTitle,
@@ -142,7 +142,7 @@ export class AIService {
   async analyzeDocument(
     documentText: string,
     analysisType: 'requirements' | 'stories' | 'epics' | 'general' = 'requirements',
-    model: string = 'claude-3-5-sonnet-20241022'
+    model: string = 'claude-sonnet-4-5-20250929'
   ): Promise<DocumentAnalysisResult> {
     const prompt = this.buildDocumentAnalysisPrompt(documentText, analysisType);
 
