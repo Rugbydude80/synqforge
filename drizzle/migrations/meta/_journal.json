@@ -36,6 +36,13 @@
       "when": 1759783026573,
       "tag": "0004_volatile_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1759844008721,
+      "tag": "0005_milky_plazm",
+      "breakpoints": true
     }
   ]
 }

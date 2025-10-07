@@ -98,6 +98,23 @@ export const users = pgTable(
   })
 )
 
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    token: varchar('token', { length: 255 }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    usedAt: timestamp('used_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_reset_tokens_user').on(table.userId),
+    tokenIdx: uniqueIndex('idx_reset_tokens_token').on(table.token),
+    expiresIdx: index('idx_reset_tokens_expires').on(table.expiresAt),
+  })
+)
+
 // ============================================
 // PROJECTS
 // ============================================
@@ -572,10 +589,18 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   projects: many(projects),
 }))
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [users.organizationId],
     references: [organizations.id],
+  }),
+  passwordResetTokens: many(passwordResetTokens),
+}))
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
   }),
 }))
 
