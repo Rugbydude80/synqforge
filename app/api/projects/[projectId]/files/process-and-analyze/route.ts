@@ -45,22 +45,22 @@ async function processAndAnalyze(req: NextRequest, context: AuthContext) {
       extractedContent: processed.content,
     })
 
-    const analysis = await aiService.analyzeDocument(processed.content, 'requirements')
+    const response = await aiService.analyzeDocument(processed.content, 'requirements')
 
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'anthropic/claude-sonnet-4',
-      { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      response.model,
+      response.usage,
       'requirements_analysis',
       processed.content,
-      JSON.stringify(analysis)
+      JSON.stringify(response.analysis)
     )
 
     let createdStories: any[] = []
 
-    if (createStories && analysis.suggestedStories && analysis.suggestedStories.length > 0) {
-      for (const storyData of analysis.suggestedStories) {
+    if (createStories && response.analysis.suggestedStories && response.analysis.suggestedStories.length > 0) {
+      for (const storyData of response.analysis.suggestedStories) {
         const story = await storiesRepository.create({
           projectId,
           title: storyData.title,
@@ -86,7 +86,8 @@ async function processAndAnalyze(req: NextRequest, context: AuthContext) {
         extractedContent: fileProcessorService.summarizeContent(processed.content, 500),
         metadata: processed.metadata,
       },
-      analysis,
+      analysis: response.analysis,
+      usage: response.usage,
       created: {
         stories: createdStories.length,
       },

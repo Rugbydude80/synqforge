@@ -13,38 +13,31 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
   try {
     // Parse and validate request body
     const body = await req.json();
-    console.log('Request body:', body);
-
     const validatedData = generateSingleStorySchema.parse(body);
-    console.log('Validated data:', validatedData);
 
     // Generate a single story using AI
-    console.log('Calling AI service...');
-    const stories = await aiService.generateStories(
+    const response = await aiService.generateStories(
       validatedData.requirement,
       validatedData.projectContext,
       1, // Generate only 1 story
       'claude-sonnet-4-5-20250929'
     );
-    console.log('AI response received:', stories);
 
-    if (!stories || stories.length === 0) {
-      console.error('AI returned empty stories array');
+    if (!response.stories || response.stories.length === 0) {
       return NextResponse.json(
         { error: 'AI failed to generate a valid story. Please try again with a more detailed requirement.' },
         { status: 500 }
       );
     }
 
-    const story = stories[0];
-    console.log('Story to return:', story);
+    const story = response.stories[0];
 
-    // Track AI usage
+    // Track AI usage with real token data
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'claude-sonnet-4-5-20250929',
-      { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      response.model,
+      response.usage,
       'story_generation',
       validatedData.requirement,
       JSON.stringify(story)

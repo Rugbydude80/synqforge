@@ -38,27 +38,28 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     }
 
     // Generate stories using AI
-    const stories = await aiService.generateStories(
+    const response = await aiService.generateStories(
       validatedData.requirements,
       validatedData.projectContext,
       5
     );
 
-    // Track AI usage
+    // Track AI usage with real token data
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'claude-sonnet-4-5-20250929',
-      { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, // Will be updated by the service
+      response.model,
+      response.usage,
       'story_generation',
       validatedData.requirements,
-      JSON.stringify(stories)
+      JSON.stringify(response.stories)
     );
 
     return NextResponse.json({
       success: true,
-      stories,
-      count: stories.length,
+      stories: response.stories,
+      count: response.stories.length,
+      usage: response.usage,
     });
 
   } catch (error) {

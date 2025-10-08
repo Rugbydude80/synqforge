@@ -41,13 +41,21 @@ export const POST = withAuth(
         `Project: ${project.name}\nDescription: ${project.description || 'No description'}`;
 
       // Generate epic using AI
-      const generatedEpic = await aiService.generateEpic(
+      const response = await aiService.generateEpic(
         validatedData.description,
         projectContext
       );
 
-      // Note: AI usage tracking is handled internally by the aiService
-      // when it makes the actual API call to the AI provider
+      // Track AI usage with real token data
+      await aiService.trackUsage(
+        user.id,
+        user.organizationId,
+        response.model,
+        response.usage,
+        'epic_creation',
+        validatedData.description,
+        JSON.stringify(response.epic)
+      );
 
       // Optional: Auto-create the epic
       const createEpicParam = req.nextUrl.searchParams.get('create');
@@ -56,18 +64,19 @@ export const POST = withAuth(
       if (createEpicParam === 'true') {
         createdEpic = await epicsRepository.createEpic({
           projectId: validatedData.projectId,
-          title: generatedEpic.title,
-          description: generatedEpic.description,
-          goals: generatedEpic.goals.join('\n'),
-          priority: generatedEpic.priority,
+          title: response.epic.title,
+          description: response.epic.description,
+          goals: response.epic.goals.join('\n'),
+          priority: response.epic.priority,
           aiGenerated: true,
           aiGenerationPrompt: validatedData.description,
         });
       }
 
       return successResponse({
-        epic: generatedEpic,
+        epic: response.epic,
         created: createdEpic || undefined,
+        usage: response.usage,
         project: {
           id: project.id,
           name: project.name,

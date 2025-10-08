@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
  * Validate a user story using AI
  */
 export const POST = withAuth(
-  async (req: NextRequest) => {
+  async (req: NextRequest, { user }) => {
     try {
       // Parse and validate request body
       const body = await req.json();
@@ -23,14 +23,26 @@ export const POST = withAuth(
       };
 
       // Validate story using AI
-      const validation = await aiService.validateStory(
+      const response = await aiService.validateStory(
         storyData.title,
         storyData.description,
         storyData.acceptanceCriteria
       );
 
+      // Track AI usage with real token data
+      await aiService.trackUsage(
+        user.id,
+        user.organizationId,
+        response.model,
+        response.usage,
+        'story_validation',
+        `${storyData.title}: ${storyData.description}`,
+        JSON.stringify(response.validation)
+      );
+
       return successResponse({
-        validation,
+        validation: response.validation,
+        usage: response.usage,
         story: {
           title: storyData.title,
           description: storyData.description,
@@ -43,7 +55,7 @@ export const POST = withAuth(
       return errorResponse(error);
     }
   },
-  { 
-    allowedRoles: ['admin', 'member', 'viewer'] 
+  {
+    allowedRoles: ['admin', 'member', 'viewer']
   }
 );

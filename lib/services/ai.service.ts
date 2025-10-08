@@ -29,6 +29,16 @@ export interface StoryGenerationResult {
   reasoning: string;
 }
 
+export interface StoryGenerationResponse {
+  stories: StoryGenerationResult[];
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+}
+
 export interface EpicGenerationResult {
   title: string;
   description: string;
@@ -36,6 +46,16 @@ export interface EpicGenerationResult {
   priority: 'low' | 'medium' | 'high' | 'critical';
   estimatedDuration: string;
   reasoning: string;
+}
+
+export interface EpicGenerationResponse {
+  epic: EpicGenerationResult;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
 }
 
 export interface StoryValidationResult {
@@ -46,6 +66,16 @@ export interface StoryValidationResult {
   reasoning: string;
 }
 
+export interface StoryValidationResponse {
+  validation: StoryValidationResult;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+}
+
 export interface DocumentAnalysisResult {
   summary: string;
   keyPoints: string[];
@@ -53,6 +83,16 @@ export interface DocumentAnalysisResult {
   suggestedStories: StoryGenerationResult[];
   suggestedEpics: EpicGenerationResult[];
   confidence: number; // 0-100
+}
+
+export interface DocumentAnalysisResponse {
+  analysis: DocumentAnalysisResult;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
 }
 
 export class AIService {
@@ -78,7 +118,7 @@ export class AIService {
     context?: string,
     count: number = 5,
     model: string = 'claude-sonnet-4-5-20250929'
-  ): Promise<StoryGenerationResult[]> {
+  ): Promise<StoryGenerationResponse> {
     const prompt = this.buildStoryGenerationPrompt(requirements, context, count);
 
     const response = await this.generate({
@@ -88,7 +128,13 @@ export class AIService {
       temperature: 0.7,
     });
 
-    return this.parseStoryGenerationResponse(response.content);
+    const stories = this.parseStoryGenerationResponse(response.content);
+
+    return {
+      stories,
+      usage: response.usage,
+      model: response.model,
+    };
   }
 
   /**
@@ -98,7 +144,7 @@ export class AIService {
     requirements: string,
     context?: string,
     model: string = 'claude-sonnet-4-5-20250929'
-  ): Promise<EpicGenerationResult> {
+  ): Promise<EpicGenerationResponse> {
     const prompt = this.buildEpicGenerationPrompt(requirements, context);
 
     const response = await this.generate({
@@ -108,7 +154,13 @@ export class AIService {
       temperature: 0.7,
     });
 
-    return this.parseEpicGenerationResponse(response.content);
+    const epic = this.parseEpicGenerationResponse(response.content);
+
+    return {
+      epic,
+      usage: response.usage,
+      model: response.model,
+    };
   }
 
   /**
@@ -119,7 +171,7 @@ export class AIService {
     storyDescription: string,
     acceptanceCriteria: string[],
     model: string = 'claude-sonnet-4-5-20250929'
-  ): Promise<StoryValidationResult> {
+  ): Promise<StoryValidationResponse> {
     const prompt = this.buildStoryValidationPrompt(
       storyTitle,
       storyDescription,
@@ -133,7 +185,13 @@ export class AIService {
       temperature: 0.3,
     });
 
-    return this.parseStoryValidationResponse(response.content);
+    const validation = this.parseStoryValidationResponse(response.content);
+
+    return {
+      validation,
+      usage: response.usage,
+      model: response.model,
+    };
   }
 
   /**
@@ -143,7 +201,7 @@ export class AIService {
     documentText: string,
     analysisType: 'requirements' | 'stories' | 'epics' | 'general' = 'requirements',
     model: string = 'claude-sonnet-4-5-20250929'
-  ): Promise<DocumentAnalysisResult> {
+  ): Promise<DocumentAnalysisResponse> {
     const prompt = this.buildDocumentAnalysisPrompt(documentText, analysisType);
 
     const response = await this.generate({
@@ -153,7 +211,13 @@ export class AIService {
       temperature: 0.5,
     });
 
-    return this.parseDocumentAnalysisResponse(response.content);
+    const analysis = this.parseDocumentAnalysisResponse(response.content);
+
+    return {
+      analysis,
+      usage: response.usage,
+      model: response.model,
+    };
   }
 
   /**

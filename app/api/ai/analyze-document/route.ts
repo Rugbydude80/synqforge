@@ -26,25 +26,26 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
     const extractedText = processed.content;
 
     // Analyze the document with AI
-    const analysis = await aiService.analyzeDocument(
+    const response = await aiService.analyzeDocument(
       extractedText,
       'requirements'
     );
 
-    // Track AI usage
+    // Track AI usage with real token data
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
-      'claude-sonnet-4-5-20250929',
-      { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      response.model,
+      response.usage,
       'requirements_analysis',
       extractedText,
-      JSON.stringify(analysis)
+      JSON.stringify(response.analysis)
     );
 
     return NextResponse.json({
       success: true,
-      analysis,
+      analysis: response.analysis,
+      usage: response.usage,
     });
 
   } catch (error) {
