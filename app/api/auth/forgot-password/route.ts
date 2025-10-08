@@ -100,7 +100,10 @@ export async function POST(request: NextRequest) {
         // Don't fail the request if email fails
       }
     } else {
-      console.log('Reset URL (email not configured):', resetUrl)
+      // For development: log reset URL when email is not configured
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Reset URL (email not configured):', resetUrl)
+      }
     }
 
     return NextResponse.json({

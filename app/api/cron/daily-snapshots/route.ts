@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  console.log('[CRON] Daily snapshots endpoint called')
+  // Log cron job execution for monitoring
+  console.error('[CRON] Daily snapshots endpoint called at', new Date().toISOString())
 
   try {
     const result = await generateDailySprintSnapshots()
