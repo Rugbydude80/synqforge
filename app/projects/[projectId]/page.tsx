@@ -363,6 +363,8 @@ export default function ProjectDetailPage() {
         projectId={projectId}
         onSuccess={fetchProjectData}
       />
+        </div>
+      </main>
     </div>
   )
 }
