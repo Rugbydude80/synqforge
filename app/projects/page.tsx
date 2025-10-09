@@ -19,6 +19,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CreateProjectModal } from '@/components/create-project-modal'
+import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 
 export default function ProjectsPage() {
@@ -88,38 +89,46 @@ export default function ProjectsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-        <div className="container mx-auto px-6 py-8">
-          <div className="mb-8">
-            <div className="h-8 w-48 bg-gray-700/50 rounded animate-pulse mb-2" />
-            <div className="h-4 w-96 bg-gray-700/50 rounded animate-pulse" />
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64">
+          <div className="container mx-auto px-6 py-8">
+            <div className="mb-8">
+              <div className="h-8 w-48 bg-gray-700/50 rounded animate-pulse mb-2" />
+              <div className="h-4 w-96 bg-gray-700/50 rounded animate-pulse" />
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-64 bg-gray-800/50 rounded-lg animate-pulse" />
+              ))}
+            </div>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-gray-800/50 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        </div>
+        </main>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Something went wrong</h3>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <Button onClick={fetchProjects}>Try Again</Button>
-        </div>
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64 flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">Something went wrong</h3>
+            <p className="text-gray-400 mb-6">{error}</p>
+            <Button onClick={fetchProjects}>Try Again</Button>
+          </div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      <div className="container mx-auto px-6 py-8">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 ml-64">
+        <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -265,7 +274,8 @@ export default function ProjectsPage() {
             ))}
           </div>
         )}
-      </div>
+        </div>
+      </main>
 
       {/* Create Project Modal */}
       <CreateProjectModal
