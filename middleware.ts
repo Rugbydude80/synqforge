@@ -15,6 +15,8 @@ export default withAuth(
           '/auth/signin',
           '/auth/signup',
           '/auth/error',
+          '/auth/forgot-password',
+          '/auth/reset-password',
         ]
 
         // API routes that don't require authentication
