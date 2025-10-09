@@ -161,7 +161,7 @@ export default function AIGeneratePage() {
       const response = await api.ai.generateStories({
         projectId,
         requirements,
-        productContext: `Project ID: ${projectId}`,
+        projectContext: `Project ID: ${projectId}`,
       })
 
       // Map AI response to our story format
