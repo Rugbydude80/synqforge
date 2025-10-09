@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import {
@@ -17,6 +17,7 @@ import {
   Upload,
   Clock,
   ArrowUpRight,
+  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
@@ -230,10 +231,22 @@ export default function DashboardPage() {
           ))}
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4">
-          <Button variant="outline" className="w-full justify-start gap-2">
+        <div className="absolute bottom-4 left-4 right-4 space-y-2">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => router.push('/settings')}
+          >
             <Settings className="h-4 w-4" />
             Settings
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:border-red-400"
+            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
           </Button>
         </div>
       </aside>
