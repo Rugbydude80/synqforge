@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
+import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
 import { toast } from 'sonner'
@@ -255,8 +256,11 @@ export default function AIGeneratePage() {
   const canAnalyze = inputMode === 'document' ? !!uploadedFile : description.trim().length >= 20
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 ml-64">
+        <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-8">
+          <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -617,7 +621,9 @@ export default function AIGeneratePage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

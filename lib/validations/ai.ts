@@ -2,19 +2,23 @@ import { z } from 'zod';
 
 export const generateStoriesSchema = z.object({
   requirements: z.string().min(10, 'Requirements must be at least 10 characters'),
-  projectId: z.string().uuid('Invalid project ID'),
-  epicId: z.string().uuid('Invalid epic ID').optional(),
+  projectId: z.string().min(1, 'Project ID is required'),
+  epicId: z.string().optional(),
   projectContext: z.string().optional(),
+  targetUsers: z.string().optional(),
+  businessGoals: z.string().optional(),
+  model: z.string().optional(),
 });
 
 export const generateEpicSchema = z.object({
   description: z.string().min(20, 'Description must be at least 20 characters'),
-  projectId: z.string().uuid('Invalid project ID'),
+  projectId: z.string().min(1, 'Project ID is required'),
   projectContext: z.string().optional(),
+  goals: z.string().optional(),
 });
 
 export const validateStorySchema = z.object({
-  storyId: z.string().uuid('Invalid story ID').optional(),
+  storyId: z.string().optional(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   acceptanceCriteria: z.array(z.string()).optional(),
@@ -23,12 +27,12 @@ export const validateStorySchema = z.object({
 export const analyzeDocumentSchema = z.object({
   content: z.string().min(50, 'Document content must be at least 50 characters'),
   documentType: z.enum(['requirements', 'specification', 'notes', 'other']).default('requirements'),
-  projectId: z.string().uuid('Invalid project ID'),
+  projectId: z.string().min(1, 'Project ID is required'),
 });
 
 export const batchCreateStoriesSchema = z.object({
-  projectId: z.string().uuid('Invalid project ID'),
-  epicId: z.string().uuid('Invalid epic ID').optional(),
+  projectId: z.string().min(1, 'Project ID is required'),
+  epicId: z.string().optional(),
   stories: z.array(
     z.object({
       title: z.string().min(1),
