@@ -76,7 +76,7 @@ async function processAndAnalyze(req: NextRequest, context: AuthContext) {
       JSON.stringify(response.analysis)
     )
 
-    let createdStories: any[] = []
+    const createdStories: any[] = []
 
     if (createStories && response.analysis.suggestedStories && response.analysis.suggestedStories.length > 0) {
       for (const storyData of response.analysis.suggestedStories) {
