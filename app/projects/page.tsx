@@ -40,9 +40,10 @@ export default function ProjectsPage() {
       setIsLoading(true)
       setError(null)
       const response = await api.projects.list()
-      setProjects(response.data)
+      setProjects(Array.isArray(response?.data) ? response.data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load projects')
+      setProjects([])
     } finally {
       setIsLoading(false)
     }

@@ -40,10 +40,11 @@ export default function EpicDetailPage() {
       ])
 
       setEpic(epicData)
-      setStories(storiesResponse.data)
+      setStories(Array.isArray(storiesResponse?.data) ? storiesResponse.data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load epic')
       toast.error(err.message || 'Failed to load epic')
+      setStories([])
     } finally {
       setIsLoading(false)
     }
