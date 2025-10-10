@@ -39,7 +39,6 @@ async function listEpics(req: NextRequest, context: any) {
     const epics = await epicsRepo.getEpics(projectId)
 
     return NextResponse.json({
-      success: true,
       data: epics,
       total: epics.length,
     })
@@ -73,10 +72,7 @@ async function createEpic(req: NextRequest, context: any) {
 
     const epic = await epicsRepo.createEpic(input)
 
-    return NextResponse.json({
-      success: true,
-      data: epic,
-    }, { status: 201 })
+    return NextResponse.json(epic, { status: 201 })
   } catch (error) {
     console.error('Error creating epic:', error)
 

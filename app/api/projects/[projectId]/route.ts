@@ -13,7 +13,7 @@ async function getProject(_req: NextRequest, context: any) {
 
   try {
     const project = await projectsRepo.getProjectById(projectId)
-    return NextResponse.json({ success: true, data: project })
+    return NextResponse.json(project)
   } catch (error) {
     console.error('Error fetching project:', error)
 
@@ -59,7 +59,7 @@ async function updateProject(req: NextRequest, context: any) {
     if (body.settings !== undefined) updateData.settings = body.settings
 
     const project = await projectsRepo.updateProject(projectId, updateData)
-    return NextResponse.json({ success: true, data: project })
+    return NextResponse.json(project)
   } catch (error) {
     console.error('Error updating project:', error)
 
@@ -100,8 +100,8 @@ async function deleteProject(_req: NextRequest, context: any) {
   const { projectId } = context.params
 
   try {
-    const result = await projectsRepo.deleteProject(projectId)
-    return NextResponse.json({ success: true, data: result })
+    await projectsRepo.deleteProject(projectId)
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting project:', error)
 
