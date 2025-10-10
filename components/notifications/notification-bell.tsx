@@ -45,7 +45,7 @@ export function NotificationBell() {
       const data = await res.json()
       setNotifications(data)
     } catch (_error) {
-      console.error('Failed to load notifications:', error)
+      console.error('Failed to load notifications:', _error)
     }
   }
 
