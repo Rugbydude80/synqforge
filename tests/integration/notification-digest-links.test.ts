@@ -1,0 +1,35 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { renderToStaticMarkup } from 'react-dom/server'
+import NotificationDigestEmail from '@/emails/notification-digest'
+
+test('notification digest links point to canonical story URLs', () => {
+  const originalBase = process.env.NEXT_PUBLIC_APP_URL
+  process.env.NEXT_PUBLIC_APP_URL = 'https://app.example'
+
+  const markup = renderToStaticMarkup(
+    NotificationDigestEmail({
+      userName: 'Casey',
+      frequency: 'daily',
+      notifications: [
+        {
+          id: 'notif-1',
+          type: 'story_assigned',
+          title: 'Story assigned',
+          message: 'You have a new story to review.',
+          entityType: 'story',
+          entityId: 'story-123',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+  )
+
+  assert.ok(markup.includes('https://app.example/stories/story-123'), markup)
+
+  if (originalBase) {
+    process.env.NEXT_PUBLIC_APP_URL = originalBase
+  } else {
+    delete process.env.NEXT_PUBLIC_APP_URL
+  }
+})

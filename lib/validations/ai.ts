@@ -17,12 +17,36 @@ export const generateEpicSchema = z.object({
   goals: z.string().optional(),
 });
 
-export const validateStorySchema = z.object({
-  storyId: z.string().optional(),
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  acceptanceCriteria: z.array(z.string()).optional(),
-});
+export const validateStorySchema = z
+  .object({
+    storyId: z.string().min(1).optional(),
+    projectId: z.string().min(1, 'Project ID is required when storyId is not provided').optional(),
+    title: z
+      .string()
+      .min(1, 'Title is required')
+      .max(180, 'Title must be 180 characters or fewer'),
+    description: z
+      .string()
+      .min(10, 'Description must be at least 10 characters')
+      .max(2000, 'Description must be under 2000 characters'),
+    acceptanceCriteria: z
+      .array(
+        z
+          .string()
+          .min(10, 'Each acceptance criterion must be at least 10 characters')
+          .max(500, 'Acceptance criteria must be concise (under 500 characters)')
+          .regex(
+            /^(?:-\s|\*\s|Given|When|Then)/,
+            'Acceptance criteria should start with "-", "*", "Given", "When", or "Then".'
+          )
+      )
+      .max(25, 'Provide no more than 25 acceptance criteria')
+      .optional(),
+  })
+  .refine((data) => !!data.storyId || !!data.projectId, {
+    message: 'Provide a storyId or projectId for validation.',
+    path: ['projectId'],
+  });
 
 export const analyzeDocumentSchema = z.object({
   content: z.string().min(50, 'Document content must be at least 50 characters'),

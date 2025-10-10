@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/auth';
+import { ProjectsRepository } from '@/lib/repositories/projects';
+import { assertStoryAccessible } from '@/lib/permissions/story-access';
+import { NotFoundError, ForbiddenError } from '@/lib/types';
 import { aiService } from '@/lib/services/ai.service';
 import { validateStorySchema } from '@/lib/validations/ai';
 import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
@@ -15,6 +18,45 @@ export const POST = withAuth(
       // Parse and validate request body
       const body = await req.json();
       const validatedData = validateStorySchema.parse(body);
+      const projectsRepo = new ProjectsRepository(user);
+
+      let projectId = validatedData.projectId ?? null;
+
+      if (validatedData.storyId) {
+        const accessibleStory = await assertStoryAccessible(validatedData.storyId, user.organizationId);
+        projectId = accessibleStory.projectId;
+
+        if (validatedData.projectId && validatedData.projectId !== projectId) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'INVALID_PROJECT',
+                message: 'The provided projectId does not match the story being validated.',
+              },
+            },
+            { status: 400 }
+          );
+        }
+      } else if (projectId) {
+        try {
+          await projectsRepo.getProjectById(projectId);
+        } catch (error) {
+          if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: {
+                  code: 'PROJECT_NOT_FOUND',
+                  message: 'Project not found or access denied.',
+                },
+              },
+              { status: 404 }
+            );
+          }
+          throw error;
+        }
+      }
 
       const rateLimitResult = await checkRateLimit(
         `ai:validate-story:${user.id}`,
@@ -42,7 +84,11 @@ export const POST = withAuth(
       const storyData = {
         title: validatedData.title,
         description: validatedData.description,
-        acceptanceCriteria: validatedData.acceptanceCriteria || [],
+        acceptanceCriteria:
+          validatedData.acceptanceCriteria
+            ?.map((criteria) => criteria.trim())
+            .filter((criteria) => criteria.length > 0) || [],
+        projectId,
       };
 
       // Validate story using AI
@@ -70,6 +116,7 @@ export const POST = withAuth(
           title: storyData.title,
           description: storyData.description,
           acceptanceCriteria: storyData.acceptanceCriteria,
+          projectId: storyData.projectId,
         },
       });
 

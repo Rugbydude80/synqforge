@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
-import {
-  safeValidateAssignToSprint,
-  AssignToSprintInput
-} from '@/lib/validations/story';
+import { safeValidateAssignToSprint, AssignToSprintInput } from '@/lib/validations/story';
+import { assertStoryAccessible } from '@/lib/permissions/story-access';
 import { db } from '@/lib/db';
-import { stories, projects, sprints } from '@/lib/db/schema';
+import { sprints } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -49,42 +47,13 @@ async function assignToSprint(req: NextRequest, context: { user: any }) {
 
     const sprintData = validationResult.data as AssignToSprintInput;
 
-    // Get the story to verify project access
-    const story = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId)
-    });
-
-    if (!story) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify project access
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, story.projectId)
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The project for this story was not found' },
-        { status: 404 }
-      );
-    }
-
-    if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this story' },
-        { status: 403 }
-      );
-    }
+    const storyMeta = await assertStoryAccessible(storyId, context.user.organizationId);
 
     // Verify sprint exists and belongs to the same project
     const sprint = await db.query.sprints.findFirst({
       where: and(
         eq(sprints.id, sprintData.sprintId),
-        eq(sprints.projectId, story.projectId)
+        eq(sprints.projectId, storyMeta.projectId)
       )
     });
 
@@ -172,36 +141,7 @@ async function removeFromSprint(_req: NextRequest, context: { user: any }) {
       );
     }
 
-    // Get the story to verify project access
-    const story = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId)
-    });
-
-    if (!story) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify project access
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, story.projectId)
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The project for this story was not found' },
-        { status: 404 }
-      );
-    }
-
-    if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this story' },
-        { status: 403 }
-      );
-    }
+    await assertStoryAccessible(storyId, context.user.organizationId);
 
     // Remove story from sprint
     await storiesRepository.removeFromSprint(storyId, sprintId, context.user.id);

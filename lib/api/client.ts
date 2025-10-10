@@ -124,11 +124,13 @@ export const aiAPI = {
 
   validateStory: (data: {
     storyId?: string
+    projectId?: string
     title: string
     description: string
     acceptanceCriteria?: string[]
   }) => apiRequest('/ai/validate-story', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
 
@@ -141,5 +143,3 @@ export const aiAPI = {
     body: JSON.stringify(data),
   }),
 }
-
-
