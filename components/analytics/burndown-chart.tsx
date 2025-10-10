@@ -46,7 +46,7 @@ export function BurndownChart({
       if (!res.ok) throw new Error('Failed to load burndown data')
       const burndownData = await res.json()
       setData(burndownData)
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load burndown data')
     } finally {
       setLoading(false)

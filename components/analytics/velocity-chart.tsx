@@ -48,7 +48,7 @@ export function VelocityChart({ projectId }: VelocityChartProps) {
       const data = await res.json()
       setVelocityTrend(data.velocityTrend)
       setAverageVelocity(data.averageVelocity)
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load velocity data')
     } finally {
       setLoading(false)

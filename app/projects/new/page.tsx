@@ -69,7 +69,7 @@ export default function NewProjectPage() {
         const data = await response.json()
         setError(data.error || 'Failed to create project')
       }
-    } catch (error) {
+    } catch (_error) {
       setError('An error occurred while creating the project')
     } finally {
       setIsLoading(false)

@@ -73,7 +73,7 @@ export default function SignUpPage() {
         const data = await response.json()
         setError(data.error || 'An error occurred during sign up')
       }
-    } catch (error) {
+    } catch (_error) {
       setError('An error occurred during sign up')
     } finally {
       setIsLoading(false)

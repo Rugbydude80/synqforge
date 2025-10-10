@@ -42,7 +42,7 @@ export function SprintHealthWidget({ sprintId }: SprintHealthWidgetProps) {
       if (!res.ok) throw new Error('Failed to load sprint health')
       const data = await res.json()
       setHealth(data)
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load sprint health')
     } finally {
       setLoading(false)
