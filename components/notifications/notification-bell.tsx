@@ -72,7 +72,7 @@ export function NotificationBell() {
 
       await loadNotifications()
       await loadUnreadCount()
-    } catch (_error) {
+    } catch {
       toast.error('Failed to mark as read')
     }
   }
@@ -91,7 +91,7 @@ export function NotificationBell() {
       await loadNotifications()
       await loadUnreadCount()
       toast.success('All notifications marked as read')
-    } catch (_error) {
+    } catch {
       toast.error('Failed to mark all as read')
     } finally {
       setLoading(false)

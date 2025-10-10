@@ -92,7 +92,7 @@ const storyTypeColors = {
 export default async function StoryPage({
   params,
 }: {
-  params: { storyId: string }
+  params: Promise<{ storyId: string }>
 }) {
   const session = await auth()
 
@@ -100,7 +100,8 @@ export default async function StoryPage({
     redirect('/auth/signin')
   }
 
-  const story = await getStory(params.storyId)
+  const { storyId } = await params
+  const story = await getStory(storyId)
 
   if (!story) {
     notFound()
