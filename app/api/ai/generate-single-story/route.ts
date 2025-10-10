@@ -58,16 +58,32 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     }
 
     // Generate a single story using AI
-    const response = await aiService.generateStories(
-      validatedData.requirement,
-      validatedData.projectContext,
-      1, // Generate only 1 story
-      'claude-sonnet-4-5-20250929'
-    );
+    let response;
+    try {
+      response = await aiService.generateStories(
+        validatedData.requirement,
+        validatedData.projectContext,
+        1, // Generate only 1 story
+        'claude-sonnet-4-5-20250929'
+      );
+    } catch (aiError) {
+      console.error('AI generation error:', aiError);
+      return NextResponse.json(
+        { 
+          error: 'AI service error. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? (aiError instanceof Error ? aiError.message : String(aiError)) : undefined
+        },
+        { status: 500 }
+      );
+    }
 
     if (!response.stories || response.stories.length === 0) {
+      console.error('No stories generated from AI response');
       return NextResponse.json(
-        { error: 'AI failed to generate a valid story. Please try again with a more detailed requirement.' },
+        { 
+          error: 'AI failed to generate a valid story. Please try again with a more detailed requirement.',
+          hint: 'Try providing more context about the feature or user need.'
+        },
         { status: 500 }
       );
     }
@@ -97,6 +113,14 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
+      );
+    }
+
+    // Check if it's an API key error
+    if (error instanceof Error && error.message.includes('ANTHROPIC_API_KEY')) {
+      return NextResponse.json(
+        { error: 'AI service is not configured. Please contact support.' },
+        { status: 503 }
       );
     }
 

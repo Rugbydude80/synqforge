@@ -97,17 +97,29 @@ export interface DocumentAnalysisResponse {
 
 export class AIService {
   private anthropic: Anthropic;
+  private isConfigured: boolean = false;
 
   constructor() {
     const apiKey = process.env.ANTHROPIC_API_KEY || '';
 
     if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is required');
+      console.error('ANTHROPIC_API_KEY is not configured in environment variables');
+      throw new Error('ANTHROPIC_API_KEY is required. Please configure it in your environment variables.');
     }
+
+    console.log('AIService initialized with API key:', apiKey.substring(0, 10) + '...');
+    this.isConfigured = true;
 
     this.anthropic = new Anthropic({
       apiKey,
     });
+  }
+
+  /**
+   * Check if AI service is properly configured
+   */
+  isReady(): boolean {
+    return this.isConfigured;
   }
 
   /**
@@ -422,10 +434,54 @@ Format as JSON:
    */
   private parseStoryGenerationResponse(content: string): StoryGenerationResult[] {
     try {
-      const parsed = JSON.parse(content);
-      return parsed.stories || [];
+      // Clean up the content - remove markdown code blocks if present
+      let cleanContent = content.trim();
+      
+      // Remove markdown code fences
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.substring(7);
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.substring(3);
+      }
+      
+      if (cleanContent.endsWith('```')) {
+        cleanContent = cleanContent.substring(0, cleanContent.length - 3);
+      }
+      
+      cleanContent = cleanContent.trim();
+      
+      const parsed = JSON.parse(cleanContent);
+      
+      // Validate the response structure
+      if (!parsed.stories || !Array.isArray(parsed.stories)) {
+        console.error('Invalid story response structure:', parsed);
+        throw new Error('Response does not contain stories array');
+      }
+      
+      // Validate each story has required fields
+      const validStories = parsed.stories.filter((story: any) => {
+        const isValid = story.title && 
+                       story.description && 
+                       Array.isArray(story.acceptanceCriteria) &&
+                       story.priority &&
+                       typeof story.storyPoints === 'number';
+        
+        if (!isValid) {
+          console.warn('Invalid story structure:', story);
+        }
+        
+        return isValid;
+      });
+      
+      if (validStories.length === 0) {
+        console.error('No valid stories found in response');
+        console.error('Raw content:', content);
+      }
+      
+      return validStories;
     } catch (error) {
       console.error('Failed to parse story generation response:', error);
+      console.error('Raw content:', content);
       return [];
     }
   }
