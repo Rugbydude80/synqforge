@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
 import { notificationsRepository } from '@/lib/repositories/notifications.repository'
+import { storyCommentUrl } from '@/lib/urls'
 import { z } from 'zod'
 
 const createCommentSchema = z.object({
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
           entityType: 'comment',
           entityId: comment.id,
           message: `${session.user.name} mentioned you in a comment`,
-          actionUrl: `/stories/${validated.storyId}#comment-${comment.id}`,
+          actionUrl: storyCommentUrl(validated.storyId, comment.id),
         })
       )
       await Promise.all(notificationPromises)
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
           entityType: 'comment',
           entityId: comment.id,
           message: `${session.user.name} replied to your comment`,
-          actionUrl: `/stories/${validated.storyId}#comment-${comment.id}`,
+          actionUrl: storyCommentUrl(validated.storyId, comment.id),
         })
       }
     }
