@@ -45,9 +45,12 @@ export function NotificationBell() {
       const data = await res.json()
       if (Array.isArray(data)) {
         setNotifications(data)
+      } else {
+        setNotifications([])
       }
     } catch (_error) {
       console.error('Failed to load notifications:', _error)
+      setNotifications([])
     }
   }
 
