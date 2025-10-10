@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
-import {
-  safeValidateUpdateStory
-} from '@/lib/validations/story';
-import { db } from '@/lib/db';
-import { stories, projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { safeValidateUpdateStory } from '@/lib/validations/story';
+import { assertStoryAccessible } from '@/lib/permissions/story-access';
 
 /**
  * GET /api/stories/[storyId] - Get a single story by ID
@@ -22,29 +18,8 @@ async function getStory(req: NextRequest, context: { user: any }) {
       );
     }
 
-    // Get the story
+    await assertStoryAccessible(storyId, context.user.organizationId);
     const story = await storiesRepository.getById(storyId);
-
-    // Verify project access
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, story.projectId)
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The project for this story was not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if project belongs to user's organization
-    if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this story' },
-        { status: 403 }
-      );
-    }
-
     return NextResponse.json(story);
 
   } catch (error: any) {
@@ -104,36 +79,7 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
     const { projectId: _projectId, ...updateData } = validationResult.data as any;
 
-    // Get the existing story to verify project access
-    const existingStory = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId)
-    });
-
-    if (!existingStory) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify project access
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, existingStory.projectId)
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The project for this story was not found' },
-        { status: 404 }
-      );
-    }
-
-    if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this story' },
-        { status: 403 }
-      );
-    }
+    await assertStoryAccessible(storyId, context.user.organizationId);
 
     // Update the story
     const updatedStory = await storiesRepository.update(storyId, updateData, context.user.id);
@@ -193,36 +139,7 @@ async function deleteStory(_req: NextRequest, context: { user: any }) {
       );
     }
 
-    // Get the story to verify project access
-    const story = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId)
-    });
-
-    if (!story) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify project access
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, story.projectId)
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The project for this story was not found' },
-        { status: 404 }
-      );
-    }
-
-    if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this story' },
-        { status: 403 }
-      );
-    }
+    await assertStoryAccessible(storyId, context.user.organizationId);
 
     // Delete the story
     await storiesRepository.delete(storyId, context.user.id);

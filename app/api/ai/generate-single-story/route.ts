@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
+import { ProjectsRepository } from '@/lib/repositories/projects';
+import { NotFoundError, ForbiddenError } from '@/lib/types';
 import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 
 const generateSingleStorySchema = z.object({
-  requirement: z.string().min(10, 'Requirement must be at least 10 characters'),
+  requirement: z
+    .string()
+    .min(10, 'Requirement must be at least 10 characters')
+    .max(2000, 'Requirement must be under 2,000 characters'),
   projectId: z.string().min(1, 'Project ID is required'),
-  projectContext: z.string().optional(),
+  projectContext: z
+    .string()
+    .max(2000, 'Project context must be under 2,000 characters')
+    .optional(),
 });
 
 async function generateSingleStory(req: NextRequest, context: AuthContext) {
+  const projectsRepo = new ProjectsRepository(context.user);
+
   try {
     // Parse and validate request body
     const body = await req.json();
@@ -33,6 +43,18 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
           headers: { 'Retry-After': retryAfter.toString() },
         }
       );
+    }
+
+    try {
+      await projectsRepo.getProjectById(validatedData.projectId);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        return NextResponse.json(
+          { error: 'Project not found or access denied' },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
 
     // Generate a single story using AI

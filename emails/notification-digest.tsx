@@ -1,3 +1,4 @@
+import React from 'react'
 import {
   Body,
   Container,
@@ -10,6 +11,10 @@ import {
   Link,
   Hr,
 } from '@react-email/components'
+import { projectUrl, storyUrl } from '@/lib/urls'
+
+const resolveBaseUrl = () =>
+  (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://synqforge.app').replace(/\/$/, '')
 
 interface NotificationItem {
   id: string
@@ -32,8 +37,10 @@ export default function NotificationDigestEmail({
   userName,
   frequency,
   notifications,
-  unsubscribeUrl = 'https://synqforge.app/settings/notifications',
+  unsubscribeUrl,
 }: NotificationDigestEmailProps) {
+  const baseUrl = resolveBaseUrl()
+  const unsubscribeHref = unsubscribeUrl || `${baseUrl}/settings/notifications`
   const previewText = `You have ${notifications.length} unread notification${notifications.length > 1 ? 's' : ''}`
   const frequencyText = frequency === 'daily' ? 'Daily' : 'Weekly'
 
@@ -65,7 +72,7 @@ export default function NotificationDigestEmail({
                   </Text>
                   {notification.entityId && (
                     <Link
-                      href={getEntityUrl(notification.entityType, notification.entityId)}
+                      href={getEntityUrl(notification.entityType, notification.entityId, baseUrl)}
                       style={notificationLink}
                     >
                       View →
@@ -78,14 +85,14 @@ export default function NotificationDigestEmail({
           </Section>
 
           <Section style={footer}>
-            <Link href="https://synqforge.app/notifications" style={button}>
+            <Link href={`${baseUrl}/notifications`} style={button}>
               View All Notifications
             </Link>
 
             <Text style={footerText}>
               You're receiving this {frequency} digest because of your notification preferences.
             </Text>
-            <Link href={unsubscribeUrl} style={unsubscribeLink}>
+            <Link href={unsubscribeHref} style={unsubscribeLink}>
               Manage notification preferences
             </Link>
           </Section>
@@ -109,17 +116,14 @@ function getNotificationIcon(type: string): string {
   return icons[type] || '🔔'
 }
 
-function getEntityUrl(entityType: string | null, entityId: string): string {
-  const baseUrl = 'https://synqforge.app'
+function getEntityUrl(entityType: string | null, entityId: string, baseUrl: string): string {
   switch (entityType) {
     case 'story':
-      return `${baseUrl}/stories/${entityId}`
+      return `${baseUrl}${storyUrl(entityId)}`
+    case 'project':
+      return `${baseUrl}${projectUrl(entityId)}`
     case 'sprint':
       return `${baseUrl}/sprints/${entityId}`
-    case 'project':
-      return `${baseUrl}/projects/${entityId}`
-    case 'comment':
-      return `${baseUrl}/comments/${entityId}`
     default:
       return `${baseUrl}/notifications`
   }

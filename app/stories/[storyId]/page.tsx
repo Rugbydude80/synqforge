@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { cookies } from 'next/headers'
+import { auth } from '@/lib/auth'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, User, Layers, Tag, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { projectStoryUrl, projectUrl } from '@/lib/urls'
 
 type Story = {
   id: string
@@ -37,14 +38,17 @@ type Story = {
   }
 }
 
-async function getStory(storyId: string, session: any): Promise<Story | null> {
+async function getStory(storyId: string): Promise<Story | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const cookieHeader = cookies().toString()
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+      process.env.APP_URL?.replace(/\/$/, '') ||
+      'http://localhost:3000'
+
     const res = await fetch(`${baseUrl}/api/stories/${storyId}`, {
       cache: 'no-store',
-      headers: {
-        Cookie: `next-auth.session-token=${session?.user?.id}`,
-      },
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
     })
 
     if (res.status === 404 || res.status === 403) {
@@ -90,23 +94,21 @@ export default async function StoryPage({
 }: {
   params: { storyId: string }
 }) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
 
   if (!session?.user) {
     redirect('/auth/signin')
   }
 
-  const story = await getStory(params.storyId, session)
+  const story = await getStory(params.storyId)
 
   if (!story) {
     notFound()
   }
 
-  // Optional: redirect to project context if preferred
-  // Uncomment this to enable redirect behavior
-  // if (process.env.NEXT_PUBLIC_STORY_REDIRECT_TO_PROJECT === '1' && story.projectId) {
-  //   redirect(`/projects/${story.projectId}?story=${story.id}`)
-  // }
+  if (process.env.NEXT_PUBLIC_STORY_REDIRECT_TO_PROJECT === '1' && story.projectId) {
+    redirect(projectStoryUrl(story.projectId, story.id))
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -117,7 +119,7 @@ export default async function StoryPage({
           <div className="max-w-5xl mx-auto px-8 py-6">
             <div className="flex items-center gap-4 mb-4">
               {story.projectId && (
-                <Link href={`/projects/${story.projectId}`}>
+                <Link href={projectUrl(story.projectId)}>
                   <Button variant="ghost" size="sm">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Project
@@ -199,7 +201,7 @@ export default async function StoryPage({
                     <div>
                       <p className="text-xs text-muted-foreground">Project</p>
                       <Link
-                        href={`/projects/${story.projectId}`}
+                        href={projectUrl(story.projectId)}
                         className="text-sm font-medium hover:underline text-blue-600"
                       >
                         {story.project.name}
@@ -266,7 +268,7 @@ export default async function StoryPage({
               <div className="flex gap-4">
                 {story.projectId && (
                   <Button asChild>
-                    <Link href={`/projects/${story.projectId}`}>
+                    <Link href={projectUrl(story.projectId)}>
                       View in Project Context
                     </Link>
                   </Button>
