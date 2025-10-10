@@ -51,6 +51,7 @@ export interface StoryFilters {
   priority?: string | string[];
   aiGenerated?: boolean;
   tags?: string[];
+  organizationId?: string;
 }
 
 export interface StoryWithRelations {
@@ -432,6 +433,11 @@ export class StoriesRepository {
 
     // Build where conditions
     const conditions = [];
+
+    // Always filter by organizationId if provided (for security)
+    if (filters.organizationId) {
+      conditions.push(eq(stories.organizationId, filters.organizationId));
+    }
 
     if (filters.projectId) {
       conditions.push(eq(stories.projectId, filters.projectId));

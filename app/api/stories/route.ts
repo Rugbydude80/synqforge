@@ -79,9 +79,21 @@ async function getStories(req: NextRequest, context: { user: any }) {
       }
     }
 
+    // Build filter object with organization security
+    const storyFilters: any = {
+      organizationId: context.user.organizationId // Always filter by user's organization
+    };
+
+    if (filters.projectId) storyFilters.projectId = filters.projectId;
+    if (filters.epicId) storyFilters.epicId = filters.epicId;
+    if (filters.assigneeId) storyFilters.assigneeId = filters.assigneeId;
+    if (filters.status) storyFilters.status = filters.status;
+    if (filters.priority) storyFilters.priority = filters.priority;
+    if (filters.aiGenerated !== undefined) storyFilters.aiGenerated = filters.aiGenerated;
+
     // Get stories
     const result = await storiesRepository.list(
-      filters.projectId ? { projectId: filters.projectId } : {},
+      storyFilters,
       {
         limit: filters.limit,
         offset: filters.offset,
