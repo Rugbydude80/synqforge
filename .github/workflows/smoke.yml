@@ -1,0 +1,40 @@
+name: Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url_override:
+        description: 'Optional BASE_URL override (otherwise uses secret)'
+        required: false
+      skip_ai_override:
+        description: 'Optional SKIP_AI override (defaults to secret or 0)'
+        required: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: ${{ inputs.base_url_override || secrets.SMOKE_BASE_URL }}
+          STORY_ID: ${{ secrets.SMOKE_STORY_ID }}
+          PROJECT_ID: ${{ secrets.SMOKE_PROJECT_ID }}
+          MEMBER_COOKIE: ${{ secrets.SMOKE_MEMBER_COOKIE }}
+          NONMEMBER_COOKIE: ${{ secrets.SMOKE_NONMEMBER_COOKIE }}
+          SKIP_AI: ${{ inputs.skip_ai_override || secrets.SMOKE_SKIP_AI || "0" }}
+        run: |
+          chmod +x scripts/smoke.sh
+          npm run smoke
