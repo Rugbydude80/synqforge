@@ -201,6 +201,66 @@ export class EpicsRepository {
   }
 
   /**
+   * Publish epic - makes it visible and active for story workflows
+   */
+  async publishEpic(epicId: string) {
+    const epic = await this.getEpicById(epicId)
+
+    if (!this.canPublishEpic(epic)) {
+      throw new ForbiddenError('Cannot publish this epic. Only admins and epic owners can publish.')
+    }
+
+    // Verify epic is in draft state
+    if (epic.status !== 'draft') {
+      throw new ForbiddenError(`Cannot publish epic with status "${epic.status}". Only draft epics can be published.`)
+    }
+
+    // Check if epic has at least one story
+    const hasStories = await this.checkEpicHasStories(epicId)
+    if (!hasStories) {
+      throw new ForbiddenError('Cannot publish epic without stories. Add at least one story first.')
+    }
+
+    // Update epic status to published
+    await db
+      .update(epics)
+      .set({
+        status: 'published',
+        updatedAt: new Date(),
+      })
+      .where(eq(epics.id, epicId))
+
+    // Update linked stories to 'ready' status if they're in 'backlog'
+    await db
+      .update(stories)
+      .set({
+        status: 'ready',
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(stories.epicId, epicId),
+          eq(stories.status, 'backlog')
+        )
+      )
+
+    // Get updated epic
+    const updatedEpic = await this.getEpicById(epicId)
+
+    // Log activity
+    await this.logActivity(
+      'published_epic',
+      'epic',
+      epicId,
+      epic.projectId,
+      epic,
+      updatedEpic
+    )
+
+    return updatedEpic
+  }
+
+  /**
    * Delete epic
    */
   async deleteEpic(epicId: string) {
@@ -376,6 +436,19 @@ export class EpicsRepository {
     if (this.userContext.role === 'member') return true
     
     // Epic creator can modify their epic
+    if (epic.createdBy === this.userContext.id) return true
+    
+    return false
+  }
+
+  /**
+   * Check if user can publish epic
+   */
+  private canPublishEpic(epic: any): boolean {
+    // Admins can publish any epic
+    if (this.userContext.role === 'admin') return true
+    
+    // Epic creator can publish their epic
     if (epic.createdBy === this.userContext.id) return true
     
     return false
