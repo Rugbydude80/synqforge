@@ -3,13 +3,13 @@
 import * as React from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { api } from '@/lib/api-client'
-import type { Project, Story } from '@/lib/api-client'
+import type { Project, Story, Epic } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { AppSidebar } from '@/components/app-sidebar'
-import { ArrowLeft, Plus, Settings, Sparkles } from 'lucide-react'
+import { ArrowLeft, Plus, Settings, Sparkles, Layers, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -163,10 +163,12 @@ export default function ProjectDetailPage() {
 
   const [project, setProject] = React.useState<Project | null>(null)
   const [stories, setStories] = React.useState<Story[]>([])
+  const [epics, setEpics] = React.useState<Epic[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [isStoryModalOpen, setIsStoryModalOpen] = React.useState(false)
   const [activeId, setActiveId] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState<'stories' | 'epics'>('stories')
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -190,13 +192,15 @@ export default function ProjectDetailPage() {
       setIsLoading(true)
       setError(null)
 
-      const [projectData, storiesResponse] = await Promise.all([
+      const [projectData, storiesResponse, epicsResponse] = await Promise.all([
         api.projects.getById(projectId),
         api.stories.list({ projectId, limit: 100 }),
+        api.epics.list({ projectId }),
       ])
 
       setProject(projectData)
       setStories(storiesResponse.data)
+      setEpics(epicsResponse.data)
     } catch (err: any) {
       setError(err.message || 'Failed to load project')
       toast.error(err.message || 'Failed to load project')
@@ -315,45 +319,148 @@ export default function ProjectDetailPage() {
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
-              <Button size="sm" onClick={() => setIsStoryModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Story
-              </Button>
+              {activeTab === 'stories' ? (
+                <Button size="sm" onClick={() => setIsStoryModalOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Story
+                </Button>
+              ) : (
+                <Button size="sm" disabled>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Epic (Coming Soon)
+                </Button>
+              )}
             </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={() => setActiveTab('stories')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg transition-all',
+                activeTab === 'stories'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              )}
+            >
+              <FileText className="h-4 w-4" />
+              Stories ({stories.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('epics')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg transition-all',
+                activeTab === 'epics'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              )}
+            >
+              <Layers className="h-4 w-4" />
+              Epics ({epics.length})
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {/* Content Area */}
       <div className="container mx-auto px-6 py-8">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {columns.map(column => (
-              <DroppableColumn
-                key={column.id}
-                column={column}
-                stories={getStoriesByStatus(column.id)}
-              />
-            ))}
-          </div>
+        {activeTab === 'stories' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {columns.map(column => (
+                <DroppableColumn
+                  key={column.id}
+                  column={column}
+                  stories={getStoriesByStatus(column.id)}
+                />
+              ))}
+            </div>
 
-          <DragOverlay>
-            {activeId ? (
-              <Card className="opacity-90 cursor-grabbing shadow-2xl">
-                <CardContent className="p-4">
-                  <div className="font-semibold text-white">
-                    {(stories || []).find(s => s.id === activeId)?.title}
+            <DragOverlay>
+              {activeId ? (
+                <Card className="opacity-90 cursor-grabbing shadow-2xl">
+                  <CardContent className="p-4">
+                    <div className="font-semibold text-white">
+                      {(stories || []).find(s => s.id === activeId)?.title}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <div className="space-y-4">
+            {epics.length === 0 ? (
+              <Card className="bg-gray-800/50 border-gray-700">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="h-16 w-16 rounded-full bg-purple-500/10 flex items-center justify-center mb-4">
+                    <Layers className="h-8 w-8 text-purple-400" />
                   </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">No Epics Yet</h3>
+                  <p className="text-gray-400 text-center max-w-md mb-6">
+                    Epics help organize related stories into larger features or initiatives.
+                  </p>
+                  <Button disabled>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Epic (Coming Soon)
+                  </Button>
                 </CardContent>
               </Card>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            ) : (
+              epics.map(epic => (
+                <Card key={epic.id} className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: epic.color || '#a855f7' }}
+                          />
+                          <h3 className="text-lg font-semibold text-white">{epic.title}</h3>
+                          <Badge variant="outline" className={cn(
+                            epic.status === 'completed' && 'border-emerald-500/50 text-emerald-400',
+                            epic.status === 'in_progress' && 'border-purple-500/50 text-purple-400',
+                            epic.status === 'planned' && 'border-blue-500/50 text-blue-400',
+                          )}>
+                            {epic.status.replace('_', ' ')}
+                          </Badge>
+                          <Badge variant="outline" className={cn(
+                            epic.priority === 'critical' && 'border-red-500/50 text-red-400',
+                            epic.priority === 'high' && 'border-orange-500/50 text-orange-400',
+                            epic.priority === 'medium' && 'border-yellow-500/50 text-yellow-400',
+                            epic.priority === 'low' && 'border-green-500/50 text-green-400',
+                          )}>
+                            {epic.priority}
+                          </Badge>
+                        </div>
+                        {epic.description && (
+                          <p className="text-gray-400 text-sm mb-3">{epic.description}</p>
+                        )}
+                        {epic.goals && (
+                          <p className="text-gray-500 text-xs">Goals: {epic.goals}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/projects/${projectId}/epics/${epic.id}`)}
+                      >
+                        View Stories
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Story Form Modal */}
