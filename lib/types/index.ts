@@ -147,7 +147,7 @@ export const AIGenerationRequestSchema = z.object({
 
 export const StoryGenerationInputSchema = z.object({
   requirements: z.string().min(10),
-  productContext: z.string().optional(),
+  projectContext: z.string().optional(),
   targetUsers: z.string().optional(),
   businessGoals: z.string().optional(),
   epicId: z.string().uuid().optional(),
