@@ -199,11 +199,13 @@ export default function ProjectDetailPage() {
       ])
 
       setProject(projectData)
-      setStories(storiesResponse.data)
-      setEpics(epicsResponse.data)
+      setStories(Array.isArray(storiesResponse?.data) ? storiesResponse.data : [])
+      setEpics(Array.isArray(epicsResponse?.data) ? epicsResponse.data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load project')
       toast.error(err.message || 'Failed to load project')
+      setStories([])
+      setEpics([])
     } finally {
       setIsLoading(false)
     }
