@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -15,11 +15,14 @@ import {
   Zap,
   AlertCircle,
   MessageSquare,
+  FolderKanban,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { Select } from '@/components/ui/select'
+import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
 import { toast } from 'sonner'
@@ -44,8 +47,11 @@ const EXAMPLE_PROMPTS = [
 export default function AIGeneratePage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const projectId = searchParams.get('projectId')
+  const initialProjectId = searchParams.get('projectId')
 
+  const [projectId, setProjectId] = useState<string>(initialProjectId || '')
+  const [projects, setProjects] = useState<any[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>('description')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [description, setDescription] = useState('')
@@ -54,6 +60,26 @@ export default function AIGeneratePage() {
   const [creating, setCreating] = useState(false)
   const [generatedStories, setGeneratedStories] = useState<GeneratedStory[]>([])
   const [analysisResult, setAnalysisResult] = useState<any>(null)
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const { data } = await api.projects.list()
+        setProjects(data)
+        // If no project selected and projects exist, select the first one
+        if (!projectId && data.length > 0) {
+          setProjectId(data[0].id)
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects:', error)
+        toast.error('Failed to load projects')
+      } finally {
+        setLoadingProjects(false)
+      }
+    }
+    fetchProjects()
+  }, [])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -161,7 +187,7 @@ export default function AIGeneratePage() {
       const response = await api.ai.generateStories({
         projectId,
         requirements,
-        productContext: `Project ID: ${projectId}`,
+        projectContext: `Project ID: ${projectId}`,
       })
 
       // Map AI response to our story format
@@ -230,8 +256,11 @@ export default function AIGeneratePage() {
   const canAnalyze = inputMode === 'document' ? !!uploadedFile : description.trim().length >= 20
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 ml-64">
+        <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-8">
+          <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -245,14 +274,55 @@ export default function AIGeneratePage() {
           <p className="text-gray-400 text-lg">
             Upload a document or describe your requirements to generate user stories
           </p>
-          {!projectId && (
-            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <p className="text-yellow-400 text-sm">
-                ⚠️ No project selected. Please select a project from the Projects page to generate stories.
-              </p>
-            </div>
-          )}
         </div>
+
+        {/* Project Selector */}
+        <Card className="border-gray-700 bg-gray-800/50">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <FolderKanban className="h-5 w-5" />
+              Select Project
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Choose which project you want to generate stories for
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingProjects ? (
+              <div className="flex items-center gap-2 text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading projects...
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ No projects found. Please create a project first.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => router.push('/projects')}
+                >
+                  Go to Projects
+                </Button>
+              </div>
+            ) : (
+              <Select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="max-w-md"
+              >
+                <option value="">Select a project...</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Mode Toggle */}
         <div className="flex justify-center">
@@ -551,7 +621,9 @@ export default function AIGeneratePage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

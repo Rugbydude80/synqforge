@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StoryFormModal } from '@/components/story-form-modal'
+import { AppSidebar } from '@/components/app-sidebar'
 import { ArrowLeft, Plus, Settings, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -251,20 +252,26 @@ export default function ProjectDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+          <div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+        </main>
       </div>
     )
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h3 className="text-xl font-semibold text-white mb-2">Failed to load project</h3>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <Button onClick={() => router.push('/projects')}>Back to Projects</Button>
-        </div>
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+          <div className="text-center">
+            <h3 className="text-xl font-semibold text-white mb-2">Failed to load project</h3>
+            <p className="text-gray-400 mb-6">{error}</p>
+            <Button onClick={() => router.push('/projects')}>Back to Projects</Button>
+          </div>
+        </main>
       </div>
     )
   }
@@ -274,9 +281,12 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      {/* Header */}
-      <div className="border-b border-gray-700 bg-gray-800/50 backdrop-blur-xl">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 ml-64">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+          {/* Header */}
+          <div className="border-b border-gray-700 bg-gray-800/50 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -353,6 +363,8 @@ export default function ProjectDetailPage() {
         projectId={projectId}
         onSuccess={fetchProjectData}
       />
+        </div>
+      </main>
     </div>
   )
 }

@@ -5,15 +5,11 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import {
-  LayoutDashboard,
   FolderKanban,
   FileText,
-  Sparkles,
-  Users,
-  Settings,
   Plus,
   CheckCircle2,
-  Zap,
+  Sparkles,
   Upload,
   Clock,
   ArrowUpRight,
@@ -22,12 +18,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CreateProjectModal } from '@/components/create-project-modal'
+import { AppSidebar } from '@/components/app-sidebar'
 import { cn, formatRelativeTime } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { status } = useSession()
   const router = useRouter()
-  const [activeNav, setActiveNav] = useState('dashboard')
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -55,21 +51,6 @@ export default function DashboardPage() {
       setError(error.message || 'Failed to load projects')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { id: 'projects', icon: FolderKanban, label: 'Projects', href: '/projects' },
-    { id: 'stories', icon: FileText, label: 'Stories', href: '/stories' },
-    { id: 'ai', icon: Sparkles, label: 'AI Tools', href: '/ai-generate' },
-    { id: 'team', icon: Users, label: 'Team', href: '/team' },
-  ]
-
-  const handleNavClick = (item: typeof navItems[0]) => {
-    setActiveNav(item.id)
-    if (item.href) {
-      router.push(item.href)
     }
   }
 
@@ -167,6 +148,7 @@ export default function DashboardPage() {
       type: index % 3 === 0 ? 'story_created' : index % 3 === 1 ? 'ai_generated' : 'story_completed',
       title: `Updated ${project.name}`,
       project: project.name,
+      projectId: project.id,
       user: project.ownerName || 'You',
       timestamp: new Date(Date.now() - (index + 1) * 1000 * 60 * 30),
       status: project.status === 'active' ? 'in-progress' : 'done',
@@ -204,39 +186,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold gradient-text">SynqForge</span>
-        </div>
-
-        <nav className="space-y-1 p-4">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                activeNav === item.id
-                  ? 'bg-gradient-primary text-white shadow-lg shadow-brand-purple-500/20'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <Button variant="outline" className="w-full justify-start gap-2">
-            <Settings className="h-4 w-4" />
-            Settings
-          </Button>
-        </div>
-      </aside>
+      <AppSidebar />
 
       {/* Main Content */}
       <main className="flex-1 pl-64">
@@ -355,7 +305,8 @@ export default function DashboardPage() {
                   {recentActivity.map((activity) => (
                     <div
                       key={activity.id}
-                      className="flex items-start gap-4 p-4 hover:bg-accent/50 transition-colors"
+                      onClick={() => router.push(`/projects/${activity.projectId}`)}
+                      className="flex items-start gap-4 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                     >
                       <div
                         className={cn(
