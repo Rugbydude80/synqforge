@@ -1,8 +1,8 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { EpicsRepository } from '@/lib/repositories/epics'
 import { UpdateEpicSchema } from '@/lib/types'
-import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
+import { errorResponse } from '@/lib/utils/api-helpers'
 
 /**
  * GET /api/epics/[epicId]
@@ -16,7 +16,7 @@ export const GET = withAuth(
       const repository = new EpicsRepository(user)
       const epic = await repository.getEpicById(epicId)
 
-      return successResponse(epic)
+      return NextResponse.json(epic)
     } catch (error) {
       return errorResponse(error)
     }
@@ -38,7 +38,7 @@ export const PUT = withAuth(
       const repository = new EpicsRepository(user)
       const epic = await repository.updateEpic(epicId, updates)
 
-      return successResponse(epic)
+      return NextResponse.json(epic)
     } catch (error) {
       return errorResponse(error)
     }
@@ -60,7 +60,7 @@ export const PATCH = withAuth(
       const repository = new EpicsRepository(user)
       const epic = await repository.updateEpic(epicId, updates)
 
-      return successResponse(epic)
+      return NextResponse.json(epic)
     } catch (error) {
       return errorResponse(error)
     }
@@ -78,9 +78,9 @@ export const DELETE = withAuth(
       const epicId = req.nextUrl.pathname.split('/')[3]
 
       const repository = new EpicsRepository(user)
-      const result = await repository.deleteEpic(epicId)
+      await repository.deleteEpic(epicId)
 
-      return successResponse(result)
+      return NextResponse.json({ success: true })
     } catch (error) {
       return errorResponse(error)
     }

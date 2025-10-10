@@ -91,7 +91,7 @@ async function getStories(req: NextRequest, context: { user: any }) {
     );
 
     return NextResponse.json({
-      stories: result.stories,
+      data: result.stories,
       total: result.total,
       limit: filters.limit,
       offset: filters.offset,

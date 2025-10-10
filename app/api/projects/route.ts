@@ -12,7 +12,7 @@ async function getProjects(_req: NextRequest, context: any) {
 
   try {
     const projects = await projectsRepo.getProjects()
-    return NextResponse.json({ success: true, data: projects })
+    return NextResponse.json({ data: projects, total: projects.length })
   } catch (error) {
     console.error('Error fetching projects:', error)
     return NextResponse.json(
@@ -40,7 +40,7 @@ async function createProject(req: NextRequest, context: any) {
     }
 
     const project = await projectsRepo.createProject(projectData)
-    return NextResponse.json({ success: true, data: project }, { status: 201 })
+    return NextResponse.json(project, { status: 201 })
   } catch (error) {
     console.error('Error creating project:', error)
 
