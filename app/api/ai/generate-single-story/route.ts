@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
 import { z } from 'zod';
+import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 
 const generateSingleStorySchema = z.object({
   requirement: z.string().min(10, 'Requirement must be at least 10 characters'),
@@ -14,6 +15,25 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     // Parse and validate request body
     const body = await req.json();
     const validatedData = generateSingleStorySchema.parse(body);
+
+    const rateLimitResult = await checkRateLimit(
+      `ai:generate-single-story:${context.user.id}`,
+      aiGenerationRateLimit
+    );
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded. Please slow down.',
+          retryAfter: getResetTimeMessage(rateLimitResult.reset),
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': retryAfter.toString() },
+        }
+      );
+    }
 
     // Generate a single story using AI
     const response = await aiService.generateStories(

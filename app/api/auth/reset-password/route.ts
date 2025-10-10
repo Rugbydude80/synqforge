@@ -3,25 +3,17 @@ import { db } from '@/lib/db'
 import { users, passwordResetTokens } from '@/lib/db/schema'
 import { eq, and, gt, isNull } from 'drizzle-orm'
 import { hashPassword } from '@/lib/utils/auth'
+import { z } from 'zod'
 import { checkRateLimit, resetTokenRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
+})
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, password } = await request.json()
-
-    if (!token || !password) {
-      return NextResponse.json(
-        { error: 'Token and password are required' },
-        { status: 400 }
-      )
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: 'Password must be at least 8 characters long' },
-        { status: 400 }
-      )
-    }
+    const { token, password } = resetPasswordSchema.parse(await request.json())
 
     // Check rate limit (5 attempts per token per 15 minutes to prevent brute force)
     const rateLimitResult = await checkRateLimit(
@@ -85,6 +77,18 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Password reset error:', error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Validation error',
+          details: error.errors.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to reset password' },
       { status: 500 }

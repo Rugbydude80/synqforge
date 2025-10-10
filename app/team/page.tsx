@@ -7,7 +7,6 @@ import {
   Users,
   UserPlus,
   Mail,
-  Shield,
   MoreVertical,
   Search,
 } from 'lucide-react'
@@ -15,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
-import { cn, getInitials } from '@/lib/utils'
+import { getInitials } from '@/lib/utils'
 
 interface TeamMember {
   id: string

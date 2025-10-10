@@ -30,6 +30,17 @@ const redis = isRateLimitEnabled
     })
   : null
 
+function createRateLimiter(prefix: string, limit: number, duration: `${number} ${'s' | 'm' | 'h' | 'd'}`) {
+  return redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(limit, duration),
+        analytics: true,
+        prefix,
+      })
+    : null
+}
+
 /**
  * Rate limiter for password reset requests
  *
@@ -63,6 +74,18 @@ export const resetTokenRateLimit = redis
       prefix: 'ratelimit:reset-token',
     })
   : null
+
+export const signupRateLimit = createRateLimiter(
+  'ratelimit:auth-signup',
+  5,
+  '10 m'
+)
+
+export const aiGenerationRateLimit = createRateLimiter(
+  'ratelimit:ai-generate',
+  10,
+  '1 m'
+)
 
 /**
  * Helper function to check rate limit and return appropriate response

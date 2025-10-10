@@ -5,6 +5,7 @@ import { EpicsRepository } from '@/lib/repositories/epics';
 import { ProjectsRepository } from '@/lib/repositories/projects';
 import { generateEpicSchema } from '@/lib/validations/ai';
 import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
+import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 
 /**
  * POST /api/ai/generate-epic
@@ -16,6 +17,28 @@ export const POST = withAuth(
       // Parse and validate request body
       const body = await req.json();
       const validatedData = generateEpicSchema.parse(body);
+
+      const rateLimitResult = await checkRateLimit(
+        `ai:generate-epic:${user.id}`,
+        aiGenerationRateLimit
+      );
+
+      if (!rateLimitResult.success) {
+        const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'RATE_LIMITED',
+              message: `Too many requests. Try again in ${getResetTimeMessage(rateLimitResult.reset)}.`,
+            },
+          },
+          {
+            status: 429,
+            headers: { 'Retry-After': retryAfter.toString() },
+          }
+        );
+      }
 
       // Initialize repositories
       const projectsRepository = new ProjectsRepository(user);
