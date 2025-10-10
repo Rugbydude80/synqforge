@@ -421,6 +421,7 @@ export default function ProjectDetailPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
+                          {/* eslint-disable-next-line react/forbid-dom-props */}
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: epic.color || '#a855f7' }}
