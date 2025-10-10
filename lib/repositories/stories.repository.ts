@@ -62,6 +62,7 @@ export interface StoryWithRelations {
   description: string | null;
   acceptanceCriteria: string[] | null;
   storyPoints: number | null;
+  storyType: 'feature' | 'bug' | 'task' | 'spike' | null;
   priority: 'low' | 'medium' | 'high' | 'critical' | null;
   status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked' | null;
   assigneeId: string | null;

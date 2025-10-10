@@ -67,7 +67,7 @@ export const storyFiltersSchema = z.object({
   ]).optional(),
   aiGenerated: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
-  limit: z.number().int().min(1, 'Limit must be at least 1').max(100, 'Limit cannot exceed 100').default(50),
+  limit: z.number().int().min(1, 'Limit must be at least 1').max(1000, 'Limit cannot exceed 1000').default(50),
   offset: z.number().int().min(0, 'Offset must be non-negative').default(0),
   orderBy: z.enum(['createdAt', 'updatedAt', 'priority', 'storyPoints']).default('createdAt'),
   orderDirection: z.enum(['asc', 'desc']).default('desc'),

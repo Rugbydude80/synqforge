@@ -16,10 +16,10 @@ interface Story {
   id: string
   title: string
   description: string | null
-  status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked'
-  priority: 'low' | 'medium' | 'high' | 'critical'
+  status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked' | null
+  priority: 'low' | 'medium' | 'high' | 'critical' | null
   storyPoints?: number
-  storyType: string
+  storyType: 'feature' | 'bug' | 'task' | 'spike' | null
   projectId: string
   epicId?: string | null
   aiGenerated: boolean
@@ -64,6 +64,106 @@ export default function StoriesPage() {
   const [priorityFilter, setPriorityFilter] = React.useState<string>('all')
   const [searchQuery, setSearchQuery] = React.useState('')
 
+  const sortedProjects = React.useMemo(
+    () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
+    [projects]
+  )
+
+  const filteredEpics = React.useMemo(() => {
+    const availableEpics =
+      projectFilter === 'all'
+        ? epics
+        : epics.filter((epic) => epic.projectId === projectFilter)
+
+    return [...availableEpics].sort((a, b) => a.title.localeCompare(b.title))
+  }, [epics, projectFilter])
+
+  React.useEffect(() => {
+    if (epicFilter === 'all' || epicFilter === 'none') {
+      return
+    }
+
+    const epicMatchesSelection = filteredEpics.some((epic) => epic.id === epicFilter)
+
+    if (!epicMatchesSelection) {
+      setEpicFilter('all')
+    }
+  }, [filteredEpics, epicFilter])
+
+  React.useEffect(() => {
+    if (projectFilter === 'all') {
+      return
+    }
+
+    const projectExists = projects.some((project) => project.id === projectFilter)
+
+    if (!projectExists) {
+      setProjectFilter('all')
+    }
+  }, [projects, projectFilter])
+
+  const fetchData = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      setEpics([])
+
+      // Fetch projects and stories in parallel
+      const [projectsRes, storiesRes] = await Promise.all([
+        fetch('/api/projects', { cache: 'no-store', credentials: 'include' }),
+        fetch('/api/stories?limit=1000', { cache: 'no-store', credentials: 'include' })
+      ])
+
+      if (!projectsRes.ok) {
+        throw new Error('Failed to load projects')
+      }
+
+      if (!storiesRes.ok) {
+        throw new Error('Failed to load stories')
+      }
+
+      const projectsData = await projectsRes.json()
+      const storiesData = await storiesRes.json()
+
+      const nextProjects: Project[] = Array.isArray(projectsData?.data) ? projectsData.data : []
+      const nextStories: Story[] = Array.isArray(storiesData?.data) ? storiesData.data : []
+
+      setProjects(nextProjects)
+      setStories(nextStories)
+
+      // Fetch epics for all projects
+      if (nextProjects.length > 0) {
+        const epicsResults = await Promise.all(
+          nextProjects.map(async (project) => {
+            try {
+              const response = await fetch(`/api/projects/${project.id}/epics`, {
+                cache: 'no-store',
+                credentials: 'include'
+              })
+
+              if (!response.ok) {
+                throw new Error('Failed to load epics')
+              }
+
+              const payload = await response.json()
+              return Array.isArray(payload?.data) ? (payload.data as Epic[]) : []
+            } catch (error) {
+              console.error(`Failed to fetch epics for project ${project.id}:`, error)
+              return []
+            }
+          })
+        )
+
+        setEpics(epicsResults.flat())
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch data:', error)
+      setError(error.message || 'Failed to load stories')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   React.useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
@@ -73,45 +173,7 @@ export default function StoriesPage() {
     if (status === 'authenticated') {
       fetchData()
     }
-  }, [status, router])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      setError('')
-
-      // Fetch projects and stories in parallel
-      const [projectsRes, storiesRes] = await Promise.all([
-        fetch('/api/projects'),
-        fetch('/api/stories?limit=1000')
-      ])
-
-      if (!projectsRes.ok || !storiesRes.ok) {
-        throw new Error('Failed to load data')
-      }
-
-      const projectsData = await projectsRes.json()
-      const storiesData = await storiesRes.json()
-
-      setProjects(Array.isArray(projectsData?.data) ? projectsData.data : [])
-      setStories(Array.isArray(storiesData?.data) ? storiesData.data : [])
-
-      // Fetch epics for all projects
-      if (projectsData?.data && projectsData.data.length > 0) {
-        const epicsPromises = projectsData.data.map((p: Project) =>
-          fetch(`/api/projects/${p.id}/epics`).then(r => r.json())
-        )
-        const epicsResults = await Promise.all(epicsPromises)
-        const allEpics = epicsResults.flatMap(r => Array.isArray(r?.data) ? r.data : [])
-        setEpics(allEpics)
-      }
-    } catch (error: any) {
-      console.error('Failed to fetch data:', error)
-      setError(error.message || 'Failed to load stories')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [status, router, fetchData])
 
   const getStatusColor = (status: Story['status']) => {
     switch (status) {
@@ -145,21 +207,54 @@ export default function StoriesPage() {
     }
   }
 
+  const toTitleCase = (value: string) =>
+    value
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+
+  const formatStatusLabel = (status: Story['status']) =>
+    status ? toTitleCase(status) : 'Unknown'
+
+  const formatPriorityLabel = (priority: Story['priority']) =>
+    priority ? toTitleCase(priority) : 'Unspecified'
+
+  const formatStoryType = (storyType: Story['storyType']) =>
+    storyType ? toTitleCase(storyType) : 'Unknown'
+
   // Filter stories based on selected filters
-  const filteredStories = stories.filter(story => {
-    const matchesSearch = !searchQuery ||
-      story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      story.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredStories = React.useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
 
-    const matchesStatus = statusFilter === 'all' || story.status === statusFilter
-    const matchesProject = projectFilter === 'all' || story.projectId === projectFilter
-    const matchesEpic = epicFilter === 'all' ||
-      (epicFilter === 'none' && !story.epicId) ||
-      story.epicId === epicFilter
-    const matchesPriority = priorityFilter === 'all' || story.priority === priorityFilter
+    return stories.filter((story) => {
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        story.title.toLowerCase().includes(normalizedQuery) ||
+        (story.description?.toLowerCase().includes(normalizedQuery) ?? false)
 
-    return matchesSearch && matchesStatus && matchesProject && matchesEpic && matchesPriority
-  })
+      const matchesStatus =
+        statusFilter === 'all' || story.status === statusFilter
+
+      const matchesProject =
+        projectFilter === 'all' || story.projectId === projectFilter
+
+      const matchesEpic =
+        epicFilter === 'all' ||
+        (epicFilter === 'none' && !story.epicId) ||
+        story.epicId === epicFilter
+
+      const matchesPriority =
+        priorityFilter === 'all' || story.priority === priorityFilter
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesProject &&
+        matchesEpic &&
+        matchesPriority
+      )
+    })
+  }, [stories, searchQuery, statusFilter, projectFilter, epicFilter, priorityFilter])
 
   if (status === 'loading' || loading) {
     return (
@@ -192,6 +287,14 @@ export default function StoriesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchData}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
                 <Badge variant="secondary" className="text-sm">
                   {filteredStories.length} {filteredStories.length === 1 ? 'story' : 'stories'}
                 </Badge>
@@ -242,7 +345,7 @@ export default function StoriesPage() {
                   onChange={(e) => setProjectFilter(e.target.value)}
                 >
                   <option value="all">All Projects</option>
-                  {projects.map(project => (
+                  {sortedProjects.map(project => (
                     <option key={project.id} value={project.id}>
                       {project.name} ({project.key})
                     </option>
@@ -259,7 +362,7 @@ export default function StoriesPage() {
                 >
                   <option value="all">All Epics</option>
                   <option value="none">No Epic</option>
-                  {epics.map(epic => (
+                  {filteredEpics.map(epic => (
                     <option key={epic.id} value={epic.id}>
                       {epic.title}
                     </option>
@@ -285,8 +388,11 @@ export default function StoriesPage() {
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-6">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between gap-4 flex-wrap">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                Try again
+              </Button>
             </div>
           )}
 
@@ -331,11 +437,13 @@ export default function StoriesPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Badge className={cn('text-xs border', getPriorityColor(story.priority))}>
-                          {story.priority}
-                        </Badge>
+                        {story.priority && (
+                          <Badge className={cn('text-xs border', getPriorityColor(story.priority))}>
+                            {formatPriorityLabel(story.priority)}
+                          </Badge>
+                        )}
                         <Badge className={cn('text-xs border', getStatusColor(story.status))}>
-                          {story.status.replace('_', ' ')}
+                          {formatStatusLabel(story.status)}
                         </Badge>
                       </div>
                       {story.aiGenerated && (
@@ -378,7 +486,7 @@ export default function StoriesPage() {
                       {story.storyPoints && (
                         <span className="font-mono">{story.storyPoints} pts</span>
                       )}
-                      <span>{story.storyType}</span>
+                      <span>{formatStoryType(story.storyType)}</span>
                     </div>
                   </CardContent>
                 </Card>
