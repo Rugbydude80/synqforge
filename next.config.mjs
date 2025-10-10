@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
+      allowedOrigins: ['localhost:3000', 'localhost:3001'],
     },
   },
   typescript: {
@@ -10,6 +12,10 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: false,
+  },
+  // Explicitly configure webpack to handle CSS
+  webpack: (config) => {
+    return config
   },
   // Security headers for production
   async headers() {

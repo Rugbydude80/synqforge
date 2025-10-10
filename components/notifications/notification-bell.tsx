@@ -43,7 +43,9 @@ export function NotificationBell() {
       const res = await fetch('/api/notifications?limit=10')
       if (!res.ok) throw new Error('Failed to load notifications')
       const data = await res.json()
-      setNotifications(data)
+      if (Array.isArray(data)) {
+        setNotifications(data)
+      }
     } catch (_error) {
       console.error('Failed to load notifications:', _error)
     }
@@ -54,7 +56,9 @@ export function NotificationBell() {
       const res = await fetch('/api/notifications/unread-count')
       if (!res.ok) throw new Error('Failed to load unread count')
       const data = await res.json()
-      setUnreadCount(data.count)
+      if (typeof data.count === 'number') {
+        setUnreadCount(data.count)
+      }
     } catch (_error) {
       console.error('Failed to load unread count:', _error)
     }
