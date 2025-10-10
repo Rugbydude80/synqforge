@@ -17,7 +17,7 @@ export class ProjectsRepository {
    * Get all projects for user's organization
    */
   async getProjects() {
-    let query = db
+    const query = db
       .select({
         id: projects.id,
         name: projects.name,

@@ -19,7 +19,7 @@ export class EpicsRepository {
     // Verify project access
     await this.verifyProjectAccess(projectId)
 
-    let query = db
+    const query = db
       .select({
         id: epics.id,
         projectId: epics.projectId,
