@@ -4,6 +4,7 @@ import { aiService } from '@/lib/services/ai.service'
 import { fileProcessorService } from '@/lib/services/file-processor.service'
 import { projectDocumentsRepository } from '@/lib/repositories/project-documents.repository'
 import { storiesRepository } from '@/lib/repositories/stories.repository'
+import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
 
 /**
  * POST /api/projects/[projectId]/files/process-and-analyze
@@ -25,6 +26,24 @@ async function processAndAnalyze(req: NextRequest, context: AuthContext) {
 
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
+    }
+
+    const rateLimitResult = await checkRateLimit(
+      `ai:process-document:${context.user.id}`,
+      aiGenerationRateLimit
+    )
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+      return NextResponse.json(
+        {
+          error: `Too many document uploads. Try again in ${getResetTimeMessage(rateLimitResult.reset)}.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': retryAfter.toString() },
+        }
+      )
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())

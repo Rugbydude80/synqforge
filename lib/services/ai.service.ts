@@ -468,4 +468,23 @@ Format as JSON:
 }
 
 // Export singleton instance
-export const aiService = new AIService();
+const globalForAI = globalThis as {
+  aiServiceInstance?: AIService
+};
+
+function getAIService(): AIService {
+  if (!globalForAI.aiServiceInstance) {
+    globalForAI.aiServiceInstance = new AIService();
+  }
+  return globalForAI.aiServiceInstance;
+}
+
+export const aiService = new Proxy({} as AIService, {
+  get(_target, prop) {
+    const instance = getAIService() as any;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+}) as AIService;
+
+export { getAIService };

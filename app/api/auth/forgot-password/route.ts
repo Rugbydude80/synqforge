@@ -4,25 +4,24 @@ import { users, passwordResetTokens } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { Resend } from 'resend'
+import { z } from 'zod'
 import { checkRateLimit, passwordResetRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
 
 // Only initialize Resend if API key is configured
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Valid email is required'),
+})
+
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
-
-    if (!email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      )
-    }
+    const { email } = forgotPasswordSchema.parse(await request.json())
+    const normalizedEmail = email.toLowerCase()
 
     // Check rate limit (3 requests per email per hour)
     const rateLimitResult = await checkRateLimit(
-      `password-reset:${email.toLowerCase()}`,
+      `password-reset:${normalizedEmail}`,
       passwordResetRateLimit
     )
 
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.email, normalizedEmail))
       .limit(1)
 
     // Always return success to prevent email enumeration
@@ -77,7 +76,7 @@ export async function POST(request: NextRequest) {
       try {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || 'SynqForge <onboarding@resend.dev>',
-          to: email,
+          to: normalizedEmail,
           subject: 'Reset your password',
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -111,6 +110,18 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Password reset request error:', error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Validation error',
+          details: error.errors.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Failed to process password reset request' },
       { status: 500 }

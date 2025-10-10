@@ -5,6 +5,7 @@ import { ProjectsRepository } from '@/lib/repositories/projects';
 import { EpicsRepository } from '@/lib/repositories/epics';
 import { generateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
+import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -14,6 +15,25 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     // Parse and validate request body
     const body = await req.json();
     const validatedData = generateStoriesSchema.parse(body);
+
+    const rateLimitResult = await checkRateLimit(
+      `ai:generate-stories:${context.user.id}`,
+      aiGenerationRateLimit
+    );
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded. Please try again later.',
+          retryAfter: getResetTimeMessage(rateLimitResult.reset),
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': retryAfter.toString() },
+        }
+      );
+    }
 
     // Verify user has access to the project
     const project = await projectsRepo.getProjectById(validatedData.projectId);

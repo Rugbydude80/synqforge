@@ -3,6 +3,7 @@ import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { aiService } from '@/lib/services/ai.service';
 import { fileProcessorService } from '@/lib/services/file-processor.service';
 import { z } from 'zod';
+import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 
 async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
@@ -13,6 +14,25 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
+      );
+    }
+
+    const rateLimitResult = await checkRateLimit(
+      `ai:analyze-document:${context.user.id}`,
+      aiGenerationRateLimit
+    );
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return NextResponse.json(
+        {
+          error: 'Too many document analyses. Try again later.',
+          retryAfter: getResetTimeMessage(rateLimitResult.reset),
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': retryAfter.toString() },
+        }
       );
     }
 

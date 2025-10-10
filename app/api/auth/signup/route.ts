@@ -4,6 +4,7 @@ import { users, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/utils/auth'
 import { z } from 'zod'
+import { checkRateLimit, getResetTimeMessage, signupRateLimit } from '@/lib/rate-limit'
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -15,6 +16,27 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const validatedData = signupSchema.parse(body)
+
+    const rateLimitResult = await checkRateLimit(
+      `signup:${validatedData.email.toLowerCase()}`,
+      signupRateLimit
+    )
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+      return NextResponse.json(
+        {
+          error: 'Too many signup attempts. Please try again later.',
+          retryAfter: getResetTimeMessage(rateLimitResult.reset),
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+          },
+        }
+      )
+    }
 
     // Check if user already exists
     const [existingUser] = await db
@@ -104,5 +126,4 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-
 

@@ -3,21 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api-client'
 import {
   FileText,
-  Filter,
   Search,
-  Plus,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { AppSidebar } from '@/components/app-sidebar'
-import { cn } from '@/lib/utils'
 
 interface Story {
   id: string
@@ -64,31 +56,6 @@ export default function StoriesPage() {
       setError(error.message || 'Failed to load stories')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'done':
-        return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-      case 'in_progress':
-        return 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-      case 'review':
-        return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-      default:
-        return 'bg-slate-500/10 text-slate-500 border-slate-500/20'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical':
-      case 'high':
-        return 'text-red-500'
-      case 'medium':
-        return 'text-amber-500'
-      default:
-        return 'text-slate-500'
     }
   }
 

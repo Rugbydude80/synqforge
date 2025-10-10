@@ -1,17 +1,44 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import postgres, { type Sql } from 'postgres'
 import { customAlphabet } from 'nanoid'
 import * as schema from './schema'
 
-// Create the connection
-const connectionString = process.env.DATABASE_URL!
-const client = postgres(connectionString, {
-  max: 10,
-  idle_timeout: 20,
-  max_lifetime: 60 * 30, // 30 minutes
-})
+type Database = PostgresJsDatabase<typeof schema>
 
-export const db = drizzle(client, { schema })
+const globalForDb = globalThis as {
+  __postgresClient?: Sql
+  __dbInstance?: Database
+}
+
+function createClient(): Sql {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set')
+  }
+
+  return postgres(process.env.DATABASE_URL, {
+    max: 10,
+    idle_timeout: 20,
+    max_lifetime: 60 * 30, // 30 minutes
+  })
+}
+
+export function getDb(): Database {
+  if (!globalForDb.__dbInstance) {
+    const client = globalForDb.__postgresClient ?? createClient()
+    globalForDb.__postgresClient = client
+    globalForDb.__dbInstance = drizzle(client, { schema })
+  }
+
+  return globalForDb.__dbInstance
+}
+
+export const db = new Proxy({} as Database, {
+  get(_target, prop) {
+    const instance = getDb() as any
+    const value = instance[prop]
+    return typeof value === 'function' ? value.bind(instance) : value
+  },
+}) as Database
 
 /**
  * Generate a unique ID for database records
