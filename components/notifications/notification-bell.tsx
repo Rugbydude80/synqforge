@@ -56,7 +56,7 @@ export function NotificationBell() {
       const data = await res.json()
       setUnreadCount(data.count)
     } catch (_error) {
-      console.error('Failed to load unread count:', error)
+      console.error('Failed to load unread count:', _error)
     }
   }
 
