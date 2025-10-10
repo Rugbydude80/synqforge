@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import {
   Settings,
   User,
@@ -8,8 +10,6 @@ import {
   Bell,
   Palette,
   Database,
-  Key,
-  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,7 +17,30 @@ import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
 
 export default function SettingsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('profile')
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+    }
+  }, [status, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64 flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!session?.user) {
+    return null
+  }
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -25,7 +48,6 @@ export default function SettingsPage() {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'integrations', label: 'Integrations', icon: Database },
-    { id: 'api', label: 'API Keys', icon: Key },
   ]
 
   return (
@@ -75,12 +97,11 @@ export default function SettingsPage() {
 
           {/* Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'profile' && <ProfileSettings />}
+            {activeTab === 'profile' && <ProfileSettings user={session.user} />}
             {activeTab === 'security' && <SecuritySettings />}
             {activeTab === 'notifications' && <NotificationSettings />}
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'integrations' && <IntegrationSettings />}
-            {activeTab === 'api' && <ApiSettings />}
           </div>
         </div>
       </div>
@@ -89,7 +110,24 @@ export default function SettingsPage() {
   )
 }
 
-function ProfileSettings() {
+interface User {
+  name?: string | null
+  email?: string | null
+  image?: string | null
+  role?: string
+}
+
+function ProfileSettings({ user }: { user: User }) {
+  const getInitials = (name?: string | null) => {
+    if (!name) return '??'
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -98,38 +136,53 @@ function ProfileSettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center gap-6">
-          <div className="h-20 w-20 rounded-full bg-gradient-primary flex items-center justify-center text-2xl font-bold text-white">
-            JD
-          </div>
+          {user.image ? (
+            <img
+              src={user.image}
+              alt={user.name || 'User'}
+              className="h-20 w-20 rounded-full object-cover"
+            />
+          ) : (
+            <div className="h-20 w-20 rounded-full bg-gradient-primary flex items-center justify-center text-2xl font-bold text-white">
+              {getInitials(user.name)}
+            </div>
+          )}
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">John Doe</h3>
-            <p className="text-muted-foreground">john.doe@example.com</p>
-            <Badge>Admin</Badge>
+            <h3 className="text-lg font-semibold">{user.name || 'No name set'}</h3>
+            <p className="text-muted-foreground">{user.email}</p>
+            {user.role && <Badge>{user.role}</Badge>}
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Full Name</label>
+            <label htmlFor="fullName" className="text-sm font-medium">Full Name</label>
             <input
+              id="fullName"
               type="text"
-              defaultValue="John Doe"
+              defaultValue={user.name || ''}
+              placeholder="Enter your full name"
               className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
             <input
+              id="email"
               type="email"
-              defaultValue="john.doe@example.com"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
+              defaultValue={user.email || ''}
+              placeholder="Enter your email"
+              disabled
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted cursor-not-allowed"
+              title="Email cannot be changed"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Bio</label>
+          <label htmlFor="bio" className="text-sm font-medium">Bio</label>
           <textarea
+            id="bio"
             rows={3}
             placeholder="Tell us about yourself..."
             className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary resize-none"
@@ -152,23 +205,29 @@ function SecuritySettings() {
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Current Password</label>
+            <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
             <input
+              id="currentPassword"
               type="password"
+              placeholder="Enter current password"
               className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">New Password</label>
+            <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
             <input
+              id="newPassword"
               type="password"
+              placeholder="Enter new password"
               className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Confirm New Password</label>
+            <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</label>
             <input
+              id="confirmPassword"
               type="password"
+              placeholder="Confirm new password"
               className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
@@ -179,7 +238,7 @@ function SecuritySettings() {
             <h4 className="font-medium">Two-Factor Authentication</h4>
             <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
           </div>
-          <Button variant="outline">Enable 2FA</Button>
+          <Button variant="outline" disabled>Coming Soon</Button>
         </div>
 
         <Button>Update Password</Button>
@@ -189,6 +248,14 @@ function SecuritySettings() {
 }
 
 function NotificationSettings() {
+  const notificationOptions = [
+    { id: 'email', title: 'Email Notifications', description: 'Receive notifications via email' },
+    { id: 'push', title: 'Push Notifications', description: 'Get push notifications in your browser' },
+    { id: 'project', title: 'Project Updates', description: 'When projects are updated or new stories are added' },
+    { id: 'mentions', title: 'Team Mentions', description: 'When someone mentions you in comments' },
+    { id: 'summary', title: 'Weekly Summary', description: 'Get a weekly summary of your project activity' },
+  ]
+
   return (
     <Card>
       <CardHeader>
@@ -197,19 +264,19 @@ function NotificationSettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          {[
-            { title: 'Email Notifications', description: 'Receive notifications via email' },
-            { title: 'Push Notifications', description: 'Get push notifications in your browser' },
-            { title: 'Project Updates', description: 'When projects are updated or new stories are added' },
-            { title: 'Team Mentions', description: 'When someone mentions you in comments' },
-            { title: 'Weekly Summary', description: 'Get a weekly summary of your project activity' },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center justify-between">
+          {notificationOptions.map((item) => (
+            <div key={item.id} className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">{item.title}</h4>
+                <label htmlFor={item.id} className="font-medium cursor-pointer">{item.title}</label>
                 <p className="text-sm text-muted-foreground">{item.description}</p>
               </div>
-              <input type="checkbox" defaultChecked className="rounded" />
+              <input
+                id={item.id}
+                type="checkbox"
+                defaultChecked
+                className="rounded"
+                title={`Toggle ${item.title}`}
+              />
             </div>
           ))}
         </div>
@@ -221,6 +288,18 @@ function NotificationSettings() {
 }
 
 function AppearanceSettings() {
+  const themes = [
+    { name: 'Light', value: 'light' },
+    { name: 'Dark', value: 'dark' },
+    { name: 'System', value: 'system' },
+  ]
+
+  const colorSchemes = [
+    { name: 'Purple & Emerald', colors: ['bg-brand-purple-500', 'bg-brand-emerald-500'] },
+    { name: 'Blue & Orange', colors: ['bg-blue-500', 'bg-orange-500'] },
+    { name: 'Green & Teal', colors: ['bg-green-500', 'bg-teal-500'] },
+  ]
+
   return (
     <Card>
       <CardHeader>
@@ -232,13 +311,10 @@ function AppearanceSettings() {
           <div>
             <h4 className="font-medium mb-3">Theme</h4>
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { name: 'Light', value: 'light' },
-                { name: 'Dark', value: 'dark' },
-                { name: 'System', value: 'system' },
-              ].map((theme) => (
+              {themes.map((theme) => (
                 <button
                   key={theme.value}
+                  type="button"
                   className="p-3 border border-border rounded-lg hover:border-primary transition-colors"
                 >
                   {theme.name}
@@ -250,18 +326,15 @@ function AppearanceSettings() {
           <div>
             <h4 className="font-medium mb-3">Color Scheme</h4>
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { name: 'Purple & Emerald', colors: ['bg-brand-purple-500', 'bg-brand-emerald-500'] },
-                { name: 'Blue & Orange', colors: ['bg-blue-500', 'bg-orange-500'] },
-                { name: 'Green & Teal', colors: ['bg-green-500', 'bg-teal-500'] },
-              ].map((scheme, i) => (
+              {colorSchemes.map((scheme) => (
                 <button
-                  key={i}
+                  key={scheme.name}
+                  type="button"
                   className="p-3 border border-border rounded-lg hover:border-primary transition-colors"
                 >
                   <div className="flex gap-2 mb-2">
-                    {scheme.colors.map((color, j) => (
-                      <div key={j} className={`h-4 w-4 rounded-full ${color}`} />
+                    {scheme.colors.map((color) => (
+                      <div key={color} className={`h-4 w-4 rounded-full ${color}`} />
                     ))}
                   </div>
                   {scheme.name}
@@ -278,6 +351,13 @@ function AppearanceSettings() {
 }
 
 function IntegrationSettings() {
+  const integrations = [
+    { name: 'Slack', description: 'Get notifications in Slack', comingSoon: false },
+    { name: 'GitHub', description: 'Link your repositories', comingSoon: false },
+    { name: 'Jira', description: 'Sync with Jira projects', comingSoon: true },
+    { name: 'Linear', description: 'Import issues from Linear', comingSoon: true },
+  ]
+
   return (
     <Card>
       <CardHeader>
@@ -286,23 +366,15 @@ function IntegrationSettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4">
-          {[
-            { name: 'Slack', description: 'Get notifications in Slack', connected: false },
-            { name: 'GitHub', description: 'Link your repositories', connected: true },
-            { name: 'Jira', description: 'Sync with Jira projects', connected: false },
-            { name: 'Linear', description: 'Import issues from Linear', connected: false },
-          ].map((integration, i) => (
-            <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg">
+          {integrations.map((integration) => (
+            <div key={integration.name} className="flex items-center justify-between p-4 border border-border rounded-lg">
               <div>
                 <h4 className="font-medium">{integration.name}</h4>
                 <p className="text-sm text-muted-foreground">{integration.description}</p>
               </div>
-              <div className="flex items-center gap-3">
-                {integration.connected && <Badge variant="emerald">Connected</Badge>}
-                <Button variant={integration.connected ? 'outline' : 'default'}>
-                  {integration.connected ? 'Configure' : 'Connect'}
-                </Button>
-              </div>
+              <Button variant="default" disabled={integration.comingSoon}>
+                {integration.comingSoon ? 'Coming Soon' : 'Connect'}
+              </Button>
             </div>
           ))}
         </div>
@@ -311,45 +383,4 @@ function IntegrationSettings() {
   )
 }
 
-function ApiSettings() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>API Keys</CardTitle>
-        <CardDescription>Manage API keys for external integrations</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-            <div>
-              <h4 className="font-medium">Production API Key</h4>
-              <p className="text-sm text-muted-foreground">sk-1234-5678-9012-3456-7890-1234-5678</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">Regenerate</Button>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-            <div>
-              <h4 className="font-medium">Development API Key</h4>
-              <p className="text-sm text-muted-foreground">sk-dev-1234-5678-9012-3456-7890-1234</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">Regenerate</Button>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <Button>Create New Key</Button>
-      </CardContent>
-    </Card>
-  )
-}
 
