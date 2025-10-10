@@ -233,6 +233,7 @@ export default function ProjectsPage() {
                         </span>
                       </div>
                       <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        {/* eslint-disable-next-line react/forbid-dom-props */}
                         <div
                           className="h-full bg-gradient-to-r from-purple-500 to-emerald-500 transition-all"
                           style={{ width: `${project.progressPercentage || 0}%` }}

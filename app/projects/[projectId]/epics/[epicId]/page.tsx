@@ -121,6 +121,7 @@ export default function EpicDetailPage() {
                   <Button variant="ghost" size="icon" onClick={() => router.push(`/projects/${projectId}`)}>
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
+                  {/* eslint-disable-next-line react/forbid-dom-props */}
                   <div
                     className="h-10 w-10 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: epic.color || '#a855f7' }}
@@ -166,6 +167,7 @@ export default function EpicDetailPage() {
                   <span className="text-white font-semibold">{progressPercentage}%</span>
                 </div>
                 <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                  {/* eslint-disable-next-line react/forbid-dom-props */}
                   <div
                     className="h-full bg-gradient-to-r from-purple-500 to-emerald-500 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
