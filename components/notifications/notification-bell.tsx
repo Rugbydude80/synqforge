@@ -44,7 +44,7 @@ export function NotificationBell() {
       if (!res.ok) throw new Error('Failed to load notifications')
       const data = await res.json()
       setNotifications(data)
-    } catch (error) {
+    } catch (_error) {
       console.error('Failed to load notifications:', error)
     }
   }
@@ -55,7 +55,7 @@ export function NotificationBell() {
       if (!res.ok) throw new Error('Failed to load unread count')
       const data = await res.json()
       setUnreadCount(data.count)
-    } catch (error) {
+    } catch (_error) {
       console.error('Failed to load unread count:', error)
     }
   }
@@ -72,7 +72,7 @@ export function NotificationBell() {
 
       await loadNotifications()
       await loadUnreadCount()
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to mark as read')
     }
   }
@@ -91,7 +91,7 @@ export function NotificationBell() {
       await loadNotifications()
       await loadUnreadCount()
       toast.success('All notifications marked as read')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to mark all as read')
     } finally {
       setLoading(false)

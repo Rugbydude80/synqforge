@@ -46,7 +46,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
       if (!res.ok) throw new Error('Failed to load comments')
       const data = await res.json()
       setComments(data)
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load comments')
     }
   }
@@ -77,7 +77,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
       setReplyingTo(null)
       await loadComments()
       toast.success('Comment posted')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to post comment')
     } finally {
       setLoading(false)
@@ -96,7 +96,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
 
       await loadComments()
       toast.success('Comment deleted')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete comment')
     }
   }
@@ -112,7 +112,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
       if (!res.ok) throw new Error('Failed to add reaction')
 
       await loadComments()
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to add reaction')
     }
   }
