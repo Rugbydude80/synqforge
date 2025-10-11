@@ -12,32 +12,8 @@ import { Input } from '@/components/ui/input'
 import { AppSidebar } from '@/components/app-sidebar'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { cn } from '@/lib/utils'
-import { api } from '@/lib/api-client'
+import { api, type Story } from '@/lib/api-client'
 import { toast } from 'sonner'
-
-interface Story {
-  id: string
-  title: string
-  description: string | null
-  status: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked' | null
-  priority: 'low' | 'medium' | 'high' | 'critical' | null
-  storyPoints?: number
-  storyType: 'feature' | 'bug' | 'task' | 'spike' | null
-  projectId: string
-  epicId?: string | null
-  aiGenerated: boolean
-  createdAt: string
-  project?: {
-    id: string
-    name: string
-    key: string
-  }
-  epic?: {
-    id: string
-    title: string
-    color: string | null
-  } | null
-}
 
 interface Project {
   id: string
