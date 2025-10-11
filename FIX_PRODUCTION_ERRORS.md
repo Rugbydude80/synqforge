@@ -1,207 +1,171 @@
-# Fix Production Errors - SynqForge
+# Fix Production Errors - Action Plan
 
-## Error Summary
-You're experiencing these errors in production (synqforge.com):
+## Current Issues on synqforge.com
 
-1. ❌ `/api/epics?projectId=...` → **500 Internal Server Error**
-2. ❌ `/api/ai/generate-single-story` → **404 Not Found**  
-3. ❌ CSS files serving with wrong MIME type (`text/plain` instead of `text/css`)
+### 1. `/api/epics?projectId=...` → 500 Error
+**Error:** "Failed to load epics: APIError: Failed to list epics"
 
-## Root Cause
-These are **deployment issues**, not code issues. The routes exist in your codebase but aren't properly deployed or compiled in production.
+**Likely Causes:**
+- Database query timing out or failing
+- Project access validation throwing unexpected error
+- Missing/malformed organizationId in production database
 
-## Immediate Fixes
+### 2. `/api/ai/generate-single-story` → 404 Error
+**Error:** "Failed to load resource: the server responded with a status of 404"
 
-### Fix 1: Force Clean Rebuild & Redeploy
+**Cause:** Stale production deployment - Vercel is serving an old build
 
-```bash
-# 1. Clean local build cache
-rm -rf .next
-rm -rf node_modules/.cache
+### 3. CSS MIME Type Error
+**Error:** "Refused to apply style... MIME type ('text/plain') is not a supported stylesheet MIME type"
 
-# 2. Rebuild locally to verify everything works
-npm run build
-
-# 3. If build succeeds, commit and push
-git add .
-git commit -m "fix: Force rebuild for production API routes"
-git push origin main  # or your production branch
-```
-
-### Fix 2: Clear Vercel Build Cache
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select your `synqforge` project
-3. Go to **Deployments** tab
-4. Find the latest deployment
-5. Click **⋯** (three dots) → **Redeploy**
-6. **IMPORTANT:** Uncheck "Use existing Build Cache"
-7. Click **Redeploy**
-
-### Fix 3: Verify Environment Variables
-
-Make sure these are set in Vercel:
-
-```bash
-# Required in Vercel → Settings → Environment Variables
-DATABASE_URL=postgresql://...
-NEXTAUTH_SECRET=...
-NEXTAUTH_URL=https://synqforge.com
-ANTHROPIC_API_KEY=...
-UPSTASH_REDIS_REST_URL=...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# Set for: Production, Preview, Development
-```
-
-### Fix 4: Check Vercel Function Logs
-
-```bash
-# Install Vercel CLI if not already installed
-npm i -g vercel
-
-# Pull your project
-vercel link
-
-# View real-time logs
-vercel logs --follow
-
-# Or check specific deployment logs
-vercel logs [deployment-url]
-```
-
-## Debugging the Specific Errors
-
-### Error 1: Epic API 500 Error
-
-The `/api/epics` route exists but is throwing a server error. Check:
-
-**Possible Causes:**
-- Database connection issue in production
-- Missing or incorrect `organizationId` in user session
-- Project access validation failing
-
-**Debug Steps:**
-1. Check Vercel logs for the actual error message
-2. Verify `DATABASE_URL` is correct and accessible
-3. Test the endpoint after redeployment:
-
-```bash
-# Test with curl (need to be authenticated)
-curl -H "Cookie: next-auth.session-token=YOUR_TOKEN" \
-  "https://synqforge.com/api/epics?projectId=YOUR_PROJECT_ID"
-```
-
-### Error 2: AI Story Generation 404
-
-The endpoint file exists at `app/api/ai/generate-single-story/route.ts` but returns 404.
-
-**Possible Causes:**
-- Route not compiled during build
-- Vercel function deployment failed
-- File system case sensitivity issue
-
-**Debug Steps:**
-1. Check if the route file was included in deployment:
-   - Go to Vercel deployment details
-   - Check "Source Files" to see if `app/api/ai/generate-single-story/route.ts` is present
-
-2. Verify the route exports are correct:
-```typescript
-// app/api/ai/generate-single-story/route.ts should have:
-export const POST = withAuth(generateSingleStory);
-```
-
-3. Check Next.js build output for route compilation errors
-
-### Error 3: CSS MIME Type Issue
-
-This suggests static assets aren't being served correctly by Vercel/CDN.
-
-**Fix:**
-- Usually resolved by a clean rebuild
-- May be a CDN cache issue - wait 5-10 minutes after redeployment
-- Or manually purge CDN cache in Vercel dashboard
-
-## Verification Steps
-
-After redeploying, verify each endpoint:
-
-### 1. Test Epic API
-```bash
-# Open browser console on synqforge.com
-fetch('/api/epics?projectId=YOUR_PROJECT_ID')
-  .then(r => r.json())
-  .then(console.log)
-  .catch(console.error)
-```
-
-### 2. Test AI Story Generation
-```bash
-# Open browser console on synqforge.com  
-fetch('/api/ai/generate-single-story', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    requirement: 'As a user, I want to log in',
-    projectId: 'YOUR_PROJECT_ID'
-  })
-})
-  .then(r => r.json())
-  .then(console.log)
-  .catch(console.error)
-```
-
-### 3. Check CSS Loading
-- Open DevTools → Network tab
-- Reload page
-- Check all CSS files return `Status: 200` with `Content-Type: text/css`
-
-## Prevention
-
-To avoid this in the future:
-
-1. **Always test locally before deploying:**
-   ```bash
-   npm run build
-   npm run start
-   # Test at http://localhost:3000
-   ```
-
-2. **Enable build notifications in Vercel:**
-   - Settings → Notifications → Enable email/Slack alerts for failed builds
-
-3. **Use deployment protection:**
-   - Settings → Deployment Protection → Enable for production
-
-4. **Monitor with smoke tests:**
-   ```bash
-   # After each deployment, run:
-   ./scripts/smoke.sh
-   ```
-
-## Still Having Issues?
-
-If errors persist after redeployment:
-
-1. **Check Vercel function logs** for the actual error message
-2. **Verify database connectivity** from Vercel
-3. **Test with Vercel CLI locally:**
-   ```bash
-   vercel dev
-   ```
-4. **Contact Vercel support** if it's a platform issue
-
-## Quick Reference
-
-| Issue | Most Likely Fix |
-|-------|----------------|
-| 404 on existing route | Clear build cache + redeploy |
-| 500 server error | Check logs, verify env vars, test DB connection |
-| CSS MIME type | Clean rebuild + wait for CDN cache |
-| Missing routes | Verify route file exports `GET`/`POST` correctly |
+**Cause:** Vercel edge network serving stale static assets
 
 ---
 
-**Last Updated:** October 11, 2025  
-**Status:** Awaiting redeployment to fix issues
+## ✅ IMMEDIATE ACTION REQUIRED
+
+Your code is correct and builds successfully locally. You need to **redeploy to production with a clean build cache**.
+
+### Quick Fix (5 minutes):
+
+#### Option 1: Via Vercel Dashboard (RECOMMENDED)
+
+1. Go to https://vercel.com/dashboard
+2. Click on **synqforge** project
+3. Go to **Deployments** tab
+4. Find the latest production deployment
+5. Click the **⋯** (three dots) menu
+6. Select **Redeploy**
+7. **IMPORTANT:** ✅ Uncheck "Use existing Build Cache"
+8. Click **Redeploy** button
+9. Wait 2-3 minutes for build to complete
+
+#### Option 2: Via Git Push
+
+```bash
+# Force a new deployment
+git add .
+git commit -m "fix: Force clean production rebuild" --allow-empty
+git push origin main
+```
+
+#### Option 3: Via Vercel CLI
+
+```bash
+vercel --prod --force
+```
+
+---
+
+## Verify After Deployment
+
+Once redeployment completes, test these endpoints:
+
+```bash
+# 1. Should return 401 (auth required) NOT 404
+curl -I https://synqforge.com/api/ai/generate-single-story
+
+# 2. Should return 401 or 200 NOT 500
+curl -I https://synqforge.com/api/epics?projectId=test
+
+# 3. Open browser and check CSS loads properly
+# https://synqforge.com
+# DevTools → Network → Check .css files show Content-Type: text/css
+```
+
+---
+
+## If 500 Error Persists on /api/epics
+
+Check production logs for the actual error:
+
+```bash
+vercel logs --prod --follow
+```
+
+Look for error messages like:
+- "Error listing epics: ..."
+- "Database connection failed"
+- "ForbiddenError: Access denied to this project"
+
+### Debug Database Access
+
+The error happens when calling `epicsRepo.getEpics(projectId)` which validates:
+1. Project exists
+2. Project belongs to user's organization
+
+Run this query in your production database:
+
+```sql
+-- Check if project and user org IDs match
+SELECT 
+  p.id as project_id,
+  p.name as project_name,
+  p."organizationId" as project_org,
+  u.id as user_id,
+  u.email,
+  u."organizationId" as user_org,
+  CASE 
+    WHEN p."organizationId" = u."organizationId" THEN '✅ MATCH'
+    ELSE '❌ MISMATCH'
+  END as status
+FROM projects p
+CROSS JOIN users u
+WHERE p.id = 'of0ebixrgge9piiwom7z8'  -- The projectId from your error
+LIMIT 10;
+```
+
+If you see `❌ MISMATCH`, that's your issue - the user's organizationId doesn't match the project's organizationId.
+
+---
+
+## Clear CDN Cache (For CSS Issues)
+
+If CSS still loads incorrectly after redeployment:
+
+1. In Vercel Dashboard → Project → Domains
+2. Click "Purge Cache" for synqforge.com
+3. Hard refresh browser: `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows)
+
+---
+
+## Success Checklist
+
+- [ ] Redeployed with clean cache (no "Use existing Build Cache")
+- [ ] Build completed successfully (check Vercel logs)
+- [ ] `/api/ai/generate-single-story` returns 401 NOT 404
+- [ ] `/api/epics` returns 200/401 NOT 500
+- [ ] CSS files load with correct MIME type
+- [ ] No console errors in production
+
+---
+
+## Quick Commands Reference
+
+```bash
+# Redeploy
+vercel --prod --force
+
+# Watch deployment logs
+vercel logs --follow
+
+# Check what's deployed
+vercel ls synqforge --prod
+
+# Test endpoints
+curl -I https://synqforge.com/api/epics
+curl -I https://synqforge.com/api/ai/generate-single-story
+```
+
+---
+
+## Note About Local .env.local
+
+✅ **It's CORRECT that your `.env.local` is empty/missing**
+
+Environment variables should be:
+- ❌ NOT in `.env.local` (only for local dev)
+- ✅ Set in Vercel Dashboard (Settings → Environment Variables)
+- ✅ Set for "Production" environment
+
+You already have this configured correctly, so no action needed there.
