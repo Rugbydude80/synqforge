@@ -471,7 +471,6 @@ export default function ProjectDetailPage() {
                           <Badge variant="outline" className={cn(
                             epic.status === 'completed' && 'border-emerald-500/50 text-emerald-400',
                             epic.status === 'in_progress' && 'border-purple-500/50 text-purple-400',
-                            epic.status === 'published' && 'border-green-500/50 text-green-400',
                             epic.status === 'planned' && 'border-blue-500/50 text-blue-400',
                             epic.status === 'draft' && 'border-gray-500/50 text-gray-400',
                             epic.status === 'archived' && 'border-neutral-500/50 text-neutral-400',
