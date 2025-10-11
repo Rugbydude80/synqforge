@@ -103,11 +103,9 @@ export class AIService {
     const apiKey = process.env.ANTHROPIC_API_KEY || '';
 
     if (!apiKey) {
-      console.error('ANTHROPIC_API_KEY is not configured in environment variables');
       throw new Error('ANTHROPIC_API_KEY is required. Please configure it in your environment variables.');
     }
 
-    console.log('AIService initialized with API key:', apiKey.substring(0, 10) + '...');
     this.isConfigured = true;
 
     this.anthropic = new Anthropic({

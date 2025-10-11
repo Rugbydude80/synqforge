@@ -120,7 +120,7 @@ export function SprintHealthWidget({ sprintId }: SprintHealthWidgetProps) {
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-green-500 transition-all"
-            style={{ '--progress-width': `${health.completionPercentage}%` } as React.CSSProperties & { '--progress-width': string }}
+            style={{ width: `${health.completionPercentage}%` }}
           />
         </div>
         <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
