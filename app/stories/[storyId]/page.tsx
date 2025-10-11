@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +8,8 @@ import Link from 'next/link'
 import { ArrowLeft, Calendar, User, Layers, Tag, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { projectStoryUrl, projectUrl } from '@/lib/urls'
+import { storiesRepository } from '@/lib/repositories/stories.repository'
+import { assertStoryAccessible } from '@/lib/permissions/story-access'
 
 type Story = {
   id: string
@@ -38,39 +39,21 @@ type Story = {
   }
 }
 
-async function getStory(storyId: string): Promise<Story | null> {
+async function getStory(storyId: string, organizationId: string): Promise<Story | null> {
   try {
-    const cookieHeader = cookies().toString()
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
-      process.env.APP_URL?.replace(/\/$/, '') ||
-      'http://localhost:3000'
-
-    const url = `${baseUrl}/api/stories/${storyId}`
+    // Check if story exists and user has access to it
+    await assertStoryAccessible(storyId, organizationId)
     
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-    })
-
-    if (res.status === 404) {
-      console.warn(`Story not found: ${storyId}`)
-      return null
-    }
+    // Get story directly from repository (no HTTP overhead)
+    const story = await storiesRepository.getById(storyId)
     
-    if (res.status === 403) {
-      console.warn(`Access denied for story: ${storyId}`)
-      return null
-    }
-
-    if (!res.ok) {
-      console.error(`Failed to load story ${storyId}: ${res.status} ${res.statusText}`)
-      throw new Error('Failed to load story')
-    }
-
-    return res.json()
+    return story as any
   } catch (error) {
+    // Log the actual error for debugging
     console.error(`Error fetching story ${storyId}:`, error)
+    
+    // Return null to trigger notFound() page
+    // This handles both "story doesn't exist" and "access denied" cases
     return null
   }
 }
@@ -109,8 +92,14 @@ export default async function StoryPage({
     redirect('/auth/signin')
   }
 
+  // Ensure user has organizationId
+  if (!session.user.organizationId) {
+    console.error('User session missing organizationId')
+    notFound()
+  }
+
   const { storyId } = await params
-  const story = await getStory(storyId)
+  const story = await getStory(storyId, session.user.organizationId)
 
   if (!story) {
     notFound()
