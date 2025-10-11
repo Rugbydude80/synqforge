@@ -524,6 +524,15 @@ export const api = {
     },
 
     /**
+     * Publish an epic (changes status to published and activates stories)
+     */
+    publish: async (epicId: string): Promise<{ message: string; epic: Epic; storiesUpdated: number }> => {
+      return fetchAPI<{ message: string; epic: Epic; storiesUpdated: number }>(`/api/epics/${epicId}/publish`, {
+        method: 'POST',
+      })
+    },
+
+    /**
      * Get epic progress statistics
      */
     getStats: async (epicId: string): Promise<StatsResponse> => {
