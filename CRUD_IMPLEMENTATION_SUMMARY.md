@@ -221,6 +221,7 @@ All new components follow the existing SynqForge design system:
 - `app/stories/page.tsx` - Added create/edit/delete functionality
 - `app/projects/page.tsx` - Added edit button and modal
 - `app/projects/[projectId]/page.tsx` - Enhanced epics tab with full CRUD + publish
+- `lib/api-client.ts` - Added `publish` method to epics API client
 
 ## Deployment Notes
 
