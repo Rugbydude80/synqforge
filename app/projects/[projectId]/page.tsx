@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StoryFormModal } from '@/components/story-form-modal'
+import { EpicFormModal } from '@/components/epic-form-modal'
 import { AppSidebar } from '@/components/app-sidebar'
-import { ArrowLeft, Plus, Settings, Sparkles, Layers, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Settings, Sparkles, Layers, FileText, Edit, Trash2, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -167,6 +168,8 @@ export default function ProjectDetailPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [isStoryModalOpen, setIsStoryModalOpen] = React.useState(false)
+  const [isEpicModalOpen, setIsEpicModalOpen] = React.useState(false)
+  const [selectedEpic, setSelectedEpic] = React.useState<Epic | undefined>()
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [activeTab, setActiveTab] = React.useState<'stories' | 'epics'>('stories')
 
@@ -286,6 +289,45 @@ export default function ProjectDetailPage() {
     return (stories || []).filter(s => s.status === status)
   }
 
+  const handleCreateEpic = () => {
+    setSelectedEpic(undefined)
+    setIsEpicModalOpen(true)
+  }
+
+  const handleEditEpic = (epic: Epic, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedEpic(epic)
+    setIsEpicModalOpen(true)
+  }
+
+  const handleDeleteEpic = async (epicId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this epic? Stories linked to this epic will not be deleted.')) {
+      return
+    }
+
+    try {
+      await api.epics.delete(epicId)
+      toast.success('Epic deleted successfully!')
+      fetchProjectData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete epic')
+    }
+  }
+
+  const handlePublishEpic = async (epicId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    try {
+      await api.epics.publish(epicId)
+      toast.success('Epic published successfully! Stories are now active.')
+      fetchProjectData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to publish epic')
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
@@ -327,9 +369,9 @@ export default function ProjectDetailPage() {
                   New Story
                 </Button>
               ) : (
-                <Button size="sm" disabled>
+                <Button size="sm" onClick={handleCreateEpic}>
                   <Plus className="h-4 w-4 mr-2" />
-                  New Epic (Coming Soon)
+                  New Epic
                 </Button>
               )}
             </div>
@@ -408,19 +450,19 @@ export default function ProjectDetailPage() {
                   <p className="text-gray-400 text-center max-w-md mb-6">
                     Epics help organize related stories into larger features or initiatives.
                   </p>
-                  <Button disabled>
+                  <Button onClick={handleCreateEpic}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Epic (Coming Soon)
+                    Create Epic
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               epics.map(epic => (
-                <Card key={epic.id} className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer">
+                <Card key={epic.id} className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: epic.color || '#a855f7' }}
@@ -430,6 +472,8 @@ export default function ProjectDetailPage() {
                             epic.status === 'completed' && 'border-emerald-500/50 text-emerald-400',
                             epic.status === 'in_progress' && 'border-purple-500/50 text-purple-400',
                             epic.status === 'planned' && 'border-blue-500/50 text-blue-400',
+                            epic.status === 'draft' && 'border-gray-500/50 text-gray-400',
+                            epic.status === 'published' && 'border-green-500/50 text-green-400',
                           )}>
                             {epic.status.replace('_', ' ')}
                           </Badge>
@@ -446,16 +490,54 @@ export default function ProjectDetailPage() {
                           <p className="text-gray-400 text-sm mb-3">{epic.description}</p>
                         )}
                         {epic.goals && (
-                          <p className="text-gray-500 text-xs">Goals: {epic.goals}</p>
+                          <p className="text-gray-500 text-xs mb-3">Goals: {epic.goals}</p>
+                        )}
+                        {epic.startDate && epic.targetDate && (
+                          <p className="text-gray-500 text-xs">
+                            {epic.startDate} → {epic.targetDate}
+                          </p>
                         )}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/projects/${projectId}/epics/${epic.id}`)}
-                      >
-                        View Stories
-                      </Button>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/projects/${projectId}/epics/${epic.id}`)}
+                        >
+                          View Stories
+                        </Button>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {epic.status === 'draft' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handlePublishEpic(epic.id, e)}
+                              className="h-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/20 hover:border-green-500/40"
+                              title="Publish Epic"
+                            >
+                              <Rocket className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => handleEditEpic(epic, e)}
+                            className="h-8 w-8 p-0"
+                            title="Edit Epic"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => handleDeleteEpic(epic.id, e)}
+                            className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            title="Delete Epic"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -465,11 +547,18 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {/* Story Form Modal */}
+      {/* Modals */}
       <StoryFormModal
         open={isStoryModalOpen}
         onOpenChange={setIsStoryModalOpen}
         projectId={projectId}
+        onSuccess={fetchProjectData}
+      />
+      <EpicFormModal
+        open={isEpicModalOpen}
+        onOpenChange={setIsEpicModalOpen}
+        projectId={projectId}
+        epic={selectedEpic}
         onSuccess={fetchProjectData}
       />
         </div>
