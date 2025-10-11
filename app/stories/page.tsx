@@ -3,14 +3,17 @@
 import * as React from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { FileText, Search, Sparkles, FolderKanban, Layers } from 'lucide-react'
+import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { AppSidebar } from '@/components/app-sidebar'
+import { StoryFormModal } from '@/components/story-form-modal'
 import { cn } from '@/lib/utils'
+import { api } from '@/lib/api-client'
+import { toast } from 'sonner'
 
 interface Story {
   id: string
@@ -56,6 +59,12 @@ export default function StoriesPage() {
   const [epics, setEpics] = React.useState<Epic[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState('')
+
+  // Modals
+  const [showCreateModal, setShowCreateModal] = React.useState(false)
+  const [showEditModal, setShowEditModal] = React.useState(false)
+  const [selectedStory, setSelectedStory] = React.useState<Story | undefined>()
+  const [selectedProjectId, setSelectedProjectId] = React.useState<string>('')
 
   // Filters
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
@@ -222,6 +231,52 @@ export default function StoriesPage() {
   const formatStoryType = (storyType: Story['storyType']) =>
     storyType ? toTitleCase(storyType) : 'Unknown'
 
+  const handleCreateStory = () => {
+    if (projects.length === 0) {
+      toast.error('Please create a project first')
+      router.push('/projects')
+      return
+    }
+
+    // If a project filter is selected, use that; otherwise use the first project
+    const projectId = projectFilter !== 'all' ? projectFilter : projects[0]?.id
+    if (!projectId) {
+      toast.error('No project selected')
+      return
+    }
+
+    setSelectedProjectId(projectId)
+    setSelectedStory(undefined)
+    setShowCreateModal(true)
+  }
+
+  const handleEditStory = (story: Story, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedStory(story)
+    setSelectedProjectId(story.projectId)
+    setShowEditModal(true)
+  }
+
+  const handleDeleteStory = async (storyId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this story?')) {
+      return
+    }
+
+    try {
+      await api.stories.delete(storyId)
+      toast.success('Story deleted successfully!')
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete story')
+    }
+  }
+
+  const handleModalSuccess = () => {
+    fetchData()
+  }
+
   // Filter stories based on selected filters
   const filteredStories = React.useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -294,6 +349,14 @@ export default function StoriesPage() {
                   disabled={loading}
                 >
                   Refresh
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleCreateStory}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Story
                 </Button>
                 <Badge variant="secondary" className="text-sm">
                   {filteredStories.length} {filteredStories.length === 1 ? 'story' : 'stories'}
@@ -430,13 +493,13 @@ export default function StoriesPage() {
               {filteredStories.map(story => (
                 <Card
                   key={story.id}
-                  className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer"
+                  className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer group"
                   onClick={() => router.push(`/stories/${story.id}`)}
                 >
                   <CardContent className="p-5">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {story.priority && (
                           <Badge className={cn('text-xs border', getPriorityColor(story.priority))}>
                             {formatPriorityLabel(story.priority)}
@@ -446,9 +509,29 @@ export default function StoriesPage() {
                           {formatStatusLabel(story.status)}
                         </Badge>
                       </div>
-                      {story.aiGenerated && (
-                        <Sparkles className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                      )}
+                      <div className="flex items-center gap-1">
+                        {story.aiGenerated && (
+                          <Sparkles className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                        )}
+                        <div className="hidden group-hover:flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => handleEditStory(story, e)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => handleDeleteStory(story.id, e)}
+                            className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Title */}
@@ -495,6 +578,25 @@ export default function StoriesPage() {
           )}
         </div>
       </main>
+
+      {/* Modals */}
+      {showCreateModal && (
+        <StoryFormModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          projectId={selectedProjectId}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+      {showEditModal && selectedStory && (
+        <StoryFormModal
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          projectId={selectedProjectId}
+          story={selectedStory}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   )
 }

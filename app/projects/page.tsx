@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Settings,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CreateProjectModal } from '@/components/create-project-modal'
+import { ProjectEditModal } from '@/components/project-edit-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +32,8 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
+  const [isEditOpen, setIsEditOpen] = React.useState(false)
+  const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
 
   React.useEffect(() => {
     fetchProjects()
@@ -86,6 +90,16 @@ export default function ProjectsPage() {
     if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`
     if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`
     return `${Math.floor(diffInDays / 365)} years ago`
+  }
+
+  const handleEditProject = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedProject(project)
+    setIsEditOpen(true)
+  }
+
+  const handleModalSuccess = () => {
+    fetchProjects()
   }
 
   if (isLoading) {
@@ -211,9 +225,19 @@ export default function ProjectsPage() {
                     <Badge variant="outline" className="font-mono">
                       {project.key}
                     </Badge>
-                    <Badge className={cn('border', getStatusColor(project.status))}>
-                      {project.status.replace('_', ' ')}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={cn('border', getStatusColor(project.status))}>
+                        {project.status.replace('_', ' ')}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => handleEditProject(project, e)}
+                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <CardTitle className="text-xl group-hover:text-purple-400 transition-colors">
                     {project.name}
@@ -279,12 +303,20 @@ export default function ProjectsPage() {
         </div>
       </main>
 
-      {/* Create Project Modal */}
+      {/* Modals */}
       <CreateProjectModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onSuccess={fetchProjects}
+        onSuccess={handleModalSuccess}
       />
+      {isEditOpen && selectedProject && (
+        <ProjectEditModal
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          project={selectedProject}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   )
 }
