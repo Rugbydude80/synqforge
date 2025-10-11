@@ -46,22 +46,31 @@ async function getStory(storyId: string): Promise<Story | null> {
       process.env.APP_URL?.replace(/\/$/, '') ||
       'http://localhost:3000'
 
-    const res = await fetch(`${baseUrl}/api/stories/${storyId}`, {
+    const url = `${baseUrl}/api/stories/${storyId}`
+    
+    const res = await fetch(url, {
       cache: 'no-store',
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
     })
 
-    if (res.status === 404 || res.status === 403) {
+    if (res.status === 404) {
+      console.warn(`Story not found: ${storyId}`)
+      return null
+    }
+    
+    if (res.status === 403) {
+      console.warn(`Access denied for story: ${storyId}`)
       return null
     }
 
     if (!res.ok) {
+      console.error(`Failed to load story ${storyId}: ${res.status} ${res.statusText}`)
       throw new Error('Failed to load story')
     }
 
     return res.json()
   } catch (error) {
-    console.error('Error fetching story:', error)
+    console.error(`Error fetching story ${storyId}:`, error)
     return null
   }
 }
