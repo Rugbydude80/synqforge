@@ -43,7 +43,11 @@ export function ProjectEditModal({
   const [error, setError] = React.useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<{
+    name: string
+    description: string
+    status: 'planning' | 'active' | 'on_hold' | 'completed' | 'archived'
+  }>({
     name: '',
     description: '',
     status: 'active',
@@ -55,7 +59,7 @@ export function ProjectEditModal({
       setFormData({
         name: project.name,
         description: project.description || '',
-        status: project.status || 'active',
+        status: (project.status as 'planning' | 'active' | 'on_hold' | 'completed' | 'archived') || 'active',
       })
     }
   }, [project])
@@ -206,7 +210,7 @@ export function ProjectEditModal({
               <Select
                 id="status"
                 value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'planning' | 'active' | 'on_hold' | 'completed' | 'archived' }))}
                 disabled={isLoading}
               >
                 <option value="planning">Planning</option>

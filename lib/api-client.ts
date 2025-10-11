@@ -93,7 +93,7 @@ export interface Epic {
   description?: string
   goals?: string
   color?: string
-  status: 'draft' | 'planned' | 'in_progress' | 'completed' | 'archived'
+  status: 'draft' | 'published' | 'planned' | 'in_progress' | 'completed' | 'archived'
   priority: 'low' | 'medium' | 'high' | 'critical'
   aiGenerated: boolean
   aiGenerationPrompt?: string
