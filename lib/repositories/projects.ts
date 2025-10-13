@@ -30,16 +30,26 @@ export class ProjectsRepository {
         updatedAt: projects.updatedAt,
         // Aggregate counts
         epicCount: sql<number>`(
-          SELECT COUNT(*) FROM ${epics} 
+          SELECT COUNT(*) FROM ${epics}
           WHERE ${epics.projectId} = ${projects.id}
         )`,
         storyCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+          SELECT COUNT(*) FROM ${stories}
           WHERE ${stories.projectId} = ${projects.id}
         )`,
+        completedStoryCount: sql<number>`(
+          SELECT COUNT(*) FROM ${stories}
+          WHERE ${stories.projectId} = ${projects.id}
+          AND ${stories.status} = 'done'
+        )`,
+        aiGeneratedStoryCount: sql<number>`(
+          SELECT COUNT(*) FROM ${stories}
+          WHERE ${stories.projectId} = ${projects.id}
+          AND ${stories.aiGenerated} = true
+        )`,
         activeSprintCount: sql<number>`(
-          SELECT COUNT(*) FROM ${sprints} 
-          WHERE ${sprints.projectId} = ${projects.id} 
+          SELECT COUNT(*) FROM ${sprints}
+          WHERE ${sprints.projectId} = ${projects.id}
           AND ${sprints.status} = 'active'
         )`,
       })

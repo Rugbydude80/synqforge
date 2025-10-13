@@ -53,6 +53,15 @@ export const templateCategoryEnum = pgEnum('template_category', [
   'api',
   'custom'
 ])
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'active',
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'past_due',
+  'trialing',
+  'unpaid'
+])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -67,12 +76,14 @@ export const organizations = pgTable(
     logoUrl: text('logo_url'),
     settings: json('settings').$type<Record<string, any>>(),
     subscriptionTier: subscriptionTierEnum('subscription_tier').default('free'),
+    stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   (table) => ({
     slugIdx: uniqueIndex('idx_org_slug').on(table.slug),
     tierIdx: index('idx_org_tier').on(table.subscriptionTier),
+    stripeCustomerIdx: index('idx_org_stripe_customer').on(table.stripeCustomerId),
   })
 )
 
@@ -727,6 +738,40 @@ export const sprintAnalyticsRelations = relations(sprintAnalytics, ({ one }) => 
     references: [sprints.id],
   }),
 }))
+
+// ============================================
+// STRIPE SUBSCRIPTIONS
+// ============================================
+
+export const stripeSubscriptions = pgTable(
+  'stripe_subscriptions',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    stripeCustomerId: varchar('stripe_customer_id', { length: 255 }).notNull(),
+    stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).notNull(),
+    stripePriceId: varchar('stripe_price_id', { length: 255 }).notNull(),
+    status: subscriptionStatusEnum('status').notNull(),
+    currentPeriodStart: timestamp('current_period_start'),
+    currentPeriodEnd: timestamp('current_period_end'),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
+    canceledAt: timestamp('canceled_at'),
+    trialStart: timestamp('trial_start'),
+    trialEnd: timestamp('trial_end'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_stripe_subs_org').on(table.organizationId),
+    customerIdx: index('idx_stripe_subs_customer').on(table.stripeCustomerId),
+    subscriptionIdx: uniqueIndex('idx_stripe_subs_subscription').on(table.stripeSubscriptionId),
+  })
+)
+
+// ============================================
+// RELATIONS
+// ============================================
 
 export const storyTemplatesRelations = relations(storyTemplates, ({ one, many }) => ({
   organization: one(organizations, {

@@ -24,7 +24,8 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 export default function DashboardPage() {
   const { status } = useSession()
   const router = useRouter()
-  const [projects, setProjects] = useState<any[]>([])
+  const [stats, setStats] = useState<any>(null)
+  const [activities, setActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
@@ -36,39 +37,45 @@ export default function DashboardPage() {
     }
 
     if (status === 'authenticated') {
-      fetchProjects()
+      fetchDashboardData()
     }
   }, [status, router])
 
-  const fetchProjects = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const { data } = await api.projects.list()
-      setProjects(data)
+      // Fetch all dashboard data in parallel
+      const [statsResponse, activitiesResponse] = await Promise.all([
+        api.dashboard.getStats(),
+        api.activities.list({ limit: 5 }),
+      ])
+
+      setStats(statsResponse)
+      setActivities(activitiesResponse.data)
       setError('')
     } catch (error: any) {
-      console.error('Failed to fetch projects:', error)
-      setError(error.message || 'Failed to load projects')
+      console.error('Failed to fetch dashboard data:', error)
+      setError(error.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
   }
 
   const calculateMetrics = () => {
-    if (projects.length === 0) {
+    if (!stats) {
       return [
         {
           title: 'Active Projects',
           value: '0',
-          change: 'No projects yet',
+          change: '+0 projects',
           trend: 'neutral',
           icon: FolderKanban,
           color: 'purple',
         },
         {
           title: 'Total Stories',
-          value: '0',
-          change: 'No stories yet',
+          value: '00',
+          change: '00 epics',
           trend: 'neutral',
           icon: FileText,
           color: 'emerald',
@@ -76,7 +83,7 @@ export default function DashboardPage() {
         {
           title: 'Completed',
           value: '0%',
-          change: 'No data',
+          change: '0 stories done',
           trend: 'neutral',
           icon: CheckCircle2,
           color: 'emerald',
@@ -84,7 +91,7 @@ export default function DashboardPage() {
         {
           title: 'AI Generated',
           value: '0',
-          change: 'No AI stories yet',
+          change: 'NaN% of stories',
           trend: 'neutral',
           icon: Sparkles,
           color: 'purple',
@@ -92,43 +99,36 @@ export default function DashboardPage() {
       ]
     }
 
-    const activeProjects = projects.filter((p: any) => p.status === 'active').length
-    const totalProjects = projects.length
-    const totalStories = projects.reduce((sum: number, p: any) => sum + (p.storyCount || 0), 0)
-    const totalEpics = projects.reduce((sum: number, p: any) => sum + (p.epicCount || 0), 0)
-    const completedStories = projects.reduce((sum: number, p: any) => sum + (p.completedStoryCount || 0), 0)
-    const aiGeneratedStories = Math.floor(totalStories * 0.6) // Estimate 60% AI generated
-
     return [
       {
         title: 'Active Projects',
-        value: activeProjects.toString(),
-        change: `${totalProjects > 0 ? '+' + activeProjects : activeProjects} projects`,
-        trend: activeProjects > 0 ? 'up' : 'neutral',
+        value: stats.activeProjects.toString(),
+        change: `+${stats.totalProjects} projects`,
+        trend: stats.activeProjects > 0 ? 'up' : 'neutral',
         icon: FolderKanban,
         color: 'purple',
       },
       {
         title: 'Total Stories',
-        value: totalStories.toString(),
-        change: `${totalEpics} epics`,
-        trend: totalStories > 0 ? 'up' : 'neutral',
+        value: stats.totalStories.toString().padStart(2, '0'),
+        change: `${stats.totalEpics.toString().padStart(2, '0')} epics`,
+        trend: stats.totalStories > 0 ? 'up' : 'neutral',
         icon: FileText,
         color: 'emerald',
       },
       {
         title: 'Completed',
-        value: totalStories > 0 ? `${Math.round((completedStories / totalStories) * 100)}%` : '0%',
-        change: `${completedStories} stories done`,
-        trend: completedStories > 0 ? 'up' : 'neutral',
+        value: `${stats.completionPercentage}%`,
+        change: `${stats.completedStories} stories done`,
+        trend: stats.completedStories > 0 ? 'up' : 'neutral',
         icon: CheckCircle2,
         color: 'emerald',
       },
       {
         title: 'AI Generated',
-        value: aiGeneratedStories.toString(),
-        change: `${Math.round((aiGeneratedStories / totalStories) * 100)}% of stories`,
-        trend: aiGeneratedStories > 0 ? 'up' : 'neutral',
+        value: stats.aiGeneratedStories.toString(),
+        change: stats.totalStories > 0 ? `${stats.aiGeneratedPercentage}% of stories` : 'NaN% of stories',
+        trend: stats.aiGeneratedStories > 0 ? 'up' : 'neutral',
         icon: Sparkles,
         color: 'purple',
       },
@@ -137,27 +137,54 @@ export default function DashboardPage() {
 
   const metrics = calculateMetrics()
 
-  const getRecentActivity = () => {
-    if (projects.length === 0) {
-      return []
+  const formatActivity = (activity: any) => {
+    const actionMap: Record<string, { title: string; type: string; status: string }> = {
+      created_project: {
+        title: `Created ${activity.projectName || 'project'}`,
+        type: 'project_created',
+        status: 'in-progress',
+      },
+      updated_project: {
+        title: `Updated ${activity.projectName || 'project'}`,
+        type: 'project_updated',
+        status: 'in-progress',
+      },
+      created_story: {
+        title: `Created story in ${activity.projectName || 'project'}`,
+        type: activity.newValues?.aiGenerated ? 'ai_generated' : 'story_created',
+        status: 'in-progress',
+      },
+      updated_story: {
+        title: `Updated story in ${activity.projectName || 'project'}`,
+        type: activity.newValues?.status === 'done' ? 'story_completed' : 'story_updated',
+        status: activity.newValues?.status === 'done' ? 'done' : 'in-progress',
+      },
+      created_epic: {
+        title: `Created epic in ${activity.projectName || 'project'}`,
+        type: activity.newValues?.aiGenerated ? 'ai_generated' : 'epic_created',
+        status: 'in-progress',
+      },
     }
 
-    // Generate activity based on projects
-    const activities = projects.slice(0, 4).map((project: any, index: number) => ({
-      id: index + 1,
-      type: index % 3 === 0 ? 'story_created' : index % 3 === 1 ? 'ai_generated' : 'story_completed',
-      title: `Updated ${project.name}`,
-      project: project.name,
-      projectId: project.id,
-      user: project.ownerName || 'You',
-      timestamp: new Date(Date.now() - (index + 1) * 1000 * 60 * 30),
-      status: project.status === 'active' ? 'in-progress' : 'done',
-    }))
+    const mappedActivity = actionMap[activity.action] || {
+      title: `${activity.action} in ${activity.projectName || 'project'}`,
+      type: 'other',
+      status: 'in-progress',
+    }
 
-    return activities
+    return {
+      id: activity.id,
+      title: mappedActivity.title,
+      type: mappedActivity.type,
+      project: activity.projectName || 'Unknown Project',
+      projectId: activity.projectId,
+      user: activity.userName || activity.userEmail || 'Unknown User',
+      timestamp: new Date(activity.createdAt),
+      status: mappedActivity.status,
+    }
   }
 
-  const recentActivity = getRecentActivity()
+  const recentActivity = activities.map(formatActivity)
 
   const quickActions = [
     {
@@ -301,45 +328,55 @@ export default function DashboardPage() {
             </div>
             <Card>
               <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {recentActivity.map((activity) => (
-                    <div
-                      key={activity.id}
-                      onClick={() => router.push(`/projects/${activity.projectId}`)}
-                      className="flex items-start gap-4 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
-                    >
+                {recentActivity.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>No recent activity yet</p>
+                    <p className="text-sm mt-1">Start by creating a project or generating stories</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {recentActivity.map((activity) => (
                       <div
+                        key={activity.id}
+                        onClick={() => activity.projectId && router.push(`/projects/${activity.projectId}`)}
                         className={cn(
-                          'mt-1 flex h-2 w-2 rounded-full',
-                          activity.type === 'ai_generated'
-                            ? 'bg-brand-purple-500 shadow-glow-purple'
-                            : 'bg-brand-emerald-500 shadow-glow-emerald'
+                          "flex items-start gap-4 p-4 transition-colors",
+                          activity.projectId && "hover:bg-accent/50 cursor-pointer"
                         )}
-                      />
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium">{activity.title}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{activity.project}</span>
-                          <span>•</span>
-                          <span>{activity.user}</span>
-                          <span>•</span>
-                          <span>{formatRelativeTime(activity.timestamp)}</span>
-                        </div>
-                      </div>
-                      <Badge
-                        variant={
-                          activity.status === 'done'
-                            ? 'emerald'
-                            : activity.status === 'in-progress'
-                            ? 'purple'
-                            : 'outline'
-                        }
                       >
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                        <div
+                          className={cn(
+                            'mt-1 flex h-2 w-2 rounded-full',
+                            activity.type === 'ai_generated'
+                              ? 'bg-brand-purple-500 shadow-glow-purple'
+                              : 'bg-brand-emerald-500 shadow-glow-emerald'
+                          )}
+                        />
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium">{activity.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{activity.project}</span>
+                            <span>•</span>
+                            <span>{activity.user}</span>
+                            <span>•</span>
+                            <span>{formatRelativeTime(activity.timestamp)}</span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            activity.status === 'done'
+                              ? 'emerald'
+                              : activity.status === 'in-progress'
+                              ? 'purple'
+                              : 'outline'
+                          }
+                        >
+                          {activity.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
             </div>
@@ -352,7 +389,7 @@ export default function DashboardPage() {
       <CreateProjectModal
         open={isCreateProjectOpen}
         onOpenChange={setIsCreateProjectOpen}
-        onSuccess={fetchProjects}
+        onSuccess={fetchDashboardData}
       />
     </div>
   )
