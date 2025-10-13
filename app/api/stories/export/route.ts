@@ -31,9 +31,6 @@ async function exportStories(req: NextRequest, context: any) {
   const epicId = searchParams.get('epicId')
 
   try {
-    // Build query conditions
-    const conditions = [eq(stories.projectId, projectId || '')]
-
     if (!projectId) {
       // If no project specified, get all stories in user's organization
       // We'll need to filter by organization through projects
@@ -51,7 +48,7 @@ async function exportStories(req: NextRequest, context: any) {
     }
 
     // Fetch stories with related data
-    let query = db
+    const baseQuery = db
       .select({
         id: stories.id,
         title: stories.title,
@@ -67,21 +64,26 @@ async function exportStories(req: NextRequest, context: any) {
         projectName: projects.name,
       })
       .from(stories)
-      .leftJoin(users, eq(stories.assignedTo, users.id))
+      .leftJoin(users, eq(stories.assigneeId, users.id))
       .leftJoin(epics, eq(stories.epicId, epics.id))
       .leftJoin(projects, eq(stories.projectId, projects.id))
 
-    if (projectId) {
-      query = query.where(eq(stories.projectId, projectId))
+    let storiesData
+    if (projectId && epicId) {
+      storiesData = await baseQuery.where(and(
+        eq(stories.projectId, projectId),
+        eq(stories.epicId, epicId)
+      ))
+    } else if (projectId) {
+      storiesData = await baseQuery.where(eq(stories.projectId, projectId))
+    } else if (epicId) {
+      storiesData = await baseQuery.where(and(
+        eq(projects.organizationId, context.user.organizationId),
+        eq(stories.epicId, epicId)
+      ))
     } else {
-      query = query.where(eq(projects.organizationId, context.user.organizationId))
+      storiesData = await baseQuery.where(eq(projects.organizationId, context.user.organizationId))
     }
-
-    if (epicId) {
-      query = query.where(eq(stories.epicId, epicId))
-    }
-
-    const storiesData = await query
 
     if (storiesData.length === 0) {
       return NextResponse.json(
@@ -94,14 +96,14 @@ async function exportStories(req: NextRequest, context: any) {
       id: s.id,
       title: s.title,
       description: s.description || undefined,
-      status: s.status,
-      priority: s.priority,
+      status: s.status || 'todo',
+      priority: s.priority || 'medium',
       storyPoints: s.storyPoints || undefined,
       acceptanceCriteria: s.acceptanceCriteria || undefined,
       assignedTo: s.assigneeName || s.assigneeEmail || undefined,
       epicTitle: s.epicTitle || undefined,
       projectName: s.projectName || undefined,
-      createdAt: s.createdAt.toISOString(),
+      createdAt: s.createdAt?.toISOString() || new Date().toISOString(),
     }))
 
     let buffer: Buffer
@@ -136,7 +138,7 @@ async function exportStories(req: NextRequest, context: any) {
         )
     }
 
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,

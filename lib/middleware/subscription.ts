@@ -53,7 +53,7 @@ export async function getSubscriptionLimits(
     .where(eq(organizations.id, user.organizationId))
     .limit(1)
 
-  if (!organization) {
+  if (!organization || !organization.subscriptionTier) {
     return TIER_LIMITS.free
   }
 
@@ -135,7 +135,7 @@ export function requireSubscription(requiredTier: 'pro' | 'enterprise') {
         )
       }
 
-      const currentTier = organization.subscriptionTier
+      const currentTier = organization.subscriptionTier || 'free'
 
       // Check if current tier meets requirement
       const tierHierarchy = ['free', 'pro', 'enterprise']

@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
 import { api, type Epic } from '@/lib/api-client'
 import { Layers, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,7 +32,6 @@ const priorityColors = {
 }
 
 export default function EpicsPage() {
-  const router = useRouter()
   const [epics, setEpics] = React.useState<Epic[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -249,7 +247,7 @@ export default function EpicsPage() {
       />
 
       <EpicFormModal
-        epic={selectedEpic}
+        epic={selectedEpic || undefined}
         open={showEditModal}
         onOpenChange={setShowEditModal}
         onSuccess={() => {

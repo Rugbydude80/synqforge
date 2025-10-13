@@ -71,7 +71,7 @@ const plans = [
 ]
 
 export default function PricingPage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 

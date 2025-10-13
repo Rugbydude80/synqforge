@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 
 export default function BillingPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)

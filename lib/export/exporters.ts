@@ -4,7 +4,7 @@
  */
 
 import * as XLSX from 'xlsx'
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType } from 'docx'
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import PDFDocument from 'pdfkit'
 
 // ============================================
@@ -211,8 +211,7 @@ export async function exportStoriesToDocx(stories: ExportStory[]): Promise<Buffe
           ...(story.acceptanceCriteria && story.acceptanceCriteria.length > 0
             ? [
                 new Paragraph({
-                  text: 'Acceptance Criteria:',
-                  bold: true,
+                  children: [new TextRun({ text: 'Acceptance Criteria:', bold: true })],
                 }),
                 ...story.acceptanceCriteria.map(
                   criteria =>

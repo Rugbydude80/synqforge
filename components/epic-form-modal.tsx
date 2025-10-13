@@ -22,7 +22,7 @@ import { Rocket } from 'lucide-react'
 interface EpicFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  projectId: string
+  projectId?: string
   epic?: Epic
   onSuccess?: () => void
 }
@@ -82,12 +82,17 @@ export function EpicFormModal({
       return
     }
 
+    if (!epic && !projectId) {
+      setError('Project is required when creating a new epic')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
       const epicData = {
-        projectId,
+        projectId: epic ? epic.projectId : projectId!,
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         goals: formData.goals.trim() || undefined,
