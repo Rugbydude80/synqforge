@@ -10,10 +10,22 @@
  */
 
 import { Resend } from 'resend'
-import StoryAssignedEmail from '@/emails/story-assigned'
-import NotificationDigestEmail from '@/emails/notification-digest'
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build')
+
+// Dynamic imports to avoid Next.js build issues with @react-email/components
+// Use eval to prevent webpack from analyzing the import during build
+const getStoryAssignedEmail = async () => {
+  const importPath = '@/emails/story-assigned'
+  const module = await (eval('import')(importPath))
+  return module.default
+}
+
+const getNotificationDigestEmail = async () => {
+  const importPath = '@/emails/notification-digest'
+  const module = await (eval('import')(importPath))
+  return module.default
+}
 
 interface SendStoryAssignedEmailOptions {
   to: string
@@ -27,6 +39,7 @@ interface SendStoryAssignedEmailOptions {
 
 export async function sendStoryAssignedEmail(options: SendStoryAssignedEmailOptions) {
   try {
+    const StoryAssignedEmail = await getStoryAssignedEmail()
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'SynqForge <notifications@synqforge.app>',
       to: options.to,
@@ -71,6 +84,7 @@ interface SendDigestEmailOptions {
 
 export async function sendDigestEmail(options: SendDigestEmailOptions) {
   try {
+    const NotificationDigestEmail = await getNotificationDigestEmail()
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'SynqForge <notifications@synqforge.app>',
       to: options.to,

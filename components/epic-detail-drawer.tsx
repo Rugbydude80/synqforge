@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Edit2, Trash2, ExternalLink, Target, Calendar, User } from 'lucide-react'
+import { Edit2, Trash2, ExternalLink, Target, Calendar } from 'lucide-react'
 import { api, type Epic, type Story } from '@/lib/api-client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'

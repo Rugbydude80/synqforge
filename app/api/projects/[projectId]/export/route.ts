@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { checkFeatureLimit } from '@/lib/middleware/subscription'
-import { db } from '@/lib/db'
-import { stories, epics, users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
 import {
   exportProjectsToExcel,
   exportProjectsToDocx,
@@ -42,8 +39,8 @@ async function exportProject(
       id: project.id,
       name: project.name,
       description: project.description || undefined,
-      status: project.status,
-      createdAt: project.createdAt.toISOString(),
+      status: project.status || 'active',
+      createdAt: project.createdAt?.toISOString() || new Date().toISOString(),
       totalStories: Number(project.storyCount) || 0,
       completedStories: Number(project.completedStoryCount) || 0,
       totalEpics: Number(project.epicCount) || 0,
@@ -81,7 +78,7 @@ async function exportProject(
         )
     }
 
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
-import { stripe, STRIPE_PLANS } from '@/lib/stripe/stripe-client'
+import { stripe } from '@/lib/stripe/stripe-client'
 import { db } from '@/lib/db'
 import { organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'

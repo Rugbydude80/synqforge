@@ -2,10 +2,9 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Check, CheckCheck, MessageSquare, UserPlus, AlertCircle, Sparkles } from 'lucide-react'
+import { Bell, CheckCheck, MessageSquare, UserPlus, AlertCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'

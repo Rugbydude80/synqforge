@@ -14,11 +14,9 @@ import { UserSelect } from '@/components/user-select'
 import { TagsInput } from '@/components/tags-input'
 import Link from 'next/link'
 import {
-  ArrowLeft,
   Calendar,
   User,
   Layers,
-  Tag,
   Edit2,
   Save,
   X,
@@ -34,22 +32,6 @@ import { cn } from '@/lib/utils'
 interface StoryDetailClientProps {
   story: Story
   currentUserId: string
-}
-
-const priorityColors = {
-  low: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-  medium: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-}
-
-const statusColors = {
-  backlog: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-  ready: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  in_progress: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  review: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  done: 'bg-green-500/10 text-green-400 border-green-500/20',
-  blocked: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
 const storyTypeColors = {

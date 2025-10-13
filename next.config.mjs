@@ -15,8 +15,18 @@ const nextConfig = {
   },
   // Skip static optimization for error pages to avoid NextAuth compatibility issues
   skipMiddlewareUrlNormalize: true,
-  // Explicitly configure webpack to handle CSS
-  webpack: (config) => {
+  // Explicitly configure webpack to handle CSS and exclude email templates
+  webpack: (config, { isServer }) => {
+    // Exclude email templates from static optimization
+    // Email templates use @react-email/components which has Html component
+    // that conflicts with Next.js static generation
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@/emails/story-assigned': false,
+        '@/emails/notification-digest': false,
+      }
+    }
     return config
   },
   // Security headers for production
