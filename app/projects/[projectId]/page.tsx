@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { EpicFormModal } from '@/components/epic-form-modal'
 import { AppSidebar } from '@/components/app-sidebar'
+import { ExportButton } from '@/components/export-button'
 import { ArrowLeft, Plus, Settings, Sparkles, Layers, FileText, Edit, Trash2, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -350,6 +351,12 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ExportButton
+                endpoint={`/api/projects/${projectId}/export`}
+                filename={project.name}
+                variant="outline"
+                size="sm"
+              />
               <Button
                 variant="outline"
                 size="sm"

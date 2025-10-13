@@ -43,6 +43,13 @@
       "when": 1759844008721,
       "tag": "0005_milky_plazm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760207140491,
+      "tag": "0006_add_stripe_subscriptions",
+      "breakpoints": true
     }
   ]
 }

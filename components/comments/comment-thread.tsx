@@ -122,84 +122,111 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
   const getReplies = (parentId: string) =>
     comments.filter((c) => c.parentCommentId === parentId)
 
-  const renderComment = (comment: Comment, isReply = false) => (
-    <Card key={comment.id} className={`p-4 ${isReply ? 'ml-8 mt-2' : 'mb-4'}`}>
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-            {comment.author.name?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <div>
-            <div className="font-semibold text-sm">{comment.author.name}</div>
-            <div className="text-xs text-gray-500">
-              {formatDistanceToNow(new Date(comment.createdAt), {
-                addSuffix: true,
-              })}
+  const renderComment = (comment: Comment, isReply = false) => {
+    const [copied, setCopied] = useState(false)
+
+    const copyPermalink = () => {
+      const url = `${window.location.origin}${window.location.pathname}#comment-${comment.id}`
+      navigator.clipboard.writeText(url)
+      setCopied(true)
+      toast.success('Comment link copied')
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    return (
+      <Card
+        key={comment.id}
+        id={`comment-${comment.id}`}
+        className={`p-4 ${isReply ? 'ml-8 mt-2' : 'mb-4'} scroll-mt-20`}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+              {comment.author.name?.charAt(0).toUpperCase() || 'U'}
             </div>
+            <div>
+              <div className="font-semibold text-sm">{comment.author.name}</div>
+              <div className="text-xs text-gray-500">
+                {formatDistanceToNow(new Date(comment.createdAt), {
+                  addSuffix: true,
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={copyPermalink}
+              className="text-muted-foreground hover:text-foreground"
+              title="Copy link to comment"
+            >
+              {copied ? '✓' : '🔗'}
+            </Button>
+            {comment.userId === currentUserId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(comment.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 
-        {comment.userId === currentUserId && (
+        <div className="text-sm mb-3 whitespace-pre-wrap">{comment.content}</div>
+
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleDelete(comment.id)}
-            className="text-red-500 hover:text-red-700"
+            onClick={() => handleReaction(comment.id, '👍')}
           >
-            Delete
+            👍 {comment.reactionCount > 0 && comment.reactionCount}
           </Button>
-        )}
-      </div>
-
-      <div className="text-sm mb-3 whitespace-pre-wrap">{comment.content}</div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleReaction(comment.id, '👍')}
-        >
-          👍 {comment.reactionCount > 0 && comment.reactionCount}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleReaction(comment.id, '❤️')}
-        >
-          ❤️
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setReplyingTo(comment.id)}
-        >
-          Reply
-        </Button>
-      </div>
-
-      {replyingTo === comment.id && (
-        <div className="mt-3">
-          <Textarea
-            placeholder="Write a reply..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="mb-2"
-          />
-          <div className="flex gap-2">
-            <Button onClick={() => handleSubmit(comment.id)} disabled={loading}>
-              {loading ? 'Posting...' : 'Reply'}
-            </Button>
-            <Button variant="ghost" onClick={() => setReplyingTo(null)}>
-              Cancel
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleReaction(comment.id, '❤️')}
+          >
+            ❤️
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setReplyingTo(comment.id)}
+          >
+            Reply
+          </Button>
         </div>
-      )}
 
-      {/* Render replies */}
-      {getReplies(comment.id).map((reply) => renderComment(reply, true))}
-    </Card>
-  )
+        {replyingTo === comment.id && (
+          <div className="mt-3">
+            <Textarea
+              placeholder="Write a reply..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              className="mb-2"
+            />
+            <div className="flex gap-2">
+              <Button onClick={() => handleSubmit(comment.id)} disabled={loading}>
+                {loading ? 'Posting...' : 'Reply'}
+              </Button>
+              <Button variant="ghost" onClick={() => setReplyingTo(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Render replies */}
+        {getReplies(comment.id).map((reply) => renderComment(reply, true))}
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-4">

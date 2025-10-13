@@ -683,6 +683,13 @@ export const api = {
     },
 
     /**
+     * List all users in organization
+     */
+    list: async (): Promise<ListResponse<User>> => {
+      return fetchAPI<ListResponse<User>>('/api/users/search')
+    },
+
+    /**
      * Search users in organization
      */
     search: async (query: string, organizationId: string): Promise<User[]> => {
@@ -721,6 +728,27 @@ export const api = {
       return fetchAPI<ListResponse<Activity>>(
         `/api/activities?${params.toString()}`
       )
+    },
+  },
+
+  // ============================================
+  // DASHBOARD
+  // ============================================
+  dashboard: {
+    /**
+     * Get dashboard statistics for the organization
+     */
+    getStats: async (): Promise<{
+      totalProjects: number
+      activeProjects: number
+      totalStories: number
+      completedStories: number
+      aiGeneratedStories: number
+      totalEpics: number
+      completionPercentage: number
+      aiGeneratedPercentage: number
+    }> => {
+      return fetchAPI('/api/dashboard/stats')
     },
   },
 }

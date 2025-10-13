@@ -1,0 +1,255 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { stripe } from '@/lib/stripe/stripe-client'
+import { db, generateId } from '@/lib/db'
+import { organizations, stripeSubscriptions } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import Stripe from 'stripe'
+
+/**
+ * POST /api/webhooks/stripe
+ * Handle Stripe webhook events
+ */
+export async function POST(req: NextRequest) {
+  const body = await req.text()
+  const signature = req.headers.get('stripe-signature')
+
+  if (!signature) {
+    return NextResponse.json(
+      { error: 'No signature provided' },
+      { status: 400 }
+    )
+  }
+
+  let event: Stripe.Event
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message)
+    return NextResponse.json(
+      { error: 'Invalid signature' },
+      { status: 400 }
+    )
+  }
+
+  console.log('Received Stripe webhook event:', event.type)
+
+  try {
+    switch (event.type) {
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
+        break
+
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        break
+
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
+        break
+
+      case 'customer.created':
+      case 'customer.updated':
+        // Handle customer creation/update if needed
+        console.log('Customer event:', event.type)
+        break
+
+      default:
+        console.log('Unhandled event type:', event.type)
+    }
+
+    return NextResponse.json({ received: true })
+  } catch (error) {
+    console.error('Error handling webhook:', error)
+    return NextResponse.json(
+      { error: 'Webhook handler failed' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Handle subscription creation or update
+ */
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+  const customerId = subscription.customer as string
+  const subscriptionId = subscription.id
+  const status = subscription.status
+  const priceId = subscription.items.data[0]?.price.id
+
+  console.log('Handling subscription update:', {
+    customerId,
+    subscriptionId,
+    status,
+  })
+
+  // Find organization by Stripe customer ID
+  const [organization] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.stripeCustomerId, customerId))
+    .limit(1)
+
+  if (!organization) {
+    console.error('Organization not found for customer:', customerId)
+    return
+  }
+
+  // Determine subscription tier based on price ID
+  let tier: 'free' | 'pro' | 'enterprise' = 'free'
+  if (priceId?.includes('pro')) {
+    tier = 'pro'
+  } else if (priceId?.includes('enterprise')) {
+    tier = 'enterprise'
+  }
+
+  // Update or create subscription record
+  const [existingSubscription] = await db
+    .select()
+    .from(stripeSubscriptions)
+    .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+    .limit(1)
+
+  const subscriptionData = {
+    organizationId: organization.id,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    stripePriceId: priceId || '',
+    status: status as any,
+    currentPeriodStart: subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000)
+      : null,
+    currentPeriodEnd: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : null,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    canceledAt: subscription.canceled_at
+      ? new Date(subscription.canceled_at * 1000)
+      : null,
+    trialStart: subscription.trial_start
+      ? new Date(subscription.trial_start * 1000)
+      : null,
+    trialEnd: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000)
+      : null,
+    metadata: subscription.metadata,
+    updatedAt: new Date(),
+  }
+
+  if (existingSubscription) {
+    // Update existing subscription
+    await db
+      .update(stripeSubscriptions)
+      .set(subscriptionData)
+      .where(eq(stripeSubscriptions.id, existingSubscription.id))
+  } else {
+    // Create new subscription
+    await db.insert(stripeSubscriptions).values({
+      id: generateId(),
+      ...subscriptionData,
+      createdAt: new Date(),
+    })
+  }
+
+  // Update organization subscription tier
+  await db
+    .update(organizations)
+    .set({
+      subscriptionTier: tier,
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, organization.id))
+
+  console.log('Subscription updated successfully for org:', organization.name)
+}
+
+/**
+ * Handle subscription deletion (cancellation)
+ */
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const subscriptionId = subscription.id
+
+  console.log('Handling subscription deletion:', subscriptionId)
+
+  // Find the subscription
+  const [existingSubscription] = await db
+    .select()
+    .from(stripeSubscriptions)
+    .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+    .limit(1)
+
+  if (!existingSubscription) {
+    console.error('Subscription not found:', subscriptionId)
+    return
+  }
+
+  // Update subscription status
+  await db
+    .update(stripeSubscriptions)
+    .set({
+      status: 'canceled',
+      canceledAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(stripeSubscriptions.id, existingSubscription.id))
+
+  // Downgrade organization to free tier
+  await db
+    .update(organizations)
+    .set({
+      subscriptionTier: 'free',
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, existingSubscription.organizationId))
+
+  console.log('Subscription canceled, org downgraded to free')
+}
+
+/**
+ * Handle successful payment
+ */
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  const subscriptionId = invoice.subscription as string
+
+  console.log('Payment succeeded for subscription:', subscriptionId)
+
+  // Update subscription if needed
+  if (subscriptionId) {
+    await db
+      .update(stripeSubscriptions)
+      .set({
+        status: 'active',
+        updatedAt: new Date(),
+      })
+      .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+  }
+}
+
+/**
+ * Handle failed payment
+ */
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  const subscriptionId = invoice.subscription as string
+
+  console.log('Payment failed for subscription:', subscriptionId)
+
+  // Update subscription status
+  if (subscriptionId) {
+    await db
+      .update(stripeSubscriptions)
+      .set({
+        status: 'past_due',
+        updatedAt: new Date(),
+      })
+      .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+  }
+}
