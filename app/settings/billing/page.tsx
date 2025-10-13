@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink } from 'lucide-react'
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 
-export default function BillingPage() {
+function BillingPageContent() {
   const { status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -263,5 +263,13 @@ export default function BillingPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+      <BillingPageContent />
+    </Suspense>
   )
 }
