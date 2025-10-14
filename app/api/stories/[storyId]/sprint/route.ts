@@ -113,10 +113,10 @@ async function assignToSprint(req: NextRequest, context: { user: any }) {
 /**
  * DELETE /api/stories/[storyId]/sprint?sprintId=xxx - Remove story from a sprint
  */
-async function removeFromSprint(_req: NextRequest, context: { user: any }) {
+async function removeFromSprint(_request: NextRequest, context: { user: any }) {
   try {
-    const storyId = _req.nextUrl.pathname.split('/')[3];
-    const { searchParams } = new URL(_req.url);
+    const storyId = _request.nextUrl.pathname.split('/')[3];
+    const { searchParams } = new URL(_request.url);
     const sprintId = searchParams.get('sprintId');
 
     if (!storyId) {

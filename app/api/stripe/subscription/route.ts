@@ -8,7 +8,7 @@ import { eq, and, desc } from 'drizzle-orm'
  * GET /api/stripe/subscription
  * Get current subscription for the user's organization
  */
-async function getSubscription(_req: NextRequest, context: any) {
+async function getSubscription(_request: NextRequest, context: any) {
   try {
     // Get organization
     const [organization] = await db

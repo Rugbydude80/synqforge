@@ -7,7 +7,7 @@ import { CreateProjectInput } from '@/lib/types'
  * GET /api/projects
  * Get all projects for the current user's organization
  */
-async function getProjects(_req: NextRequest, context: any) {
+async function getProjects(_request: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {

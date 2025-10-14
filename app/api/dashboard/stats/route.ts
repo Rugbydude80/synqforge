@@ -8,7 +8,7 @@ import { eq, sql } from 'drizzle-orm'
  * GET /api/dashboard/stats
  * Get organization-wide dashboard statistics
  */
-async function getDashboardStats(_req: NextRequest, context: any) {
+async function getDashboardStats(_request: NextRequest, context: any) {
   try {
     const organizationId = context.user.organizationId
 

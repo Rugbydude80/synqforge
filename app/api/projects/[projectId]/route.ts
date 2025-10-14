@@ -7,7 +7,7 @@ import type { UpdateProjectInput } from '@/lib/types'
  * GET /api/projects/[projectId]
  * Get a specific project by ID
  */
-async function getProject(_req: NextRequest, context: any) {
+async function getProject(_request: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -95,7 +95,7 @@ async function updateProject(req: NextRequest, context: any) {
  * DELETE /api/projects/[projectId]
  * Delete a specific project
  */
-async function deleteProject(_req: NextRequest, context: any) {
+async function deleteProject(_request: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
