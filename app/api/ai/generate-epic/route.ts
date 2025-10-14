@@ -6,6 +6,8 @@ import { ProjectsRepository } from '@/lib/repositories/projects';
 import { generateEpicSchema } from '@/lib/validations/ai';
 import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
+import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
+import { AI_TOKEN_COSTS } from '@/lib/constants';
 
 /**
  * POST /api/ai/generate-epic
@@ -37,6 +39,24 @@ export const POST = withAuth(
             status: 429,
             headers: { 'Retry-After': retryAfter.toString() },
           }
+        );
+      }
+
+      // Check AI usage limits
+      const usageCheck = await checkAIUsageLimit(user, AI_TOKEN_COSTS.EPIC_CREATION);
+
+      if (!usageCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'USAGE_LIMIT_EXCEEDED',
+              message: usageCheck.reason,
+            },
+            upgradeUrl: usageCheck.upgradeUrl,
+            usage: usageCheck.usage,
+          },
+          { status: 402 }
         );
       }
 

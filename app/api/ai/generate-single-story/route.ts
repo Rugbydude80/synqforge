@@ -5,6 +5,8 @@ import { ProjectsRepository } from '@/lib/repositories/projects';
 import { NotFoundError, ForbiddenError } from '@/lib/types';
 import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
+import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
+import { AI_TOKEN_COSTS } from '@/lib/constants';
 
 const generateSingleStorySchema = z.object({
   requirement: z
@@ -42,6 +44,20 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
           status: 429,
           headers: { 'Retry-After': retryAfter.toString() },
         }
+      );
+    }
+
+    // Check AI usage limits
+    const usageCheck = await checkAIUsageLimit(context.user, AI_TOKEN_COSTS.STORY_GENERATION);
+
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: usageCheck.reason,
+          upgradeUrl: usageCheck.upgradeUrl,
+          usage: usageCheck.usage,
+        },
+        { status: 402 }
       );
     }
 
