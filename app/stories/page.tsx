@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -30,6 +30,9 @@ interface Epic {
 export default function StoriesPage() {
   const { status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const highlightId = searchParams?.get('highlight')
+
   const [stories, setStories] = React.useState<Story[]>([])
   const [projects, setProjects] = React.useState<Project[]>([])
   const [epics, setEpics] = React.useState<Epic[]>([])
@@ -253,6 +256,25 @@ export default function StoriesPage() {
     fetchData()
   }
 
+  // Effect to scroll to highlighted story
+  React.useEffect(() => {
+    if (highlightId && !loading) {
+      // Wait for DOM to render
+      setTimeout(() => {
+        const element = document.getElementById(`story-${highlightId}`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            const params = new URLSearchParams(window.location.search)
+            params.delete('highlight')
+            router.replace(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { scroll: false })
+          }, 3000)
+        }
+      }, 100)
+    }
+  }, [highlightId, loading, router])
+
   // Filter stories based on selected filters
   const filteredStories = React.useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -469,7 +491,11 @@ export default function StoriesPage() {
               {filteredStories.map(story => (
                 <Card
                   key={story.id}
-                  className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer group"
+                  id={`story-${story.id}`}
+                  className={cn(
+                    "bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer group",
+                    highlightId === story.id && "ring-2 ring-purple-500 border-purple-500 animate-pulse"
+                  )}
                   onClick={() => router.push(`/stories/${story.id}`)}
                 >
                   <CardContent className="p-5">

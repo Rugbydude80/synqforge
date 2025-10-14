@@ -217,9 +217,21 @@ export default function EpicsPage() {
                     {(epic.totalStories !== undefined || epic.aiGenerated) && (
                       <div className="flex items-center gap-2 mt-4 pt-4 border-t">
                         {epic.totalStories !== undefined && (
-                          <span className="text-xs text-muted-foreground">
-                            {epic.completedStories || 0} / {epic.totalStories} stories
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {epic.completedStories || 0} / {epic.totalStories} stories
+                            </span>
+                            {epic.totalStories > 0 && (
+                              <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-primary transition-all"
+                                  style={{
+                                    width: `${epic.totalStories > 0 ? ((epic.completedStories || 0) / epic.totalStories) * 100 : 0}%`
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
                         )}
                         {epic.aiGenerated && (
                           <Badge variant="secondary" className="text-xs ml-auto">

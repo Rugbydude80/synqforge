@@ -204,7 +204,11 @@ export default function EpicDetailPage() {
             ) : (
               <div className="space-y-3">
                 {stories.map(story => (
-                  <Card key={story.id} className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 transition-all">
+                  <Card
+                    key={story.id}
+                    className="bg-gray-800/50 border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer"
+                    onClick={() => router.push(`/stories?highlight=${story.id}`)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -219,7 +223,9 @@ export default function EpicDetailPage() {
                               <Sparkles className="h-4 w-4 text-purple-400" />
                             )}
                           </div>
-                          <h3 className="font-semibold text-white mb-1">{story.title}</h3>
+                          <h3 className="font-semibold text-white mb-1 hover:text-purple-400 transition-colors">
+                            {story.title}
+                          </h3>
                           {story.description && (
                             <p className="text-sm text-gray-400 line-clamp-2">{story.description}</p>
                           )}
