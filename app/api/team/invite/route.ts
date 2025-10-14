@@ -75,8 +75,11 @@ export async function POST(request: NextRequest) {
     // Check subscription limits
     const userContext = {
       id: currentUser.id,
+      email: currentUser.email,
+      name: currentUser.name,
       organizationId: currentUser.organizationId,
       role: currentUser.role || 'member',
+      isActive: currentUser.isActive ?? true,
     }
 
     const canAdd = await canAddUser(userContext)
