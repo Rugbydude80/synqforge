@@ -57,6 +57,10 @@ export async function POST(req: NextRequest) {
         await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
         break
 
+      case 'checkout.session.completed':
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+        break
+
       case 'customer.created':
       case 'customer.updated':
         // Handle customer creation/update if needed
@@ -251,5 +255,36 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
         updatedAt: new Date(),
       })
       .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+  }
+}
+
+/**
+ * Handle checkout session completion (for one-time token purchases)
+ */
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const metadata = session.metadata
+
+  console.log('Checkout completed:', {
+    sessionId: session.id,
+    metadata,
+  })
+
+  // Check if this is a token purchase
+  if (metadata?.type === 'token_purchase') {
+    const organizationId = metadata.organizationId
+    const tokens = parseInt(metadata.tokens || '0')
+
+    if (!organizationId || !tokens) {
+      console.error('Missing organizationId or tokens in metadata')
+      return
+    }
+
+    // Import the token balance functions dynamically to avoid circular dependencies
+    const { addPurchasedTokens } = await import('@/lib/services/ai-usage.service')
+
+    // Add the purchased tokens to the organization's balance
+    await addPurchasedTokens(organizationId, tokens, session.id)
+
+    console.log(`Added ${tokens} tokens to organization ${organizationId}`)
   }
 }

@@ -427,6 +427,24 @@ export const creditTransactions = pgTable(
   })
 )
 
+export const tokenBalances = pgTable(
+  'token_balances',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull().unique(),
+    purchasedTokens: integer('purchased_tokens').default(0).notNull(),
+    usedTokens: integer('used_tokens').default(0).notNull(),
+    bonusTokens: integer('bonus_tokens').default(0).notNull(),
+    totalTokens: integer('total_tokens').default(0).notNull(), // purchasedTokens + bonusTokens - usedTokens
+    lastPurchaseAt: timestamp('last_purchase_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: uniqueIndex('idx_token_balances_org').on(table.organizationId),
+  })
+)
+
 // ============================================
 // COMMENTS & COLLABORATION
 // ============================================

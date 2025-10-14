@@ -35,6 +35,126 @@ export const LIMITS = {
   SPRINT_MAX_DAYS: 30,
 } as const
 
+/**
+ * Subscription Tier Limits
+ * Aligned with Stripe products and pricing page
+ */
+export const SUBSCRIPTION_LIMITS = {
+  free: {
+    // Projects & Stories
+    maxProjects: 1,
+    maxStoriesPerProject: 50,
+    maxUsers: 1,
+
+    // AI Usage
+    monthlyAITokens: 10000, // ~10-15 story generations
+    monthlyAIGenerations: 10,
+    maxStoriesPerGeneration: 5,
+    canUseAdvancedAI: false,
+    canUseDocumentAnalysis: false,
+
+    // Features
+    canExport: false,
+    canUseTemplates: false,
+    canUseCustomFields: false,
+    canUseAdvancedAnalytics: false,
+    canUseSSO: false,
+
+    // Support
+    supportLevel: 'community',
+
+    // Display name
+    displayName: 'Free',
+  },
+  pro: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxUsers: 10,
+
+    // AI Usage
+    monthlyAITokens: 500000, // ~500-750 story generations
+    monthlyAIGenerations: 500,
+    maxStoriesPerGeneration: 20,
+    canUseAdvancedAI: true,
+    canUseDocumentAnalysis: true,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: true,
+    canUseSSO: false,
+
+    // Support
+    supportLevel: 'priority',
+
+    // Display name
+    displayName: 'Pro',
+  },
+  enterprise: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxUsers: Infinity,
+
+    // AI Usage
+    monthlyAITokens: Infinity, // Unlimited
+    monthlyAIGenerations: Infinity,
+    maxStoriesPerGeneration: 50,
+    canUseAdvancedAI: true,
+    canUseDocumentAnalysis: true,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: true,
+    canUseSSO: true,
+
+    // Support
+    supportLevel: 'dedicated',
+
+    // Display name
+    displayName: 'Enterprise',
+  },
+} as const
+
+/**
+ * AI Token Costs (in tokens)
+ * Based on average usage patterns
+ */
+export const AI_TOKEN_COSTS = {
+  STORY_GENERATION: 1000, // Average per story generated
+  STORY_VALIDATION: 500,
+  EPIC_CREATION: 1500,
+  DOCUMENT_ANALYSIS: 2000,
+} as const
+
+/**
+ * Token Top-up Packages (for pay-as-you-go)
+ */
+export const TOKEN_PACKAGES = {
+  small: {
+    tokens: 50000,
+    price: 5, // $5
+    displayName: '50K Tokens',
+    description: '~50 story generations',
+  },
+  medium: {
+    tokens: 150000,
+    price: 12, // $12 (20% discount)
+    displayName: '150K Tokens',
+    description: '~150 story generations',
+  },
+  large: {
+    tokens: 500000,
+    price: 35, // $35 (30% discount)
+    displayName: '500K Tokens',
+    description: '~500 story generations',
+  },
+} as const
+
 export const EXAMPLE_PROMPTS = [
   'Create a user authentication system with email/password login, OAuth (Google/GitHub), password reset, and 2FA support.',
   'Build a real-time chat feature with typing indicators, read receipts, file attachments, and emoji reactions.',

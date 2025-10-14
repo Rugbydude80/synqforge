@@ -4,6 +4,8 @@ import { aiService } from '@/lib/services/ai.service';
 import { fileProcessorService } from '@/lib/services/file-processor.service';
 import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
+import { checkAIUsageLimit, checkDocumentAnalysisAccess } from '@/lib/services/ai-usage.service';
+import { AI_TOKEN_COSTS } from '@/lib/constants';
 
 async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
@@ -33,6 +35,31 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
           status: 429,
           headers: { 'Retry-After': retryAfter.toString() },
         }
+      );
+    }
+
+    // Check document analysis access (Pro/Enterprise feature)
+    const accessCheck = await checkDocumentAnalysisAccess(context.user);
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: accessCheck.reason,
+          upgradeUrl: accessCheck.upgradeUrl,
+        },
+        { status: 402 }
+      );
+    }
+
+    // Check AI usage limits
+    const usageCheck = await checkAIUsageLimit(context.user, AI_TOKEN_COSTS.DOCUMENT_ANALYSIS);
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: usageCheck.reason,
+          upgradeUrl: usageCheck.upgradeUrl,
+          usage: usageCheck.usage,
+        },
+        { status: 402 }
       );
     }
 

@@ -5,41 +5,30 @@
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { organizations, projects, stories } from '@/lib/db/schema'
+import { organizations, projects, stories, users } from '@/lib/db/schema'
 import { eq, count } from 'drizzle-orm'
 import type { UserContext } from './auth'
+import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
 export interface SubscriptionLimits {
   maxProjects: number
   maxStoriesPerProject: number
-  canExport: boolean
+  maxUsers: number
+  monthlyAITokens: number
+  monthlyAIGenerations: number
+  maxStoriesPerGeneration: number
   canUseAdvancedAI: boolean
+  canUseDocumentAnalysis: boolean
+  canExport: boolean
   canUseTemplates: boolean
+  canUseCustomFields: boolean
+  canUseAdvancedAnalytics: boolean
+  canUseSSO: boolean
+  supportLevel: string
+  displayName: string
 }
 
-const TIER_LIMITS: Record<string, SubscriptionLimits> = {
-  free: {
-    maxProjects: 1,
-    maxStoriesPerProject: 50,
-    canExport: false,
-    canUseAdvancedAI: false,
-    canUseTemplates: false,
-  },
-  pro: {
-    maxProjects: Infinity,
-    maxStoriesPerProject: Infinity,
-    canExport: true,
-    canUseAdvancedAI: true,
-    canUseTemplates: true,
-  },
-  enterprise: {
-    maxProjects: Infinity,
-    maxStoriesPerProject: Infinity,
-    canExport: true,
-    canUseAdvancedAI: true,
-    canUseTemplates: true,
-  },
-}
+const TIER_LIMITS: Record<string, SubscriptionLimits> = SUBSCRIPTION_LIMITS
 
 /**
  * Get subscription limits for a user's organization
@@ -108,6 +97,36 @@ export async function canExport(user: UserContext): Promise<boolean> {
 }
 
 /**
+ * Check if organization can add more users
+ */
+export async function canAddUser(user: UserContext): Promise<boolean> {
+  const limits = await getSubscriptionLimits(user)
+
+  if (limits.maxUsers === Infinity) {
+    return true
+  }
+
+  const [result] = await db
+    .select({ count: count() })
+    .from(users)
+    .where(eq(users.organizationId, user.organizationId))
+
+  return (result?.count || 0) < limits.maxUsers
+}
+
+/**
+ * Get current user count for organization
+ */
+export async function getUserCount(organizationId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(users)
+    .where(eq(users.organizationId, organizationId))
+
+  return result?.count || 0
+}
+
+/**
  * Middleware wrapper to require specific subscription tier
  */
 export function requireSubscription(requiredTier: 'pro' | 'enterprise') {
@@ -164,9 +183,11 @@ export function requireSubscription(requiredTier: 'pro' | 'enterprise') {
  */
 export async function checkFeatureLimit(
   user: UserContext,
-  feature: 'project' | 'story' | 'export',
+  feature: 'project' | 'story' | 'export' | 'user',
   projectId?: string
-): Promise<{ allowed: boolean; error?: string }> {
+): Promise<{ allowed: boolean; error?: string; upgradeUrl?: string }> {
+  const upgradeUrl = '/pricing'
+
   switch (feature) {
     case 'project': {
       const allowed = await canCreateProject(user)
@@ -175,6 +196,7 @@ export async function checkFeatureLimit(
         error: allowed
           ? undefined
           : 'Project limit reached. Upgrade to Pro for unlimited projects.',
+        upgradeUrl: allowed ? undefined : upgradeUrl,
       }
     }
 
@@ -188,6 +210,7 @@ export async function checkFeatureLimit(
         error: allowed
           ? undefined
           : 'Story limit reached for this project. Upgrade to Pro for unlimited stories.',
+        upgradeUrl: allowed ? undefined : upgradeUrl,
       }
     }
 
@@ -198,6 +221,20 @@ export async function checkFeatureLimit(
         error: allowed
           ? undefined
           : 'Export feature requires Pro subscription.',
+        upgradeUrl: allowed ? undefined : upgradeUrl,
+      }
+    }
+
+    case 'user': {
+      const allowed = await canAddUser(user)
+      const limits = await getSubscriptionLimits(user)
+      const currentCount = await getUserCount(user.organizationId)
+      return {
+        allowed,
+        error: allowed
+          ? undefined
+          : `User limit reached (${currentCount}/${limits.maxUsers} users). Upgrade to add more team members.`,
+        upgradeUrl: allowed ? undefined : upgradeUrl,
       }
     }
 

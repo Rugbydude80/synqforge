@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Zap,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ export interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { id: 'projects', icon: FolderKanban, label: 'Projects', href: '/projects' },
+  { id: 'epics', icon: Layers, label: 'Epics', href: '/epics' },
   { id: 'stories', icon: FileText, label: 'Stories', href: '/stories' },
   { id: 'ai', icon: Sparkles, label: 'AI Tools', href: '/ai-generate' },
   { id: 'team', icon: Users, label: 'Team', href: '/team' },
@@ -37,6 +39,7 @@ export function AppSidebar() {
   const getActiveNav = () => {
     if (pathname.startsWith('/dashboard')) return 'dashboard'
     if (pathname.startsWith('/projects')) return 'projects'
+    if (pathname.startsWith('/epics')) return 'epics'
     if (pathname.startsWith('/stories')) return 'stories'
     if (pathname.startsWith('/ai-generate')) return 'ai'
     if (pathname.startsWith('/team')) return 'team'

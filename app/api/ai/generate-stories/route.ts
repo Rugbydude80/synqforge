@@ -6,6 +6,8 @@ import { EpicsRepository } from '@/lib/repositories/epics';
 import { generateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
+import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
+import { AI_TOKEN_COSTS } from '@/lib/constants';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -16,6 +18,7 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     const body = await req.json();
     const validatedData = generateStoriesSchema.parse(body);
 
+    // Check rate limit first
     const rateLimitResult = await checkRateLimit(
       `ai:generate-stories:${context.user.id}`,
       aiGenerationRateLimit
@@ -32,6 +35,21 @@ async function generateStories(req: NextRequest, context: AuthContext) {
           status: 429,
           headers: { 'Retry-After': retryAfter.toString() },
         }
+      );
+    }
+
+    // Check AI usage limits (tokens and generation count)
+    const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION * 5; // Estimate for 5 stories
+    const usageCheck = await checkAIUsageLimit(context.user, estimatedTokens);
+
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: usageCheck.reason,
+          upgradeUrl: usageCheck.upgradeUrl,
+          usage: usageCheck.usage,
+        },
+        { status: 402 } // Payment Required
       );
     }
 
