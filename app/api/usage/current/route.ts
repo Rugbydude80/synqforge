@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { getMonthlyUsage, getOrganizationLimits, getTokenBalance } from '@/lib/services/ai-usage.service';
 
-async function getCurrentUsage(req: NextRequest, context: AuthContext) {
+async function getCurrentUsage(_req: NextRequest, context: AuthContext) {
   try {
     const [usage, limits, purchasedTokens] = await Promise.all([
       getMonthlyUsage(context.user.organizationId),
