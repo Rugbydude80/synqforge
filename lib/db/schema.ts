@@ -62,6 +62,7 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'trialing',
   'unpaid'
 ])
+export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'rejected', 'expired'])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -123,6 +124,30 @@ export const passwordResetTokens = pgTable(
     userIdx: index('idx_reset_tokens_user').on(table.userId),
     tokenIdx: uniqueIndex('idx_reset_tokens_token').on(table.token),
     expiresIdx: index('idx_reset_tokens_expires').on(table.expiresAt),
+  })
+)
+
+export const teamInvitations = pgTable(
+  'team_invitations',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    role: roleEnum('role').default('member'),
+    invitedBy: varchar('invited_by', { length: 36 }).notNull(),
+    status: invitationStatusEnum('status').default('pending'),
+    token: varchar('token', { length: 255 }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    rejectedAt: timestamp('rejected_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_invitations_org').on(table.organizationId),
+    emailIdx: index('idx_invitations_email').on(table.email),
+    tokenIdx: uniqueIndex('idx_invitations_token').on(table.token),
+    statusIdx: index('idx_invitations_status').on(table.status),
+    expiresIdx: index('idx_invitations_expires').on(table.expiresAt),
   })
 )
 
@@ -629,6 +654,17 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
   user: one(users, {
     fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}))
+
+export const teamInvitationsRelations = relations(teamInvitations, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [teamInvitations.organizationId],
+    references: [organizations.id],
+  }),
+  inviter: one(users, {
+    fields: [teamInvitations.invitedBy],
     references: [users.id],
   }),
 }))
