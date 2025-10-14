@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm'
  * GET /api/team
  * Get all team members for the current user's organization
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
