@@ -42,7 +42,7 @@ interface Invitation {
 }
 
 export default function TeamPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
