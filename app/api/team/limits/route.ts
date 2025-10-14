@@ -37,8 +37,11 @@ export async function GET(_request: NextRequest) {
 
     const userContext = {
       id: currentUser.id,
+      email: currentUser.email,
+      name: currentUser.name,
       organizationId: currentUser.organizationId,
       role: currentUser.role || 'member',
+      isActive: currentUser.isActive ?? true,
     }
 
     // Get subscription limits
