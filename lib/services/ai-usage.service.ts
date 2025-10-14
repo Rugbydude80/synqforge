@@ -297,7 +297,7 @@ export async function getTokenBalance(organizationId: string): Promise<number> {
 export async function addPurchasedTokens(
   organizationId: string,
   tokens: number,
-  stripeTransactionId: string
+  _stripeTransactionId: string
 ): Promise<void> {
   const [existing] = await db
     .select()
