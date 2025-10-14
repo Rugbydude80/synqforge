@@ -253,7 +253,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess }: InviteMemberMo
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'admin' | 'member' | 'viewer')}
-                disabled={loading || (limits && !limits.canAddMore)}
+                disabled={loading || (limits?.canAddMore === false)}
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="member">Member - Can create and edit content</option>
@@ -299,7 +299,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess }: InviteMemberMo
               </Button>
               <Button
                 type="submit"
-                disabled={loading || (limits && !limits.canAddMore)}
+                disabled={loading || (limits?.canAddMore === false)}
                 className="flex-1"
               >
                 {loading ? 'Sending...' : 'Send Invitation'}
