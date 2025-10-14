@@ -366,7 +366,7 @@ export class StoriesRepository {
   }
 
   /**
-   * Delete story (soft delete by setting status to archived)
+   * Delete story (hard delete from database)
    */
   async delete(storyId: string, userId: string): Promise<void> {
     const story = await db.query.stories.findFirst({
@@ -377,25 +377,14 @@ export class StoriesRepository {
       throw new Error('Story not found');
     }
 
-    // Remove from any sprints
-    await db.delete(sprintStories)
-      .where(eq(sprintStories.storyId, storyId));
-
-    // Soft delete by updating status
-    await db.update(stories)
-      .set({
-        status: 'backlog', // Move to backlog as "archived" state
-        updatedAt: new Date()
-      })
-      .where(eq(stories.id, storyId));
-
-    // Log activity
+    // Get project for activity logging before deletion
     const [project] = await db
       .select({ organizationId: projects.organizationId })
       .from(projects)
       .where(eq(projects.id, story.projectId))
       .limit(1);
 
+    // Log activity BEFORE deletion
     if (project) {
       await db.insert(activities).values({
         id: nanoid(),
@@ -405,12 +394,27 @@ export class StoriesRepository {
         action: 'story_deleted',
         resourceType: 'story',
         resourceId: storyId,
+        oldValues: {
+          title: story.title,
+          status: story.status,
+          priority: story.priority
+        },
         metadata: {
-          storyTitle: story.title
+          storyTitle: story.title,
+          storyStatus: story.status,
+          storyPriority: story.priority
         },
         createdAt: new Date()
       });
     }
+
+    // Remove from any sprints
+    await db.delete(sprintStories)
+      .where(eq(sprintStories.storyId, storyId));
+
+    // Hard delete the story
+    await db.delete(stories)
+      .where(eq(stories.id, storyId));
   }
 
   /**

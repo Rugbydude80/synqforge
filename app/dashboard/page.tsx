@@ -13,10 +13,13 @@ import {
   Upload,
   Clock,
   ArrowUpRight,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { CreateProjectModal } from '@/components/create-project-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { cn, formatRelativeTime } from '@/lib/utils'
@@ -26,9 +29,11 @@ export default function DashboardPage() {
   const router = useRouter()
   const [stats, setStats] = useState<any>(null)
   const [activities, setActivities] = useState<any[]>([])
+  const [inactiveProjects, setInactiveProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
+  const [activatingProject, setActivatingProject] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -45,19 +50,43 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       // Fetch all dashboard data in parallel
-      const [statsResponse, activitiesResponse] = await Promise.all([
+      const [statsResponse, activitiesResponse, projectsResponse] = await Promise.all([
         api.dashboard.getStats(),
         api.activities.list({ limit: 5 }),
+        api.projects.list(),
       ])
 
       setStats(statsResponse)
       setActivities(activitiesResponse.data)
+
+      // Filter inactive projects (planning, on_hold)
+      const inactive = projectsResponse.data.filter(
+        (p: any) => p.status === 'planning' || p.status === 'on_hold'
+      )
+      setInactiveProjects(inactive)
+
       setError('')
     } catch (error: any) {
       console.error('Failed to fetch dashboard data:', error)
       setError(error.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleActivateProject = async (projectId: string) => {
+    try {
+      setActivatingProject(projectId)
+      await fetch(`/api/projects/${projectId}/activate`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      // Refresh dashboard data
+      await fetchDashboardData()
+    } catch (error) {
+      console.error('Failed to activate project:', error)
+    } finally {
+      setActivatingProject(null)
     }
   }
 
@@ -99,14 +128,26 @@ export default function DashboardPage() {
       ]
     }
 
+    // Build status breakdown text
+    const statusParts = []
+    if (stats.planningProjects > 0) statusParts.push(`${stats.planningProjects} Planning`)
+    if (stats.onHoldProjects > 0) statusParts.push(`${stats.onHoldProjects} On Hold`)
+    if (stats.completedProjects > 0) statusParts.push(`${stats.completedProjects} Completed`)
+    if (stats.archivedProjects > 0) statusParts.push(`${stats.archivedProjects} Archived`)
+
+    const statusBreakdown = statusParts.length > 0
+      ? statusParts.join(' | ')
+      : `${stats.totalProjects} total`
+
     return [
       {
         title: 'Active Projects',
         value: stats.activeProjects.toString(),
-        change: `+${stats.totalProjects} projects`,
+        change: statusBreakdown,
         trend: stats.activeProjects > 0 ? 'up' : 'neutral',
         icon: FolderKanban,
         color: 'purple',
+        hasInactive: stats.activeProjects === 0 && stats.totalProjects > 0,
       },
       {
         title: 'Total Stories',
@@ -158,6 +199,21 @@ export default function DashboardPage() {
         title: `Updated story in ${activity.projectName || 'project'}`,
         type: activity.newValues?.status === 'done' ? 'story_completed' : 'story_updated',
         status: activity.newValues?.status === 'done' ? 'done' : 'in-progress',
+      },
+      story_deleted: {
+        title: `Deleted story in ${activity.projectName || 'project'}`,
+        type: 'story_deleted',
+        status: 'deleted',
+      },
+      deleted_project: {
+        title: `Deleted project ${activity.metadata?.projectName || ''}`,
+        type: 'project_deleted',
+        status: 'deleted',
+      },
+      deleted_epic: {
+        title: `Deleted epic in ${activity.projectName || 'project'}`,
+        type: 'epic_deleted',
+        status: 'deleted',
       },
       created_epic: {
         title: `Created epic in ${activity.projectName || 'project'}`,
@@ -290,6 +346,52 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {/* Empty State Alert for Inactive Projects */}
+          {stats && stats.activeProjects === 0 && inactiveProjects.length > 0 && (
+            <Alert className="border-yellow-500/50 bg-yellow-500/10">
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <AlertTitle className="text-yellow-500">No active projects yet</AlertTitle>
+              <AlertDescription className="text-muted-foreground mt-2">
+                <p className="mb-3">
+                  You have <strong>{inactiveProjects.length} project{inactiveProjects.length > 1 ? 's' : ''}</strong> in{' '}
+                  {inactiveProjects.some(p => p.status === 'planning') && 'Planning'}
+                  {inactiveProjects.some(p => p.status === 'on_hold') && ' / On Hold'}.{' '}
+                  Mark a project as active to start tracking progress.
+                </p>
+                <div className="flex flex-col gap-2">
+                  {inactiveProjects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between bg-background/50 rounded-lg p-3">
+                      <div className="flex items-center gap-3">
+                        <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{project.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Status: <span className="capitalize">{project.status.replace('_', ' ')}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleActivateProject(project.id)}
+                        disabled={activatingProject === project.id}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                      >
+                        {activatingProject === project.id ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Activating...
+                          </>
+                        ) : (
+                          'Mark Active'
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Quick Actions */}
           <div>
             <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
@@ -368,6 +470,8 @@ export default function DashboardPage() {
                               ? 'emerald'
                               : activity.status === 'in-progress'
                               ? 'purple'
+                              : activity.status === 'deleted'
+                              ? 'destructive'
                               : 'outline'
                           }
                         >

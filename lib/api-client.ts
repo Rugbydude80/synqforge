@@ -741,6 +741,10 @@ export const api = {
     getStats: async (): Promise<{
       totalProjects: number
       activeProjects: number
+      planningProjects: number
+      onHoldProjects: number
+      completedProjects: number
+      archivedProjects: number
       totalStories: number
       completedStories: number
       aiGeneratedStories: number

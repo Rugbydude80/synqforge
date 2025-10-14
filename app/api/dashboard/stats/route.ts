@@ -17,6 +17,10 @@ async function getDashboardStats(_req: NextRequest, context: any) {
       .select({
         totalProjects: sql<number>`COUNT(DISTINCT ${projects.id})`,
         activeProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'active' THEN ${projects.id} END)`,
+        planningProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'planning' THEN ${projects.id} END)`,
+        onHoldProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'on_hold' THEN ${projects.id} END)`,
+        completedProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'completed' THEN ${projects.id} END)`,
+        archivedProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'archived' THEN ${projects.id} END)`,
         totalStories: sql<number>`COUNT(DISTINCT ${stories.id})`,
         completedStories: sql<number>`COUNT(DISTINCT CASE WHEN ${stories.status} = 'done' THEN ${stories.id} END)`,
         aiGeneratedStories: sql<number>`COUNT(DISTINCT CASE WHEN ${stories.aiGenerated} = true THEN ${stories.id} END)`,
@@ -39,6 +43,10 @@ async function getDashboardStats(_req: NextRequest, context: any) {
     return NextResponse.json({
       totalProjects: Number(stats.totalProjects) || 0,
       activeProjects: Number(stats.activeProjects) || 0,
+      planningProjects: Number(stats.planningProjects) || 0,
+      onHoldProjects: Number(stats.onHoldProjects) || 0,
+      completedProjects: Number(stats.completedProjects) || 0,
+      archivedProjects: Number(stats.archivedProjects) || 0,
       totalStories: Number(stats.totalStories) || 0,
       completedStories: Number(stats.completedStories) || 0,
       aiGeneratedStories: Number(stats.aiGeneratedStories) || 0,
