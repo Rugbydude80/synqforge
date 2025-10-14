@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm'
  * POST /api/stripe/create-portal-session
  * Create a Stripe Customer Portal session
  */
-async function createPortalSession(_req: NextRequest, context: any) {
+async function createPortalSession(_request: NextRequest, context: any) {
   try {
     // Get organization
     const [organization] = await db

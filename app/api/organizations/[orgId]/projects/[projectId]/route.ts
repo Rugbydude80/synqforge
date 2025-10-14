@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * Get a single project by ID
  */
 export const GET = withAuth(
-  async (_req: NextRequest, { user, params }) => {
+  async (_request: NextRequest, { user, params }) => {
     try {
       const { projectId } = params
       const repository = new ProjectsRepository(user)
@@ -50,7 +50,7 @@ export const PATCH = withAuth(
  * Delete a project (soft delete)
  */
 export const DELETE = withAuth(
-  async (_req: NextRequest, { user, params }) => {
+  async (_request: NextRequest, { user, params }) => {
     try {
       const { projectId } = params
       const repository = new ProjectsRepository(user)

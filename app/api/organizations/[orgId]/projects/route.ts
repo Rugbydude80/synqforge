@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * List all projects for the organization
  */
 export const GET = withAuth(
-  async (_req: NextRequest, { user }) => {
+  async (_request: NextRequest, { user }) => {
     try {
       const repository = new ProjectsRepository(user)
       const projects = await repository.getProjects()

@@ -120,9 +120,9 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 /**
  * DELETE /api/stories/[storyId] - Delete a story
  */
-async function deleteStory(_req: NextRequest, context: { user: any }) {
+async function deleteStory(_request: NextRequest, context: { user: any }) {
   try {
-    const storyId = _req.nextUrl.pathname.split('/')[3];
+    const storyId = _request.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
       return NextResponse.json(

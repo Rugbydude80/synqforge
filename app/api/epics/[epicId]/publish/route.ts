@@ -9,7 +9,7 @@ import { realtimeService } from '@/lib/services/realtime.service'
  * Publish an epic to make it visible and active
  */
 async function publishEpic(
-  _req: NextRequest,
+  _request: NextRequest,
   context: { user: any; params: { epicId: string } }
 ) {
   const { epicId } = context.params

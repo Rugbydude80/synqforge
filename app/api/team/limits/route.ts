@@ -10,7 +10,7 @@ import { getSubscriptionLimits, getUserCount } from '@/lib/middleware/subscripti
  * GET /api/team/limits
  * Get current user count and subscription limits
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 

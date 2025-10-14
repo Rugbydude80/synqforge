@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, AuthContext } from '@/lib/middleware/auth'
 import { realtimeService } from '@/lib/services/realtime.service'
 
-async function handler(_req: NextRequest, context: AuthContext) {
+async function handler(_request: NextRequest, context: AuthContext) {
   try {
     const { user } = context
 
