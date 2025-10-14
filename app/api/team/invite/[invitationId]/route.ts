@@ -10,8 +10,8 @@ import { eq, and } from 'drizzle-orm'
  * Cancel/revoke an invitation
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { invitationId: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ invitationId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +23,7 @@ export async function DELETE(
       )
     }
 
-    const { invitationId } = params
+    const { invitationId } = await params
 
     // Get current user
     const [currentUser] = await db
