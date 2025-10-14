@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
  * GET /api/team/invite
  * Get all pending invitations for the current organization
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
