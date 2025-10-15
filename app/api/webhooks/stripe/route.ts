@@ -110,10 +110,19 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
   // Determine subscription tier based on price ID
   let tier: 'free' | 'pro' | 'enterprise' = 'free'
-  if (priceId?.includes('pro')) {
+  const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID
+  const ENTERPRISE_PRICE_ID = process.env.STRIPE_ENTERPRISE_PRICE_ID
+
+  if (priceId === PRO_PRICE_ID) {
     tier = 'pro'
-  } else if (priceId?.includes('enterprise')) {
+  } else if (priceId === ENTERPRISE_PRICE_ID) {
     tier = 'enterprise'
+  } else {
+    // Also check metadata for tier information
+    const tierFromMetadata = subscription.metadata?.tier as 'pro' | 'enterprise' | undefined
+    if (tierFromMetadata) {
+      tier = tierFromMetadata
+    }
   }
 
   // Update or create subscription record
@@ -259,7 +268,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 /**
- * Handle checkout session completion (for one-time token purchases)
+ * Handle checkout session completion
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata
@@ -267,7 +276,25 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('Checkout completed:', {
     sessionId: session.id,
     metadata,
+    customerId: session.customer,
   })
+
+  // Check if this is a subscription signup
+  if (metadata?.organizationId && session.customer) {
+    const organizationId = metadata.organizationId
+    const customerId = session.customer as string
+
+    // Update organization with Stripe customer ID
+    await db
+      .update(organizations)
+      .set({
+        stripeCustomerId: customerId,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, organizationId))
+
+    console.log(`Linked customer ${customerId} to organization ${organizationId}`)
+  }
 
   // Check if this is a token purchase
   if (metadata?.type === 'token_purchase') {
