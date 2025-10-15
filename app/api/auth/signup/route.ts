@@ -112,6 +112,13 @@ export async function POST(req: NextRequest) {
             userId: userId,
             plan: validatedData.plan,
           },
+          subscription_data: {
+            metadata: {
+              organizationId: orgId,
+              userId: userId,
+              tier: validatedData.plan,
+            },
+          },
         })
 
         checkoutUrl = session.url
