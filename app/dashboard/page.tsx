@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [activityFilter, setActivityFilter] = useState<string>('all')
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [, forceUpdate] = useState({})
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -51,10 +51,10 @@ export default function DashboardPage() {
     }
   }, [status, router])
 
-  // Update current time every 10 seconds to refresh the relative time display
+  // Update the display every 10 seconds to refresh the relative time
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date())
+      forceUpdate({}) // Force re-render to update relative time
     }, 10000) // Update every 10 seconds
 
     return () => clearInterval(interval)
