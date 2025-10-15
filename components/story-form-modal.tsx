@@ -17,7 +17,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { Sparkles, X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Sparkles, X, AlertCircle } from 'lucide-react'
 
 interface StoryFormModalProps {
   open: boolean
@@ -40,6 +41,7 @@ export function StoryFormModal({
   const [epics, setEpics] = React.useState<Epic[]>([])
   const [showAIInput, setShowAIInput] = React.useState(false)
   const [aiRequirement, setAiRequirement] = React.useState('')
+  const [showEpicPrompt, setShowEpicPrompt] = React.useState(false)
 
   const [formData, setFormData] = React.useState({
     title: '',
@@ -88,6 +90,16 @@ export function StoryFormModal({
       return
     }
 
+    // Check if epic is not selected and we have epics available
+    if (!formData.epicId && epics.length > 0 && !showEpicPrompt) {
+      setShowEpicPrompt(true)
+      return
+    }
+
+    await saveStory()
+  }
+
+  const saveStory = async () => {
     setIsLoading(true)
     setError(null)
 
@@ -119,6 +131,7 @@ export function StoryFormModal({
         epicId: '',
         acceptanceCriteria: [''],
       })
+      setShowEpicPrompt(false)
 
       onSuccess?.()
       onOpenChange(false)
@@ -350,7 +363,10 @@ export function StoryFormModal({
               <Select
                 id="epic"
                 value={formData.epicId}
-                onChange={(e) => setFormData(prev => ({ ...prev, epicId: e.target.value }))}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, epicId: e.target.value }))
+                  setShowEpicPrompt(false) // Hide prompt if epic is selected
+                }}
                 disabled={isLoading}
               >
                 <option value="">No Epic</option>
@@ -360,6 +376,44 @@ export function StoryFormModal({
                   </option>
                 ))}
               </Select>
+
+              {/* Epic prompt when user hasn't selected an epic */}
+              {showEpicPrompt && (
+                <Alert className="border-amber-500/50 bg-amber-500/10 mt-2">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="text-sm">
+                    <p className="font-medium mb-2">This story is not associated with an epic.</p>
+                    <p className="text-muted-foreground mb-3">
+                      Associating stories with epics helps organize and track progress. Do you want to select an epic?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowEpicPrompt(false)
+                          // Focus the epic dropdown
+                          document.getElementById('epic')?.focus()
+                        }}
+                      >
+                        Select Epic
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setShowEpicPrompt(false)
+                          saveStory()
+                        }}
+                      >
+                        Continue Without Epic
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="grid gap-2">
