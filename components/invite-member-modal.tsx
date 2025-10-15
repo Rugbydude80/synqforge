@@ -145,6 +145,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess }: InviteMemberMo
           <button
             onClick={handleClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close invite member modal"
           >
             <X className="h-5 w-5" />
           </button>
@@ -185,6 +186,11 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess }: InviteMemberMo
                 <div className="mt-2 w-full bg-muted rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-gradient-primary h-full transition-all duration-300"
+                    role="progressbar"
+                    aria-label={`Team member usage: ${limits.currentCount} of ${limits.maxUsers}`}
+                    aria-valuenow={Math.round((limits.currentCount / limits.maxUsers) * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
                     style={{ width: `${(limits.currentCount / limits.maxUsers) * 100}%` }}
                   />
                 </div>
@@ -265,14 +271,16 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess }: InviteMemberMo
             {/* Invite Link (if available) */}
             {inviteLink && (
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="invite-link" className="block text-sm font-medium mb-2">
                   Invite Link (Optional)
                 </label>
                 <div className="flex gap-2">
                   <input
+                    id="invite-link"
                     type="text"
                     value={inviteLink}
                     readOnly
+                    aria-label="Invitation link"
                     className="flex-1 px-4 py-2 border border-border rounded-lg bg-muted text-sm"
                   />
                   <Button
