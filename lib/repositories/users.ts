@@ -361,6 +361,27 @@ export class UsersRepository {
    * Search users by name or email
    */
   async searchUsers(query: string) {
+    // If no query, return all users in organization
+    if (!query || query.trim().length === 0) {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          avatarUrl: users.avatar,
+          role: users.role,
+          isActive: users.isActive,
+          lastActiveAt: users.lastActiveAt,
+        })
+        .from(users)
+        .where(eq(users.organizationId, this.userContext.organizationId))
+        .orderBy(asc(users.name))
+        .limit(50)
+
+      return allUsers
+    }
+
+    // Search for users matching the query
     const searchResults = await db
       .select({
         id: users.id,
