@@ -28,15 +28,8 @@ async function listEpics(req: NextRequest, context: any) {
   }
 
   try {
-    const projectId = filters.projectId
-    if (!projectId) {
-      return NextResponse.json(
-        { error: 'projectId is required' },
-        { status: 400 }
-      )
-    }
-
-    const epics = await epicsRepo.getEpics(projectId)
+    // projectId is now optional - if not provided, returns all epics for the organization
+    const epics = await epicsRepo.getEpics(filters.projectId)
 
     return NextResponse.json({
       data: epics,
