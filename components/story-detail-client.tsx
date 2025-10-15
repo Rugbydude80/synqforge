@@ -48,6 +48,23 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
   const [editValues, setEditValues] = React.useState<Partial<Story>>({})
   const [saving, setSaving] = React.useState(false)
   const [copySuccess, setCopySuccess] = React.useState(false)
+  const [epics, setEpics] = React.useState<any[]>([])
+
+  // Load epics for the project
+  React.useEffect(() => {
+    if (story.projectId) {
+      fetchEpics()
+    }
+  }, [story.projectId])
+
+  const fetchEpics = async () => {
+    try {
+      const response = await api.epics.list({ projectId: story.projectId })
+      setEpics(response.data || [])
+    } catch (error) {
+      console.error('Failed to load epics:', error)
+    }
+  }
 
   const startEdit = (field: string) => {
     setEditMode(field)
@@ -301,6 +318,25 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
                 </div>
               </div>
             )}
+
+            <div className="flex items-center gap-3">
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground">Epic</p>
+                <Select
+                  value={story.epicId || ''}
+                  onChange={(e) => updateField('epicId', e.target.value || null)}
+                  className="w-full"
+                >
+                  <option value="">No Epic</option>
+                  {epics.map((epic) => (
+                    <option key={epic.id} value={epic.id}>
+                      {epic.title}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-muted-foreground" />
