@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
   AlertCircle,
   Loader2,
+  RefreshCw,
+  Filter,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
@@ -34,6 +36,10 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [activatingProject, setActivatingProject] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [activityFilter, setActivityFilter] = useState<string>('all')
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -46,13 +52,26 @@ export default function DashboardPage() {
     }
   }, [status, router])
 
-  const fetchDashboardData = async () => {
+  // Update current time every 10 seconds to refresh the relative time display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 10000) // Update every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchDashboardData = async (isRefresh = false) => {
     try {
-      setLoading(true)
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
       // Fetch all dashboard data in parallel
       const [statsResponse, activitiesResponse, projectsResponse] = await Promise.all([
         api.dashboard.getStats(),
-        api.activities.list({ limit: 5 }),
+        api.activities.list({ limit: 10 }),
         api.projects.list(),
       ])
 
@@ -66,11 +85,16 @@ export default function DashboardPage() {
       setInactiveProjects(inactive)
 
       setError('')
+      setLastSyncTime(new Date())
     } catch (error: any) {
       console.error('Failed to fetch dashboard data:', error)
       setError(error.message || 'Failed to load dashboard')
     } finally {
-      setLoading(false)
+      if (isRefresh) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
   }
 
@@ -100,6 +124,7 @@ export default function DashboardPage() {
           trend: 'neutral',
           icon: FolderKanban,
           color: 'purple',
+          onClick: () => router.push('/projects'),
         },
         {
           title: 'Total Stories',
@@ -108,6 +133,7 @@ export default function DashboardPage() {
           trend: 'neutral',
           icon: FileText,
           color: 'emerald',
+          onClick: () => router.push('/stories'),
         },
         {
           title: 'Completed',
@@ -116,6 +142,7 @@ export default function DashboardPage() {
           trend: 'neutral',
           icon: CheckCircle2,
           color: 'emerald',
+          onClick: () => router.push('/stories'),
         },
         {
           title: 'AI Generated',
@@ -124,6 +151,7 @@ export default function DashboardPage() {
           trend: 'neutral',
           icon: Sparkles,
           color: 'purple',
+          onClick: () => router.push('/ai-generate'),
         },
       ]
     }
@@ -148,6 +176,7 @@ export default function DashboardPage() {
         icon: FolderKanban,
         color: 'purple',
         hasInactive: stats.activeProjects === 0 && stats.totalProjects > 0,
+        onClick: () => router.push('/projects'),
       },
       {
         title: 'Total Stories',
@@ -156,6 +185,7 @@ export default function DashboardPage() {
         trend: stats.totalStories > 0 ? 'up' : 'neutral',
         icon: FileText,
         color: 'emerald',
+        onClick: () => router.push('/stories'),
       },
       {
         title: 'Completed',
@@ -164,6 +194,7 @@ export default function DashboardPage() {
         trend: stats.completedStories > 0 ? 'up' : 'neutral',
         icon: CheckCircle2,
         color: 'emerald',
+        onClick: () => router.push('/stories'),
       },
       {
         title: 'AI Generated',
@@ -172,6 +203,7 @@ export default function DashboardPage() {
         trend: stats.aiGeneratedStories > 0 ? 'up' : 'neutral',
         icon: Sparkles,
         color: 'purple',
+        onClick: () => router.push('/ai-generate'),
       },
     ]
   }
@@ -240,7 +272,15 @@ export default function DashboardPage() {
     }
   }
 
-  const recentActivity = activities.map(formatActivity)
+  const recentActivity = activities
+    .map(formatActivity)
+    .filter((activity) => {
+      if (activityFilter === 'all') return true
+      if (activityFilter === 'ai') return activity.type === 'ai_generated'
+      if (activityFilter === 'completed') return activity.status === 'done'
+      if (activityFilter === 'deleted') return activity.status === 'deleted'
+      return true
+    })
 
   const quickActions = [
     {
@@ -280,9 +320,21 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-foreground">Welcome back! Here's what's happening.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Clock className="h-4 w-4 mr-2" />
-              Last sync: 2m ago
+            {lastSyncTime && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>Last sync: {formatRelativeTime(lastSyncTime)}</span>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchDashboardData(true)}
+              disabled={refreshing}
+              className="hover:border-purple-500/50 transition-all"
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
             <div className="h-8 w-8 rounded-full bg-gradient-primary" />
           </div>
@@ -311,10 +363,23 @@ export default function DashboardPage() {
               {/* Metrics Grid */}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric, i) => (
-              <Card key={i} className="relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <Card
+                key={i}
+                className="relative overflow-hidden group hover:shadow-2xl hover:scale-105 hover:border-purple-500/50 transition-all duration-300 cursor-pointer"
+                onClick={metric.onClick}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    metric.onClick?.()
+                  }
+                }}
+                aria-label={`View ${metric.title}`}
+              >
                 <div
                   className={cn(
-                    'absolute top-0 right-0 h-32 w-32 rounded-full blur-3xl opacity-20 group-hover:opacity-30 transition-opacity',
+                    'absolute top-0 right-0 h-32 w-32 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-all duration-300 group-hover:scale-150',
                     metric.color === 'purple'
                       ? 'bg-brand-purple-500'
                       : 'bg-brand-emerald-500'
@@ -325,7 +390,7 @@ export default function DashboardPage() {
                     <span>{metric.title}</span>
                     <metric.icon
                       className={cn(
-                        'h-4 w-4',
+                        'h-4 w-4 transition-all duration-300 group-hover:scale-125',
                         metric.color === 'purple'
                           ? 'text-brand-purple-400'
                           : 'text-brand-emerald-400'
@@ -334,10 +399,10 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{metric.value}</div>
+                  <div className="text-3xl font-bold group-hover:scale-110 transition-transform duration-300">{metric.value}</div>
                   <div className="flex items-center gap-1 mt-2 text-xs">
                     {metric.trend === 'up' && (
-                      <ArrowUpRight className="h-3 w-3 text-brand-emerald-400" />
+                      <ArrowUpRight className="h-3 w-3 text-brand-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     )}
                     <span className="text-muted-foreground">{metric.change}</span>
                   </div>
@@ -426,7 +491,37 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Recent Activity</h2>
-              <Button variant="ghost" size="sm">View All</Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                  <Button
+                    variant={activityFilter === 'all' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActivityFilter('all')}
+                    className="h-7 text-xs"
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={activityFilter === 'ai' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActivityFilter('ai')}
+                    className="h-7 text-xs"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI
+                  </Button>
+                  <Button
+                    variant={activityFilter === 'completed' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActivityFilter('completed')}
+                    className="h-7 text-xs"
+                  >
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Done
+                  </Button>
+                </div>
+                <Button variant="ghost" size="sm">View All</Button>
+              </div>
             </div>
             <Card>
               <CardContent className="p-0">
@@ -442,22 +537,31 @@ export default function DashboardPage() {
                         key={activity.id}
                         onClick={() => activity.projectId && router.push(`/projects/${activity.projectId}`)}
                         className={cn(
-                          "flex items-start gap-4 p-4 transition-colors",
-                          activity.projectId && "hover:bg-accent/50 cursor-pointer"
+                          "flex items-start gap-4 p-4 transition-all duration-200 group",
+                          activity.projectId && "hover:bg-accent/50 hover:pl-6 cursor-pointer hover:border-l-4 hover:border-purple-500"
                         )}
+                        role={activity.projectId ? "button" : undefined}
+                        tabIndex={activity.projectId ? 0 : undefined}
+                        onKeyDown={(e) => {
+                          if (activity.projectId && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault()
+                            router.push(`/projects/${activity.projectId}`)
+                          }
+                        }}
+                        aria-label={activity.projectId ? `View ${activity.project}` : undefined}
                       >
                         <div
                           className={cn(
-                            'mt-1 flex h-2 w-2 rounded-full',
+                            'mt-1 flex h-2 w-2 rounded-full transition-all duration-300 group-hover:scale-150 group-hover:shadow-lg',
                             activity.type === 'ai_generated'
-                              ? 'bg-brand-purple-500 shadow-glow-purple'
-                              : 'bg-brand-emerald-500 shadow-glow-emerald'
+                              ? 'bg-brand-purple-500 shadow-glow-purple group-hover:shadow-purple-500/50'
+                              : 'bg-brand-emerald-500 shadow-glow-emerald group-hover:shadow-emerald-500/50'
                           )}
                         />
                         <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">{activity.title}</p>
+                          <p className="text-sm font-medium group-hover:text-purple-400 transition-colors">{activity.title}</p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{activity.project}</span>
+                            <span className="group-hover:text-foreground transition-colors">{activity.project}</span>
                             <span>•</span>
                             <span>{activity.user}</span>
                             <span>•</span>
@@ -474,6 +578,7 @@ export default function DashboardPage() {
                               ? 'destructive'
                               : 'outline'
                           }
+                          className="group-hover:scale-105 transition-transform"
                         >
                           {activity.status}
                         </Badge>
