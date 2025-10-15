@@ -216,9 +216,13 @@ export function EpicDetailDrawer({
               </span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
-              {/* Inline style required for dynamic progress width calculation */}
               <div
                 className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all"
+                role="progressbar"
+                aria-label={`Epic progress: ${progressPercentage}% complete`}
+                aria-valuenow={progressPercentage}
+                aria-valuemin={0}
+                aria-valuemax={100}
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>

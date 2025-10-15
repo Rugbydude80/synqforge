@@ -225,6 +225,11 @@ export default function EpicsPage() {
                               <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-gradient-primary transition-all"
+                                  role="progressbar"
+                                  aria-label={`Epic progress: ${epic.completedStories || 0} of ${epic.totalStories} stories completed`}
+                                  aria-valuenow={Math.round(epic.totalStories > 0 ? ((epic.completedStories || 0) / epic.totalStories) * 100 : 0)}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
                                   style={{
                                     width: `${epic.totalStories > 0 ? ((epic.completedStories || 0) / epic.totalStories) * 100 : 0}%`
                                   }}
