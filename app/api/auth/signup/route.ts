@@ -10,6 +10,7 @@ const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  plan: z.enum(['free', 'pro', 'enterprise']).default('free'),
 })
 
 export async function POST(req: NextRequest) {
@@ -65,12 +66,12 @@ export async function POST(req: NextRequest) {
     const slug = `${baseSlug}-${timestamp}`
 
     await db.transaction(async (tx) => {
-      // Create organization
+      // Create organization with selected plan
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
         slug: slug,
-        subscriptionTier: 'free',
+        subscriptionTier: validatedData.plan,
       })
 
       // Create user
@@ -85,6 +86,41 @@ export async function POST(req: NextRequest) {
       })
     })
 
+    // If paid plan, create Stripe checkout session
+    let checkoutUrl = null
+    if (validatedData.plan !== 'free') {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+        const priceId = validatedData.plan === 'pro'
+          ? process.env.STRIPE_PRO_PRICE_ID
+          : process.env.STRIPE_ENTERPRISE_PRICE_ID
+
+        const session = await stripe.checkout.sessions.create({
+          customer_email: validatedData.email,
+          client_reference_id: orgId,
+          line_items: [
+            {
+              price: priceId,
+              quantity: 1,
+            },
+          ],
+          mode: 'subscription',
+          success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/auth/signin?error=Payment cancelled`,
+          metadata: {
+            organizationId: orgId,
+            userId: userId,
+            plan: validatedData.plan,
+          },
+        })
+
+        checkoutUrl = session.url
+      } catch (stripeError) {
+        console.error('Stripe checkout error:', stripeError)
+        // Continue without checkout URL - user can upgrade later
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Account created successfully',
@@ -92,7 +128,8 @@ export async function POST(req: NextRequest) {
         id: userId,
         email: validatedData.email,
         name: validatedData.name,
-      }
+      },
+      checkoutUrl,
     })
 
   } catch (error) {
