@@ -2,13 +2,48 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Zap, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
+import { Zap, Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Building2, ArrowLeft } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const plans = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    icon: Sparkles,
+    description: 'Perfect for trying out SynqForge',
+    features: ['1 project', 'Up to 50 stories', 'Basic AI generation'],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 29,
+    icon: Zap,
+    description: 'For teams that need more power',
+    features: ['Unlimited projects', 'Unlimited stories', 'Advanced AI'],
+    popular: true,
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 99,
+    icon: Building2,
+    description: 'For organizations at scale',
+    features: ['Everything in Pro', 'Dedicated support', 'SSO/SAML'],
+  },
+]
 
 export default function SignUpPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const planFromUrl = searchParams.get('plan') || 'free'
+
+  const [step, setStep] = useState<'plan' | 'account'>('plan')
+  const [selectedPlan, setSelectedPlan] = useState(planFromUrl)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -52,6 +87,7 @@ export default function SignUpPage() {
     }
 
     try {
+      // Step 1: Create account
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -61,14 +97,25 @@ export default function SignUpPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          plan: selectedPlan,
         }),
       })
 
       if (response.ok) {
+        const data = await response.json()
         setSuccess(true)
-        setTimeout(() => {
-          router.push('/auth/signin')
-        }, 2000)
+
+        // Step 2: If paid plan, redirect to Stripe checkout
+        if (selectedPlan !== 'free' && data.checkoutUrl) {
+          setTimeout(() => {
+            window.location.href = data.checkoutUrl
+          }, 1500)
+        } else {
+          // Free plan: redirect to signin
+          setTimeout(() => {
+            router.push('/auth/signin?message=Account created! Please sign in.')
+          }, 2000)
+        }
       } else {
         const data = await response.json()
         setError(data.error || 'An error occurred during sign up')
@@ -91,7 +138,9 @@ export default function SignUpPage() {
             <div>
               <h2 className="text-2xl font-bold mb-2">Account created!</h2>
               <p className="text-muted-foreground">
-                Your account has been created successfully. Redirecting to sign in...
+                {selectedPlan !== 'free'
+                  ? 'Redirecting to payment...'
+                  : 'Redirecting to sign in...'}
               </p>
             </div>
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
@@ -101,19 +150,117 @@ export default function SignUpPage() {
     )
   }
 
+  // Step 1: Plan Selection
+  if (step === 'plan') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-4xl space-y-8">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center">
+              <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
+                <Zap className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold gradient-text">Choose your plan</h1>
+              <p className="text-muted-foreground">Select the perfect plan for your needs</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {plans.map((plan) => {
+              const Icon = plan.icon
+              return (
+                <Card
+                  key={plan.id}
+                  className={cn(
+                    'relative cursor-pointer transition-all hover:scale-105',
+                    selectedPlan === plan.id && 'border-brand-purple-500 shadow-xl shadow-brand-purple-500/20',
+                    plan.popular && 'border-brand-purple-500/50'
+                  )}
+                  onClick={() => setSelectedPlan(plan.id)}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-primary rounded-full text-xs font-medium text-white">
+                      Most Popular
+                    </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-gradient-primary">
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-3xl font-bold">${plan.price}</span>
+                      <span className="text-muted-foreground">/month</span>
+                    </div>
+                    <CardDescription className="mt-2">{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2 text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-brand-emerald-500" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="flex justify-center">
+            <Button
+              size="lg"
+              onClick={() => setStep('account')}
+              className="min-w-[200px]"
+            >
+              Continue with {plans.find(p => p.id === selectedPlan)?.name} plan
+            </Button>
+          </div>
+
+          <div className="text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link href="/auth/signin" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Step 2: Account Creation
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center">
-            <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
-              <Zap className="h-6 w-6 text-white" />
+        <div className="space-y-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStep('plan')}
+            className="mb-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Change plan
+          </Button>
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center">
+              <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
+                <Zap className="h-6 w-6 text-white" />
+              </div>
             </div>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold gradient-text">Create account</h1>
-            <p className="text-muted-foreground">Join SynqForge and start building faster</p>
+            <div>
+              <h1 className="text-3xl font-bold gradient-text">Create account</h1>
+              <p className="text-muted-foreground">
+                {plans.find(p => p.id === selectedPlan)?.name} plan • ${plans.find(p => p.id === selectedPlan)?.price}/month
+              </p>
+            </div>
           </div>
         </div>
 
