@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2 } from 'lucide-react'
@@ -27,7 +28,7 @@ interface Epic {
   projectId: string
 }
 
-export default function StoriesPage() {
+function StoriesPageContent() {
   const { status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -600,5 +601,22 @@ export default function StoriesPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function StoriesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 ml-64">
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-muted-foreground">Loading stories...</div>
+          </div>
+        </main>
+      </div>
+    }>
+      <StoriesPageContent />
+    </Suspense>
   )
 }
