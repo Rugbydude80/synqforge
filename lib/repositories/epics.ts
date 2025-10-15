@@ -13,11 +13,13 @@ export class EpicsRepository {
   constructor(private userContext: UserContext) {}
 
   /**
-   * Get all epics for a project
+   * Get all epics for the organization (optionally filtered by project)
    */
-  async getEpics(projectId: string) {
-    // Verify project access
-    await this.verifyProjectAccess(projectId)
+  async getEpics(projectId?: string) {
+    // If projectId is provided, verify access to that specific project
+    if (projectId) {
+      await this.verifyProjectAccess(projectId)
+    }
 
     const query = db
       .select({
@@ -40,31 +42,32 @@ export class EpicsRepository {
         creatorEmail: users.email,
         // Story counts
         totalStories: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+          SELECT COUNT(*) FROM ${stories}
           WHERE ${stories.epicId} = ${epics.id}
         )`,
         completedStories: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
-          WHERE ${stories.epicId} = ${epics.id} 
+          SELECT COUNT(*) FROM ${stories}
+          WHERE ${stories.epicId} = ${epics.id}
           AND ${stories.status} = 'done'
         )`,
         totalStoryPoints: sql<number>`(
-          SELECT SUM(${stories.storyPoints}) FROM ${stories} 
+          SELECT SUM(${stories.storyPoints}) FROM ${stories}
           WHERE ${stories.epicId} = ${epics.id}
         )`,
         completedStoryPoints: sql<number>`(
-          SELECT SUM(${stories.storyPoints}) FROM ${stories} 
-          WHERE ${stories.epicId} = ${epics.id} 
+          SELECT SUM(${stories.storyPoints}) FROM ${stories}
+          WHERE ${stories.epicId} = ${epics.id}
           AND ${stories.status} = 'done'
         )`,
       })
       .from(epics)
       .leftJoin(users, eq(epics.createdBy, users.id))
-      .where(eq(epics.projectId, projectId))
+      .where(
+        projectId
+          ? eq(epics.projectId, projectId)
+          : eq(epics.organizationId, this.userContext.organizationId)
+      )
       .orderBy(desc(epics.createdAt))
-
-    // Note: Additional filters removed since they cannot be chained after select
-    // TODO: Implement filters by building conditions array before select
 
     const result = await query
 
