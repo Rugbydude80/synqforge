@@ -11,22 +11,11 @@ export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
       const { searchParams } = req.nextUrl
-      const query = searchParams.get('q')
-
-      if (!query || query.length < 2) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Search query must be at least 2 characters',
-            },
-          } as APIResponse,
-          { status: 400 }
-        )
-      }
+      const query = searchParams.get('q') || searchParams.get('query') || ''
 
       const repository = new UsersRepository(context.user)
+
+      // Search users (empty query returns all users in organization)
       const users = await repository.searchUsers(query)
 
       const response: APIResponse = {
