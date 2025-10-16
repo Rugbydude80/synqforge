@@ -36,5 +36,5 @@ async function createReleaseForecast(req: NextRequest, context: any) {
 }
 
 export const POST = withAuth(
-  withFeatureGate('canUsePlanningForecasting', createReleaseForecast)
+  withFeatureGate('canUsePlanningForecast', createReleaseForecast)
 )

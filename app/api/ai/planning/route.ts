@@ -92,9 +92,9 @@ async function getForecastData(req: NextRequest, context: any) {
 }
 
 export const POST = withAuth(
-  withFeatureGate('canUsePlanningForecasting', createForecast)
+  withFeatureGate('canUsePlanningForecast', createForecast)
 )
 
 export const GET = withAuth(
-  withFeatureGate('canUsePlanningForecasting', getForecastData)
+  withFeatureGate('canUsePlanningForecast', getForecastData)
 )
