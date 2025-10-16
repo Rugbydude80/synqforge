@@ -147,7 +147,23 @@ export function TestGeneratorPanel({
   }
 
   const handleDownload = (artefact: GeneratedArtefact) => {
-    const blob = new Blob([artefact.content], { type: 'text/plain' })
+    // Get proper MIME type based on artefact type
+    const getMimeType = (type: ArtefactType): string => {
+      switch (type) {
+        case 'gherkin':
+          return 'text/plain;charset=utf-8'
+        case 'postman':
+          return 'application/json;charset=utf-8'
+        case 'playwright':
+        case 'cypress':
+          return 'text/plain;charset=utf-8'
+        default:
+          return 'text/plain;charset=utf-8'
+      }
+    }
+
+    const mimeType = getMimeType(artefact.artefactType)
+    const blob = new Blob([artefact.content], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

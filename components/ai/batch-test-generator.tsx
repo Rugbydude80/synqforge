@@ -115,9 +115,25 @@ export function BatchTestGenerator({ story, className }: BatchTestGeneratorProps
   const handleDownloadAll = () => {
     if (results.length === 0) return
 
-    // Create a zip-like structure (in real implementation, use JSZip)
+    // Get proper MIME type based on artefact type
+    const getMimeType = (type: ArtefactType): string => {
+      switch (type) {
+        case 'gherkin':
+          return 'text/plain;charset=utf-8'
+        case 'postman':
+          return 'application/json;charset=utf-8'
+        case 'playwright':
+        case 'cypress':
+          return 'text/plain;charset=utf-8'
+        default:
+          return 'text/plain;charset=utf-8'
+      }
+    }
+
+    // Download each file with proper MIME type
     results.forEach((result) => {
-      const blob = new Blob([result.content], { type: 'text/plain' })
+      const mimeType = getMimeType(result.artefactType as ArtefactType)
+      const blob = new Blob([result.content], { type: mimeType })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -259,7 +275,23 @@ export function BatchTestGenerator({ story, className }: BatchTestGeneratorProps
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const blob = new Blob([result.content], { type: 'text/plain' })
+                        // Get proper MIME type based on artefact type
+                        const getMimeType = (type: string): string => {
+                          switch (type) {
+                            case 'gherkin':
+                              return 'text/plain;charset=utf-8'
+                            case 'postman':
+                              return 'application/json;charset=utf-8'
+                            case 'playwright':
+                            case 'cypress':
+                              return 'text/plain;charset=utf-8'
+                            default:
+                              return 'text/plain;charset=utf-8'
+                          }
+                        }
+
+                        const mimeType = getMimeType(result.artefactType)
+                        const blob = new Blob([result.content], { type: mimeType })
                         const url = URL.createObjectURL(blob)
                         const a = document.createElement('a')
                         a.href = url
