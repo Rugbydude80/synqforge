@@ -109,19 +109,47 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   // Determine subscription tier based on price ID
-  let tier: 'free' | 'pro' | 'enterprise' = 'free'
-  const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID
+  let tier: 'free' | 'team' | 'business' | 'enterprise' = 'free'
+  const TEAM_PRICE_ID = process.env.STRIPE_TEAM_PRICE_ID
+  const TEAM_ANNUAL_PRICE_ID = process.env.STRIPE_TEAM_ANNUAL_PRICE_ID
+  const BUSINESS_PRICE_ID = process.env.STRIPE_BUSINESS_PRICE_ID
+  const BUSINESS_ANNUAL_PRICE_ID = process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID
   const ENTERPRISE_PRICE_ID = process.env.STRIPE_ENTERPRISE_PRICE_ID
 
-  if (priceId === PRO_PRICE_ID) {
-    tier = 'pro'
+  if (priceId === TEAM_PRICE_ID || priceId === TEAM_ANNUAL_PRICE_ID) {
+    tier = 'team'
+  } else if (priceId === BUSINESS_PRICE_ID || priceId === BUSINESS_ANNUAL_PRICE_ID) {
+    tier = 'business'
   } else if (priceId === ENTERPRISE_PRICE_ID) {
     tier = 'enterprise'
   } else {
     // Also check metadata for tier information
-    const tierFromMetadata = subscription.metadata?.tier as 'pro' | 'enterprise' | undefined
+    const tierFromMetadata = subscription.metadata?.tier as 'team' | 'business' | 'enterprise' | undefined
     if (tierFromMetadata) {
       tier = tierFromMetadata
+    }
+  }
+
+  // Extract seat information from subscription items
+  let includedSeats = 0
+  let addonSeats = 0
+  let billingInterval: 'monthly' | 'annual' = 'monthly'
+
+  for (const item of subscription.items.data) {
+    const price = item.price
+    const metadata = price.metadata || {}
+
+    // Determine billing interval
+    if (price.recurring?.interval === 'year') {
+      billingInterval = 'annual'
+    }
+
+    if (metadata.type === 'base_plan') {
+      // Base plan includes seats based on metadata
+      includedSeats = parseInt(metadata.included_seats || '0')
+    } else if (metadata.type === 'seat_addon') {
+      // Addon seats
+      addonSeats += item.quantity || 0
     }
   }
 
@@ -154,6 +182,9 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     trialEnd: (subscription as any).trial_end
       ? new Date((subscription as any).trial_end * 1000)
       : null,
+    billingInterval,
+    includedSeats,
+    addonSeats,
     metadata: subscription.metadata,
     updatedAt: new Date(),
   }
@@ -182,7 +213,23 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     })
     .where(eq(organizations.id, organization.id))
 
-  console.log('Subscription updated successfully for org:', organization.name)
+  // Sync seats with seat management service
+  const { syncSeatsFromStripe } = await import('@/lib/services/seat-management.service')
+  await syncSeatsFromStripe(organization.id)
+
+  // Initialize or reset AI usage metering for new subscriptions
+  if (status === 'trialing' || status === 'active') {
+    const { getOrCreateUsageMetering } = await import('@/lib/services/ai-metering.service')
+    await getOrCreateUsageMetering(organization.id)
+  }
+
+  console.log('Subscription updated successfully for org:', organization.name, {
+    tier,
+    includedSeats,
+    addonSeats,
+    billingInterval,
+    trialEnd: subscriptionData.trialEnd,
+  })
 }
 
 /**
