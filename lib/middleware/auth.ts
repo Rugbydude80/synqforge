@@ -14,7 +14,7 @@ export interface UserContext {
   email: string
   name: string | null
   organizationId: string
-  role: 'admin' | 'member' | 'viewer'
+  role: 'owner' | 'admin' | 'member' | 'viewer'
   isActive: boolean
 }
 
@@ -22,7 +22,7 @@ export interface AuthOptions {
   requireOrg?: boolean
   requireAdmin?: boolean
   requireProject?: boolean
-  allowedRoles?: Array<'admin' | 'member' | 'viewer'>
+  allowedRoles?: Array<'owner' | 'admin' | 'member' | 'viewer'>
 }
 
 /**

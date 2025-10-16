@@ -23,7 +23,7 @@ export function useFeatureGate(): UseFeatureGateResult {
   const [paywallState, setPaywallState] = useState<{
     isOpen: boolean
     feature: string
-    requiredTier: 'team' | 'business' | 'enterprise'
+    requiredTier: 'free' | 'team' | 'business' | 'enterprise'
   } | null>(null)
 
   // Get current tier from session or default to free

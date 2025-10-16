@@ -10,7 +10,7 @@ const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  plan: z.enum(['free', 'pro', 'enterprise']).default('free'),
+  plan: z.enum(['free', 'team', 'business', 'enterprise']).default('free'),
 })
 
 export async function POST(req: NextRequest) {
@@ -91,8 +91,10 @@ export async function POST(req: NextRequest) {
     if (validatedData.plan !== 'free') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
-        const priceId = validatedData.plan === 'pro'
-          ? process.env.STRIPE_PRO_PRICE_ID
+        const priceId = validatedData.plan === 'team'
+          ? process.env.STRIPE_TEAM_PRICE_ID
+          : validatedData.plan === 'business'
+          ? process.env.STRIPE_BUSINESS_PRICE_ID
           : process.env.STRIPE_ENTERPRISE_PRICE_ID
 
         const session = await stripe.checkout.sessions.create({
