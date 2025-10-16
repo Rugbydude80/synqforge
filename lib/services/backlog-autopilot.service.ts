@@ -256,50 +256,111 @@ async function generateBacklogFromDocument(
   tasks: any[]
   tokensUsed: number
 }> {
-  const prompt = `You are a product management AI assistant. Analyze the following product requirements document (PRD) and generate a well-structured backlog with Epics, User Stories, and Tasks.
+  const prompt = `You are a product management AI assistant following the Universal User Story Generator framework. Analyze the following product requirements document (PRD) and generate production-ready user stories.
 
-Requirements:
-1. Create at least 1 Epic
-2. Each Epic should have at least 2 User Stories
-3. Each User Story should follow INVEST principles and have at least 3 Acceptance Criteria lines
-4. Generate tasks for complex stories (optional)
-5. Use clear, concise titles
-6. Include proper descriptions and acceptance criteria
-7. Identify any cross-story dependencies or references
+CRITICAL RULES - NEVER VIOLATE:
+1. Document-Based Only: Generate ONLY what's explicitly described in the document. No invented features.
+2. Source Tracking: Include [Source: Section/Page] references for every story.
+3. Atomic Scenarios: ONE behaviour per AC. Max 2 ANDs per AC. Max 10 ACs per story.
+4. UK English: Use "behaviour", "colour", "authorise", "organisation" etc.
+5. Currency: Use £ (GBP) for all monetary values.
+6. Testability: Each AC must be independently testable with clear pass/fail criteria.
+7. WCAG 2.2 AA: All UI features must include accessibility requirements.
 
 Document:
 ${documentContent}
 
-Please provide your response in the following JSON format:
+STORY FORMAT (strictly follow):
+
+**Title:** As a [persona], I want to [action], so that [benefit]
+
+**Background/Context:**
+[2-3 sentences explaining why this story exists, business value, and user need]
+
+**Source Artefact:**
+- Document: [filename/section]
+- Page/Section: [specific location]
+- Quote: "[exact quote from document]"
+
+**Description:**
+[Detailed explanation of what the feature does, written for developers]
+
+**Acceptance Criteria:**
+1. **GIVEN** [precondition] **WHEN** [action] **THEN** [expected outcome]
+2. **GIVEN** [precondition] **WHEN** [action] **THEN** [expected outcome]
+3. **GIVEN** [precondition] **WHEN** [action] **THEN** [expected outcome]
+[Continue for all scenarios - max 10]
+
+**Accessibility Requirements (WCAG 2.2 AA):**
+- Keyboard navigation: [specific requirement]
+- Screen reader: [specific requirement]
+- Colour contrast: [specific requirement]
+- Focus indicators: [specific requirement]
+
+**Dependencies:**
+- Depends on: [Story ID/title if applicable]
+- Blocks: [Story ID/title if applicable]
+
+**Out of Scope:**
+- [What this story explicitly does NOT include]
+
+**Notes:**
+- [Technical considerations, edge cases, or clarifications]
+
+JSON Response Format:
 {
   "epics": [
     {
       "title": "Epic title",
       "description": "Epic description",
+      "sourceArtefact": {
+        "document": "filename",
+        "section": "section name",
+        "quote": "exact quote"
+      },
       "stories": [
         {
-          "title": "User story title (As a... I want... So that...)",
-          "description": "Detailed description",
+          "title": "As a [persona], I want to [action], so that [benefit]",
+          "background": "Why this story exists and its business value",
+          "sourceArtefact": {
+            "document": "filename",
+            "section": "section/page",
+            "quote": "exact quote from document"
+          },
+          "description": "Detailed explanation for developers",
           "acceptanceCriteria": [
-            "Given... When... Then...",
-            "Given... When... Then...",
-            "Given... When... Then..."
+            "**GIVEN** [precondition] **WHEN** [action] **THEN** [outcome]",
+            "**GIVEN** [precondition] **WHEN** [action] **THEN** [outcome]"
           ],
-          "estimatedEffort": 3,
-          "dependencies": ["reference to another story title if applicable"],
-          "tasks": [
-            {
-              "title": "Task title",
-              "description": "Task description"
-            }
-          ]
+          "accessibilityRequirements": [
+            "Keyboard navigation: [requirement]",
+            "Screen reader: [requirement]",
+            "Colour contrast: WCAG AA compliant (4.5:1 for normal text)",
+            "Focus indicators: visible on all interactive elements"
+          ],
+          "dependencies": ["Story title if applicable"],
+          "outOfScope": ["What is NOT included"],
+          "notes": ["Technical considerations"],
+          "estimatedEffort": 5
         }
       ]
     }
   ]
 }
 
-Focus on quality over quantity. Ensure each story is independent, valuable, and testable.`
+VALIDATION CHECKLIST (apply to each story):
+✓ Title uses "As a... I want... so that..." format
+✓ At least 3 ACs, max 10 ACs
+✓ Each AC is atomic (one behaviour only)
+✓ Each AC uses **GIVEN** **WHEN** **THEN** with bold formatting
+✓ Source artefact includes document, section, and exact quote
+✓ Accessibility requirements included for UI features
+✓ UK English spelling throughout
+✓ GBP currency if monetary values mentioned
+✓ No invented features - only what's in the document
+✓ Each AC is independently testable
+
+Focus on quality over quantity. Ensure each story is INVEST-compliant, production-ready, and traceable to source.`
 
   const response = await anthropic.messages.create({
     model: 'claude-3-5-sonnet-20241022',
@@ -339,21 +400,72 @@ Focus on quality over quantity. Ensure each story is independent, valuable, and 
   for (const epicData of parsedData.epics) {
     const epicId = generateId()
 
+    // Format epic description with source artefact
+    let epicDescription = epicData.description
+    if (epicData.sourceArtefact) {
+      epicDescription += `\n\n**Source Artefact:**\n- Document: ${epicData.sourceArtefact.document}\n- Section: ${epicData.sourceArtefact.section}\n- Quote: "${epicData.sourceArtefact.quote}"`
+    }
+
     epicsData.push({
       id: epicId,
       title: epicData.title,
-      description: epicData.description,
+      description: epicDescription,
       stories: epicData.stories,
     })
 
     for (const storyData of epicData.stories) {
       const storyId = generateId()
 
+      // Format full story description with all Universal User Story Generator fields
+      let fullDescription = ''
+
+      // Background/Context
+      if (storyData.background) {
+        fullDescription += `**Background/Context:**\n${storyData.background}\n\n`
+      }
+
+      // Source Artefact
+      if (storyData.sourceArtefact) {
+        fullDescription += `**Source Artefact:**\n`
+        fullDescription += `- Document: ${storyData.sourceArtefact.document}\n`
+        fullDescription += `- Page/Section: ${storyData.sourceArtefact.section}\n`
+        fullDescription += `- Quote: "${storyData.sourceArtefact.quote}"\n\n`
+      }
+
+      // Main Description
+      fullDescription += `**Description:**\n${storyData.description}\n\n`
+
+      // Accessibility Requirements (if UI story)
+      if (storyData.accessibilityRequirements && storyData.accessibilityRequirements.length > 0) {
+        fullDescription += `**Accessibility Requirements (WCAG 2.2 AA):**\n`
+        storyData.accessibilityRequirements.forEach((req: string) => {
+          fullDescription += `- ${req}\n`
+        })
+        fullDescription += `\n`
+      }
+
+      // Out of Scope
+      if (storyData.outOfScope && storyData.outOfScope.length > 0) {
+        fullDescription += `**Out of Scope:**\n`
+        storyData.outOfScope.forEach((item: string) => {
+          fullDescription += `- ${item}\n`
+        })
+        fullDescription += `\n`
+      }
+
+      // Notes
+      if (storyData.notes && storyData.notes.length > 0) {
+        fullDescription += `**Notes:**\n`
+        storyData.notes.forEach((note: string) => {
+          fullDescription += `- ${note}\n`
+        })
+      }
+
       storiesData.push({
         id: storyId,
         epicId,
         title: storyData.title,
-        description: storyData.description,
+        description: fullDescription.trim(),
         acceptanceCriteria: storyData.acceptanceCriteria,
         estimatedEffort: storyData.estimatedEffort,
         dependencies: storyData.dependencies || [],
