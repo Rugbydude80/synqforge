@@ -4,7 +4,7 @@ import {
   sprints,
   stories,
   organizations,
-  organizationMembers,
+  users,
 } from '@/lib/db/schema'
 import { eq, and, sql, desc, gte, lte } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
@@ -263,8 +263,8 @@ export async function generateSprintForecast(
     // Get team size
     const teamMembers = await db
       .select()
-      .from(organizationMembers)
-      .where(eq(organizationMembers.organizationId, organizationId))
+      .from(users)
+      .where(eq(users.organizationId, organizationId))
 
     // Calculate sprint capacity
     const sprintDurationDays = sprint.endDate && sprint.startDate
