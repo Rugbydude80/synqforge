@@ -37,87 +37,237 @@ export const LIMITS = {
 
 /**
  * Subscription Tier Limits
- * Aligned with Stripe products and pricing page
+ * Aligned with Stripe products and pricing page (v1.0 - October 2025)
+ * Pricing: Free (£0), Team (£49/mo), Business (£149/mo), Enterprise (custom)
  */
 export const SUBSCRIPTION_LIMITS = {
   free: {
     // Projects & Stories
     maxProjects: 1,
     maxStoriesPerProject: 50,
-    maxUsers: 1,
+    maxSeats: 2,
+    includedSeats: 2,
+    seatPrice: 0,
 
-    // AI Usage
-    monthlyAITokens: 10000, // ~10-15 story generations
-    monthlyAIGenerations: 10,
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: 20000, // 20k pooled tokens/month
+    monthlyAIGenerations: 15,
     maxStoriesPerGeneration: 5,
-    canUseAdvancedAI: false,
-    canUseDocumentAnalysis: false,
+
+    // Advanced AI Modules
+    canUseBacklogAutopilot: false,
+    canUseACValidator: false,
+    canUseTestGeneration: false,
+    canUsePlanningForecast: false,
+    canUseEffortScoring: false,
+    canUseKnowledgeSearch: false,
+    canUseInboxParsing: false,
+    canUseRepoAwareness: false,
+    canUseWorkflowAgents: false,
+    canUseGovernance: false,
+    canUseModelControls: false,
+    canUseAnalytics: false,
 
     // Features
     canExport: false,
     canUseTemplates: false,
+    canUseAPI: false,
     canUseCustomFields: false,
     canUseAdvancedAnalytics: false,
     canUseSSO: false,
 
+    // Rate Limits
+    aiActionsPerMinute: 10,
+    heavyJobsPerMinute: 1,
+
     // Support
     supportLevel: 'community',
+
+    // Billing
+    price: 0,
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 0,
 
     // Display name
     displayName: 'Free',
   },
-  pro: {
+  team: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
-    maxUsers: 10,
+    maxSeats: Infinity,
+    includedSeats: 5,
+    seatPrice: 9, // £9/seat/month
 
-    // AI Usage
-    monthlyAITokens: 500000, // ~500-750 story generations
-    monthlyAIGenerations: 500,
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: 300000, // 300k pooled tokens/month
+    monthlyAIGenerations: 300,
     maxStoriesPerGeneration: 20,
-    canUseAdvancedAI: true,
-    canUseDocumentAnalysis: true,
+
+    // Advanced AI Modules
+    canUseBacklogAutopilot: true,
+    canUseACValidator: true,
+    canUseTestGeneration: true,
+    canUsePlanningForecast: true,
+    canUseEffortScoring: true,
+    canUseKnowledgeSearch: true, // Basic semantic search
+    canUseInboxParsing: false,
+    canUseRepoAwareness: false,
+    canUseWorkflowAgents: false,
+    canUseGovernance: false,
+    canUseModelControls: false,
+    canUseAnalytics: true, // Basic analytics
 
     // Features
     canExport: true,
     canUseTemplates: true,
+    canUseAPI: false,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: false,
+    canUseSSO: false,
+
+    // Rate Limits
+    aiActionsPerMinute: 60,
+    heavyJobsPerMinute: 6,
+
+    // Support
+    supportLevel: 'email',
+
+    // Billing
+    price: 49, // £49/month for 5 seats
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 14,
+    annualPrice: 490, // £490/year (2 months free)
+
+    // Display name
+    displayName: 'Team',
+  },
+  business: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxSeats: Infinity,
+    includedSeats: 10,
+    seatPrice: 12, // £12/seat/month
+
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: 1000000, // 1M pooled tokens/month
+    monthlyAIGenerations: 1000,
+    maxStoriesPerGeneration: 50,
+
+    // Advanced AI Modules (1-7)
+    canUseBacklogAutopilot: true,
+    canUseACValidator: true,
+    canUseTestGeneration: true,
+    canUsePlanningForecast: true,
+    canUseEffortScoring: true,
+    canUseKnowledgeSearch: true,
+    canUseInboxParsing: true,
+    canUseRepoAwareness: false, // Enterprise only
+    canUseWorkflowAgents: false, // Enterprise only
+    canUseGovernance: false, // Enterprise only
+    canUseModelControls: false, // Enterprise only
+    canUseAnalytics: true,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: true,
     canUseCustomFields: true,
     canUseAdvancedAnalytics: true,
     canUseSSO: false,
 
+    // Rate Limits
+    aiActionsPerMinute: 60,
+    heavyJobsPerMinute: 6,
+
     // Support
     supportLevel: 'priority',
 
+    // Billing
+    price: 149, // £149/month for 10 seats
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 14,
+    annualPrice: 1490, // £1,490/year (2 months free)
+
     // Display name
-    displayName: 'Pro',
+    displayName: 'Business',
   },
   enterprise: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
-    maxUsers: Infinity,
+    maxSeats: Infinity,
+    includedSeats: 20, // Negotiable
+    seatPrice: 0, // Custom pricing
 
-    // AI Usage
-    monthlyAITokens: Infinity, // Unlimited
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: 5000000, // 5M pooled tokens/month (or custom)
     monthlyAIGenerations: Infinity,
-    maxStoriesPerGeneration: 50,
-    canUseAdvancedAI: true,
-    canUseDocumentAnalysis: true,
+    maxStoriesPerGeneration: 100,
+
+    // Advanced AI Modules (All 12 modules)
+    canUseBacklogAutopilot: true,
+    canUseACValidator: true,
+    canUseTestGeneration: true,
+    canUsePlanningForecast: true,
+    canUseEffortScoring: true,
+    canUseKnowledgeSearch: true,
+    canUseInboxParsing: true,
+    canUseRepoAwareness: true, // Enterprise only
+    canUseWorkflowAgents: true, // Enterprise only
+    canUseGovernance: true, // Enterprise only
+    canUseModelControls: true, // Enterprise only
+    canUseAnalytics: true,
 
     // Features
     canExport: true,
     canUseTemplates: true,
+    canUseAPI: true,
     canUseCustomFields: true,
     canUseAdvancedAnalytics: true,
     canUseSSO: true,
+    canUseSCIM: true,
+    canUseDataResidency: true,
+    canUseDLP: true,
+
+    // Rate Limits
+    aiActionsPerMinute: 120, // Higher limits
+    heavyJobsPerMinute: 12,
 
     // Support
     supportLevel: 'dedicated',
 
+    // Billing
+    price: 0, // Custom pricing
+    currency: 'GBP',
+    billingInterval: 'annual', // Annual only
+    trialDays: 30,
+
     // Display name
     displayName: 'Enterprise',
   },
+} as const
+
+/**
+ * AI Token Overage Pricing
+ */
+export const AI_OVERAGE = {
+  pricePerUnit: 2, // £2 per 100k tokens
+  unitSize: 100000, // 100k tokens
+  threshold: 1.1, // Bill overage when usage exceeds 110% of pool
+} as const
+
+/**
+ * Seat Add-on Pricing (per seat per month)
+ */
+export const SEAT_PRICING = {
+  team: 9, // £9/seat/month
+  business: 12, // £12/seat/month
+  enterprise: 0, // Custom pricing
 } as const
 
 /**

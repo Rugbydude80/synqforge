@@ -18,54 +18,85 @@ const plans = [
     icon: Sparkles,
     priceId: null,
     tier: 'free',
+    seats: '2 seats included',
     features: [
       '1 project',
       'Up to 50 stories',
-      'Basic AI generation',
+      '20k AI tokens/month (pooled)',
       'Community support',
       'Email notifications',
     ],
     limitations: [
       'No export functionality',
+      'No Advanced AI modules',
       'No custom templates',
-      'Limited AI features',
     ],
   },
   {
-    name: 'Pro',
-    price: 29,
-    description: 'For teams that need more power',
+    name: 'Team',
+    price: 49,
+    description: 'For growing teams',
     icon: Zap,
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || 'price_pro_monthly',
-    tier: 'pro',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_TEAM_PRICE_ID || 'price_team_monthly',
+    tier: 'team',
     popular: true,
+    seats: '5 seats included',
+    seatPrice: 9,
+    annualPrice: 490,
     features: [
-      'Unlimited projects',
-      'Unlimited stories',
-      'Advanced AI generation',
-      'Priority support',
+      'Unlimited projects & stories',
+      '300k AI tokens/month (pooled)',
+      'Backlog Autopilot',
+      'AC Validator',
+      'Test Generation',
+      'Planning & Forecasting',
+      'Effort Scoring',
+      'Knowledge Search',
       'Export to Excel/Word/PDF',
       'Custom templates',
-      'Collaboration tools',
-      'Sprint planning',
+      'Email support',
+    ],
+  },
+  {
+    name: 'Business',
+    price: 149,
+    description: 'Advanced AI for scaling teams',
+    icon: Building2,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PRICE_ID || 'price_business_monthly',
+    tier: 'business',
+    seats: '10 seats included',
+    seatPrice: 12,
+    annualPrice: 1490,
+    badge: 'Advanced AI',
+    features: [
+      'Everything in Team',
+      '1M AI tokens/month (pooled)',
+      'Inbox to Backlog parsing',
+      'API access',
+      'Advanced analytics',
+      'Priority support',
+      '14-day trial',
     ],
   },
   {
     name: 'Enterprise',
-    price: 99,
-    description: 'For organizations at scale',
+    price: null,
+    description: 'Enterprise-grade AI & governance',
     icon: Building2,
-    priceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise_monthly',
+    priceId: null,
     tier: 'enterprise',
+    seats: '20+ seats (custom)',
     features: [
-      'Everything in Pro',
+      'Everything in Business',
+      '5M+ AI tokens/month',
+      'Repo Awareness (Git integration)',
+      'Workflow Agents',
+      'Governance & Compliance',
+      'Model Controls & Policies',
+      'SSO/SCIM',
+      'Data residency controls',
       'Dedicated support',
-      'Custom integrations',
-      'SSO/SAML',
-      'Advanced analytics',
       'SLA guarantee',
-      'Onboarding assistance',
-      'Custom training',
     ],
   },
 ]
@@ -181,9 +212,26 @@ export default function PricingPage() {
                   </div>
                   <CardDescription>{plan.description}</CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold">${plan.price}</span>
-                    <span className="text-muted-foreground">/month</span>
+                    {plan.price !== null ? (
+                      <>
+                        <span className="text-4xl font-bold">£{plan.price}</span>
+                        <span className="text-muted-foreground">/month</span>
+                        {plan.annualPrice && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            or £{plan.annualPrice}/year (save £{(plan.price * 12) - plan.annualPrice})
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-2xl font-bold">Contact Sales</span>
+                    )}
                   </div>
+                  {plan.seats && (
+                    <div className="text-sm text-muted-foreground mt-2">
+                      {plan.seats}
+                      {plan.seatPrice && ` · £${plan.seatPrice}/extra seat`}
+                    </div>
+                  )}
                 </CardHeader>
 
                 <CardContent className="flex-1">
@@ -209,7 +257,13 @@ export default function PricingPage() {
                   <Button
                     className="w-full"
                     variant={plan.popular ? 'default' : 'outline'}
-                    onClick={() => handleSubscribe(plan.priceId, plan.tier)}
+                    onClick={() => {
+                      if (plan.tier === 'enterprise') {
+                        window.location.href = 'mailto:sales@synqforge.com?subject=Enterprise Inquiry'
+                      } else {
+                        handleSubscribe(plan.priceId, plan.tier)
+                      }
+                    }}
                     disabled={loading !== null}
                   >
                     {loading === plan.tier ? (
@@ -219,8 +273,10 @@ export default function PricingPage() {
                       </>
                     ) : plan.tier === 'free' ? (
                       'Get Started Free'
+                    ) : plan.tier === 'enterprise' ? (
+                      'Contact Sales'
                     ) : (
-                      'Subscribe Now'
+                      'Start Free Trial'
                     )}
                   </Button>
                 </CardFooter>

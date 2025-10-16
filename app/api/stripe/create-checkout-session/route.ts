@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe/stripe-client'
 import { db } from '@/lib/db'
 import { organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
 /**
  * POST /api/stripe/create-checkout-session
@@ -22,7 +23,7 @@ async function createCheckoutSession(req: NextRequest, context: any) {
     }
 
     // Validate plan
-    if (!['pro', 'enterprise'].includes(plan)) {
+    if (!['team', 'business', 'enterprise'].includes(plan)) {
       return NextResponse.json(
         { error: 'Invalid plan' },
         { status: 400 }
@@ -67,8 +68,12 @@ async function createCheckoutSession(req: NextRequest, context: any) {
         .where(eq(organizations.id, organization.id))
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Get trial days for the plan
+    const tierLimits = SUBSCRIPTION_LIMITS[plan as keyof typeof SUBSCRIPTION_LIMITS]
+    const trialDays = tierLimits.trialDays || 0
+
+    // Create checkout session with trial
+    const sessionConfig: any = {
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -90,7 +95,20 @@ async function createCheckoutSession(req: NextRequest, context: any) {
         address: 'auto',
         name: 'auto',
       },
-    })
+    }
+
+    // Add trial period if applicable (Team and Business get 14-day trial)
+    if (trialDays > 0) {
+      sessionConfig.subscription_data = {
+        trial_period_days: trialDays,
+        metadata: {
+          plan,
+          organizationId: organization.id,
+        },
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig)
 
     return NextResponse.json({
       sessionId: session.id,

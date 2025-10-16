@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink } from 'lucide-react'
+import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink, Users, Sparkles, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { UsageBadge } from '@/components/ui/usage-badge'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 
@@ -16,6 +17,7 @@ function BillingPageContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [subscription, setSubscription] = useState<any>(null)
+  const [usageData, setUsageData] = useState<any>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -31,13 +33,13 @@ function BillingPageContent() {
       toast.error('Checkout canceled')
     }
 
-    // Fetch current subscription
+    // Fetch current subscription and usage
     fetchSubscription()
+    fetchUsageData()
   }, [status, searchParams])
 
   const fetchSubscription = async () => {
     try {
-      // You'll need to create this endpoint
       const response = await fetch('/api/stripe/subscription', {
         credentials: 'include',
       })
@@ -48,6 +50,21 @@ function BillingPageContent() {
       }
     } catch (error) {
       console.error('Error fetching subscription:', error)
+    }
+  }
+
+  const fetchUsageData = async () => {
+    try {
+      const response = await fetch('/api/usage', {
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUsageData(data)
+      }
+    } catch (error) {
+      console.error('Error fetching usage:', error)
     }
   }
 
@@ -182,6 +199,92 @@ function BillingPageContent() {
               )}
             </CardContent>
           </Card>
+
+          {/* Usage Overview */}
+          {usageData && (
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* AI Tokens */}
+              {usageData.aiUsage && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                      <CardTitle className="text-base">AI Tokens</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-1">
+                      {usageData.aiUsage.tokensUsed.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      of {usageData.aiUsage.tokenPool.toLocaleString()} used
+                    </p>
+                    <UsageBadge
+                      tokensUsed={usageData.aiUsage.tokensUsed}
+                      tokenPool={usageData.aiUsage.tokenPool}
+                      showProgress
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Seats */}
+              {usageData.seats && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-blue-500" />
+                      <CardTitle className="text-base">Team Seats</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-1">
+                      {usageData.seats.usedSeats} / {usageData.seats.totalAvailableSeats}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {usageData.seats.activeSeats} active · {usageData.seats.pendingInvites} pending
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Included seats</span>
+                        <span className="font-medium">{usageData.seats.includedSeats}</span>
+                      </div>
+                      {usageData.seats.addonSeats > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Add-on seats</span>
+                          <span className="font-medium">{usageData.seats.addonSeats}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* AI Actions */}
+              {usageData.aiUsage && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-500" />
+                      <CardTitle className="text-base">AI Actions</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-1">
+                      {usageData.aiUsage.aiActionsCount.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">this period</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Heavy jobs</span>
+                        <span className="font-medium">{usageData.aiUsage.heavyJobsCount}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
 
           {/* Features */}
           <Card>

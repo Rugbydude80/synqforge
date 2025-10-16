@@ -28,15 +28,38 @@ const bytea = customType<{ data: Buffer }>({
 // ENUMS - Define before tables
 // ============================================
 
-export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'pro', 'enterprise'])
-export const roleEnum = pgEnum('role', ['admin', 'member', 'viewer'])
+export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'team', 'business', 'enterprise'])
+export const roleEnum = pgEnum('role', ['owner', 'admin', 'member', 'viewer'])
 export const projectStatusEnum = pgEnum('project_status', ['planning', 'active', 'on_hold', 'completed', 'archived'])
 export const epicStatusEnum = pgEnum('epic_status', ['draft', 'published', 'planned', 'in_progress', 'completed', 'archived'])
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical'])
 export const storyStatusEnum = pgEnum('story_status', ['backlog', 'ready', 'in_progress', 'review', 'done', 'blocked'])
 export const storyTypeEnum = pgEnum('story_type', ['feature', 'bug', 'task', 'spike'])
 export const sprintStatusEnum = pgEnum('sprint_status', ['planning', 'active', 'completed', 'cancelled'])
-export const aiGenerationTypeEnum = pgEnum('ai_generation_type', ['story_generation', 'story_validation', 'epic_creation', 'requirements_analysis'])
+export const aiGenerationTypeEnum = pgEnum('ai_generation_type', [
+  'story_generation',
+  'story_validation',
+  'epic_creation',
+  'requirements_analysis',
+  'backlog_autopilot',
+  'ac_validation',
+  'test_generation',
+  'planning_forecast',
+  'effort_scoring',
+  'impact_scoring',
+  'knowledge_search',
+  'inbox_parsing',
+  'repo_analysis',
+  'pr_summary'
+])
+export const autopilotJobStatusEnum = pgEnum('autopilot_job_status', ['pending', 'processing', 'review', 'completed', 'failed', 'cancelled'])
+export const validationRuleTypeEnum = pgEnum('validation_rule_type', ['uk_spelling', 'atomic_criteria', 'max_ands', 'max_lines', 'required_fields'])
+export const artefactTypeEnum = pgEnum('artefact_type', ['gherkin', 'postman', 'playwright', 'cypress', 'unit_test'])
+export const agentStatusEnum = pgEnum('agent_status', ['enabled', 'paused', 'disabled'])
+export const agentActionStatusEnum = pgEnum('agent_action_status', ['pending', 'approved', 'rejected', 'executed'])
+export const piiTypeEnum = pgEnum('pii_type', ['email', 'phone', 'ssn', 'credit_card', 'address', 'name'])
+export const aiModelTierEnum = pgEnum('ai_model_tier', ['fast', 'balanced', 'quality'])
+export const billingIntervalEnum = pgEnum('billing_interval', ['monthly', 'annual'])
 export const generationStatusEnum = pgEnum('generation_status', ['pending', 'completed', 'failed'])
 export const processingStatusEnum = pgEnum('processing_status', ['uploaded', 'processing', 'completed', 'failed'])
 export const transactionTypeEnum = pgEnum('transaction_type', ['purchase', 'usage', 'refund', 'bonus'])
@@ -812,6 +835,9 @@ export const stripeSubscriptions = pgTable(
     canceledAt: timestamp('canceled_at'),
     trialStart: timestamp('trial_start'),
     trialEnd: timestamp('trial_end'),
+    billingInterval: billingIntervalEnum('billing_interval').default('monthly'),
+    includedSeats: integer('included_seats').default(0),
+    addonSeats: integer('addon_seats').default(0),
     metadata: json('metadata').$type<Record<string, any>>(),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -820,6 +846,508 @@ export const stripeSubscriptions = pgTable(
     orgIdx: index('idx_stripe_subs_org').on(table.organizationId),
     customerIdx: index('idx_stripe_subs_customer').on(table.stripeCustomerId),
     subscriptionIdx: uniqueIndex('idx_stripe_subs_subscription').on(table.stripeSubscriptionId),
+  })
+)
+
+// ============================================
+// SEAT MANAGEMENT
+// ============================================
+
+export const organizationSeats = pgTable(
+  'organization_seats',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    includedSeats: integer('included_seats').default(0).notNull(),
+    addonSeats: integer('addon_seats').default(0).notNull(),
+    activeSeats: integer('active_seats').default(0).notNull(),
+    pendingInvites: integer('pending_invites').default(0).notNull(),
+    lastSeatUpdate: timestamp('last_seat_update').defaultNow(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: uniqueIndex('idx_org_seats_org').on(table.organizationId),
+  })
+)
+
+// ============================================
+// AI USAGE METERING & POOLED TOKENS
+// ============================================
+
+export const aiUsageMetering = pgTable(
+  'ai_usage_metering',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    billingPeriodStart: timestamp('billing_period_start').notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    tokenPool: integer('token_pool').default(0).notNull(),
+    tokensUsed: integer('tokens_used').default(0).notNull(),
+    tokensRemaining: integer('tokens_remaining').default(0).notNull(),
+    overageTokens: integer('overage_tokens').default(0).notNull(),
+    overageCharges: decimal('overage_charges', { precision: 10, scale: 2 }).default('0').notNull(),
+    aiActionsCount: integer('ai_actions_count').default(0).notNull(),
+    heavyJobsCount: integer('heavy_jobs_count').default(0).notNull(),
+    lastResetAt: timestamp('last_reset_at').defaultNow(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_ai_usage_org').on(table.organizationId),
+    periodIdx: index('idx_ai_usage_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    uniqueOrgPeriod: uniqueIndex('idx_unique_org_period').on(table.organizationId, table.billingPeriodStart),
+  })
+)
+
+export const aiUsageAlerts = pgTable(
+  'ai_usage_alerts',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    alertType: varchar('alert_type', { length: 50 }).notNull(), // '50_percent', '80_percent', '95_percent', '100_percent'
+    threshold: integer('threshold').notNull(),
+    triggered: boolean('triggered').default(false),
+    triggeredAt: timestamp('triggered_at'),
+    notificationSent: boolean('notification_sent').default(false),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_usage_alerts_org').on(table.organizationId),
+    triggeredIdx: index('idx_usage_alerts_triggered').on(table.triggered),
+  })
+)
+
+// ============================================
+// ADVANCED AI: BACKLOG AUTOPILOT
+// ============================================
+
+export const autopilotJobs = pgTable(
+  'autopilot_jobs',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    sourceDocumentId: varchar('source_document_id', { length: 36 }),
+    inputText: text('input_text').notNull(),
+    status: autopilotJobStatusEnum('status').default('pending'),
+    requiresReview: boolean('requires_review').default(true),
+    generatedEpicIds: json('generated_epic_ids').$type<string[]>().default([]),
+    generatedStoryIds: json('generated_story_ids').$type<string[]>().default([]),
+    detectedDuplicates: json('detected_duplicates').$type<any[]>().default([]),
+    detectedDependencies: json('detected_dependencies').$type<any[]>().default([]),
+    tokensUsed: integer('tokens_used').default(0),
+    processingTimeMs: integer('processing_time_ms'),
+    errorMessage: text('error_message'),
+    reviewedBy: varchar('reviewed_by', { length: 36 }),
+    reviewedAt: timestamp('reviewed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_autopilot_org').on(table.organizationId),
+    projectIdx: index('idx_autopilot_project').on(table.projectId),
+    statusIdx: index('idx_autopilot_status').on(table.status),
+    userIdx: index('idx_autopilot_user').on(table.userId),
+  })
+)
+
+// ============================================
+// ADVANCED AI: AC VALIDATOR
+// ============================================
+
+export const acValidationRules = pgTable(
+  'ac_validation_rules',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    ruleName: varchar('rule_name', { length: 255 }).notNull(),
+    ruleType: validationRuleTypeEnum('rule_type').notNull(),
+    ruleConfig: json('rule_config').$type<Record<string, any>>(),
+    isActive: boolean('is_active').default(true),
+    priority: integer('priority').default(0),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_ac_rules_org').on(table.organizationId),
+    typeIdx: index('idx_ac_rules_type').on(table.ruleType),
+    activeIdx: index('idx_ac_rules_active').on(table.isActive),
+  })
+)
+
+export const acValidationResults = pgTable(
+  'ac_validation_results',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    overallScore: integer('overall_score').notNull(), // 0-100
+    passedRules: json('passed_rules').$type<string[]>().default([]),
+    failedRules: json('failed_rules').$type<any[]>().default([]),
+    suggestions: json('suggestions').$type<string[]>().default([]),
+    autoFixAvailable: boolean('auto_fix_available').default(false),
+    autoFixProposal: json('auto_fix_proposal').$type<Record<string, any>>(),
+    appliedBy: varchar('applied_by', { length: 36 }),
+    appliedAt: timestamp('applied_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_ac_validation_story').on(table.storyId),
+    orgIdx: index('idx_ac_validation_org').on(table.organizationId),
+    scoreIdx: index('idx_ac_validation_score').on(table.overallScore),
+  })
+)
+
+// ============================================
+// ADVANCED AI: TEST & ARTEFACT GENERATION
+// ============================================
+
+export const testArtefacts = pgTable(
+  'test_artefacts',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    artefactType: artefactTypeEnum('artefact_type').notNull(),
+    fileName: varchar('file_name', { length: 255 }).notNull(),
+    content: text('content').notNull(),
+    linkedAcIds: json('linked_ac_ids').$type<string[]>().default([]),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    generatedBy: varchar('generated_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_test_artefacts_story').on(table.storyId),
+    orgIdx: index('idx_test_artefacts_org').on(table.organizationId),
+    typeIdx: index('idx_test_artefacts_type').on(table.artefactType),
+  })
+)
+
+// ============================================
+// ADVANCED AI: PLANNING & FORECASTING
+// ============================================
+
+export const sprintForecasts = pgTable(
+  'sprint_forecasts',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    forecastDate: timestamp('forecast_date').notNull(),
+    averageVelocity: decimal('average_velocity', { precision: 8, scale: 2 }),
+    suggestedCapacity: integer('suggested_capacity'),
+    spilloverProbability: integer('spillover_probability'), // 0-100
+    confidence50Date: date('confidence_50_date'),
+    confidence75Date: date('confidence_75_date'),
+    confidence90Date: date('confidence_90_date'),
+    forecastData: json('forecast_data').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    projectIdx: index('idx_forecasts_project').on(table.projectId),
+    orgIdx: index('idx_forecasts_org').on(table.organizationId),
+    dateIdx: index('idx_forecasts_date').on(table.forecastDate),
+  })
+)
+
+// ============================================
+// ADVANCED AI: EFFORT & IMPACT SCORING
+// ============================================
+
+export const effortScores = pgTable(
+  'effort_scores',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    suggestedPoints: integer('suggested_points').notNull(),
+    confidence: integer('confidence').notNull(), // 0-100
+    reasoning: text('reasoning'),
+    similarStoryIds: json('similar_story_ids').$type<string[]>().default([]),
+    approvedBy: varchar('approved_by', { length: 36 }),
+    approvedAt: timestamp('approved_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_effort_scores_story').on(table.storyId),
+    orgIdx: index('idx_effort_scores_org').on(table.organizationId),
+  })
+)
+
+export const impactScores = pgTable(
+  'impact_scores',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    reach: integer('reach'),
+    impact: integer('impact'),
+    confidence: integer('confidence'),
+    effort: integer('effort'),
+    riceScore: decimal('rice_score', { precision: 10, scale: 2 }),
+    wsjfScore: decimal('wsjf_score', { precision: 10, scale: 2 }),
+    reasoning: text('reasoning'),
+    lockedBy: varchar('locked_by', { length: 36 }),
+    lockedAt: timestamp('locked_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_impact_scores_story').on(table.storyId),
+    orgIdx: index('idx_impact_scores_org').on(table.organizationId),
+    riceIdx: index('idx_impact_scores_rice').on(table.riceScore),
+  })
+)
+
+// ============================================
+// ADVANCED AI: KNOWLEDGE SEARCH (RAG)
+// ============================================
+
+export const knowledgeEmbeddings = pgTable(
+  'knowledge_embeddings',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    sourceType: varchar('source_type', { length: 50 }).notNull(), // 'story', 'epic', 'document', 'commit'
+    sourceId: varchar('source_id', { length: 255 }).notNull(),
+    content: text('content').notNull(),
+    embedding: json('embedding').$type<number[]>(), // Vector storage (will use pgvector in production)
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_knowledge_org').on(table.organizationId),
+    sourceIdx: index('idx_knowledge_source').on(table.sourceType, table.sourceId),
+  })
+)
+
+export const knowledgeSearches = pgTable(
+  'knowledge_searches',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    query: text('query').notNull(),
+    results: json('results').$type<any[]>(),
+    resultCount: integer('result_count').default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_knowledge_searches_org').on(table.organizationId),
+    userIdx: index('idx_knowledge_searches_user').on(table.userId),
+  })
+)
+
+// ============================================
+// ADVANCED AI: INBOX TO BACKLOG
+// ============================================
+
+export const inboxParsing = pgTable(
+  'inbox_parsing',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    sourceType: varchar('source_type', { length: 50 }).notNull(), // 'slack', 'teams', 'email'
+    rawContent: text('raw_content').notNull(),
+    extractedDecisions: json('extracted_decisions').$type<string[]>().default([]),
+    extractedActions: json('extracted_actions').$type<any[]>().default([]),
+    extractedRisks: json('extracted_risks').$type<string[]>().default([]),
+    proposedStories: json('proposed_stories').$type<any[]>().default([]),
+    piiDetected: boolean('pii_detected').default(false),
+    piiRedacted: text('pii_redacted'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_inbox_org').on(table.organizationId),
+    userIdx: index('idx_inbox_user').on(table.userId),
+    typeIdx: index('idx_inbox_type').on(table.sourceType),
+  })
+)
+
+// ============================================
+// ADVANCED AI: REPO AWARENESS
+// ============================================
+
+export const gitIntegrations = pgTable(
+  'git_integrations',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }),
+    provider: varchar('provider', { length: 50 }).notNull(), // 'github', 'gitlab', 'bitbucket'
+    repositoryUrl: varchar('repository_url', { length: 500 }).notNull(),
+    accessToken: text('access_token'), // Encrypted
+    webhookSecret: text('webhook_secret'),
+    isActive: boolean('is_active').default(true),
+    lastSyncAt: timestamp('last_sync_at'),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_git_integrations_org').on(table.organizationId),
+    projectIdx: index('idx_git_integrations_project').on(table.projectId),
+    activeIdx: index('idx_git_integrations_active').on(table.isActive),
+  })
+)
+
+export const prSummaries = pgTable(
+  'pr_summaries',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    storyId: varchar('story_id', { length: 36 }),
+    gitIntegrationId: varchar('git_integration_id', { length: 36 }).notNull(),
+    prNumber: integer('pr_number').notNull(),
+    prUrl: varchar('pr_url', { length: 500 }),
+    prTitle: varchar('pr_title', { length: 255 }),
+    summary: text('summary'),
+    filesChanged: integer('files_changed'),
+    linesAdded: integer('lines_added'),
+    linesRemoved: integer('lines_removed'),
+    status: varchar('status', { length: 50 }), // 'open', 'merged', 'closed'
+    linkedStoryIds: json('linked_story_ids').$type<string[]>().default([]),
+    driftDetected: boolean('drift_detected').default(false),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_pr_summaries_org').on(table.organizationId),
+    storyIdx: index('idx_pr_summaries_story').on(table.storyId),
+    integrationIdx: index('idx_pr_summaries_integration').on(table.gitIntegrationId),
+    driftIdx: index('idx_pr_summaries_drift').on(table.driftDetected),
+  })
+)
+
+// ============================================
+// ADVANCED AI: WORKFLOW AGENTS
+// ============================================
+
+export const workflowAgents = pgTable(
+  'workflow_agents',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    agentName: varchar('agent_name', { length: 255 }).notNull(),
+    description: text('description'),
+    status: agentStatusEnum('status').default('enabled'),
+    triggerEvent: varchar('trigger_event', { length: 100 }).notNull(),
+    scope: json('scope').$type<Record<string, any>>(), // Project IDs, story types, etc.
+    rateLimitPerHour: integer('rate_limit_per_hour').default(60),
+    tokenCapPerAction: integer('token_cap_per_action').default(5000),
+    requiresApproval: boolean('requires_approval').default(true),
+    actionConfig: json('action_config').$type<Record<string, any>>(),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_agents_org').on(table.organizationId),
+    statusIdx: index('idx_agents_status').on(table.status),
+  })
+)
+
+export const agentActions = pgTable(
+  'agent_actions',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    agentId: varchar('agent_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    triggeredBy: varchar('triggered_by', { length: 255 }),
+    actionType: varchar('action_type', { length: 100 }).notNull(),
+    targetType: varchar('target_type', { length: 50 }),
+    targetId: varchar('target_id', { length: 36 }),
+    status: agentActionStatusEnum('status').default('pending'),
+    actionData: json('action_data').$type<Record<string, any>>(),
+    result: json('result').$type<Record<string, any>>(),
+    tokensUsed: integer('tokens_used').default(0),
+    reviewedBy: varchar('reviewed_by', { length: 36 }),
+    reviewedAt: timestamp('reviewed_at'),
+    executedAt: timestamp('executed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    agentIdx: index('idx_agent_actions_agent').on(table.agentId),
+    orgIdx: index('idx_agent_actions_org').on(table.organizationId),
+    statusIdx: index('idx_agent_actions_status').on(table.status),
+  })
+)
+
+// ============================================
+// ADVANCED AI: GOVERNANCE & COMPLIANCE
+// ============================================
+
+export const piiDetections = pgTable(
+  'pii_detections',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    resourceType: varchar('resource_type', { length: 50 }).notNull(), // 'story', 'comment', 'document'
+    resourceId: varchar('resource_id', { length: 36 }).notNull(),
+    piiType: piiTypeEnum('pii_type').notNull(),
+    detectedValue: text('detected_value'), // Encrypted
+    maskedValue: text('masked_value'),
+    position: json('position').$type<Record<string, any>>(), // Line/character position
+    handledBy: varchar('handled_by', { length: 36 }),
+    handledAt: timestamp('handled_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_pii_org').on(table.organizationId),
+    resourceIdx: index('idx_pii_resource').on(table.resourceType, table.resourceId),
+    typeIdx: index('idx_pii_type').on(table.piiType),
+  })
+)
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }),
+    action: varchar('action', { length: 100 }).notNull(),
+    resourceType: varchar('resource_type', { length: 50 }).notNull(),
+    resourceId: varchar('resource_id', { length: 36 }),
+    changes: json('changes').$type<Record<string, any>>(),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    ipAddress: varchar('ip_address', { length: 45 }),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_audit_logs_org').on(table.organizationId),
+    userIdx: index('idx_audit_logs_user').on(table.userId),
+    actionIdx: index('idx_audit_logs_action').on(table.action),
+    resourceIdx: index('idx_audit_logs_resource').on(table.resourceType, table.resourceId),
+    createdIdx: index('idx_audit_logs_created').on(table.createdAt),
+  })
+)
+
+// ============================================
+// ADVANCED AI: MODEL CONTROLS
+// ============================================
+
+export const aiModelPolicies = pgTable(
+  'ai_model_policies',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    featureType: varchar('feature_type', { length: 100 }).notNull(), // 'autopilot', 'validator', etc.
+    modelTier: aiModelTierEnum('model_tier').default('balanced'),
+    modelName: varchar('model_name', { length: 255 }),
+    maxTokensPerRequest: integer('max_tokens_per_request').default(10000),
+    enableContextOptimization: boolean('enable_context_optimization').default(true),
+    customInstructions: text('custom_instructions'),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_model_policies_org').on(table.organizationId),
+    featureIdx: index('idx_model_policies_feature').on(table.featureType),
   })
 )
 
