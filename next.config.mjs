@@ -23,12 +23,6 @@ const nextConfig = {
   // Skip static optimization for error pages to avoid build issues
   skipMiddlewareUrlNormalize: true,
   skipTrailingSlashRedirect: true,
-  // Disable static page generation for error pages
-  generateBuildId: async () => {
-    return 'build-id'
-  },
-  // Disable static generation to avoid Html component conflicts
-  generateStaticParams: false,
   // Explicitly configure webpack to handle CSS and exclude email templates
   webpack: (config, { isServer }) => {
     // Exclude @react-email/components from the bundle
