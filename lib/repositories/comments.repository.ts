@@ -11,7 +11,7 @@ export interface CreateCommentInput {
 }
 
 export interface UpdateCommentInput {
-  content: string
+  content?: string
 }
 
 export interface AddReactionInput {

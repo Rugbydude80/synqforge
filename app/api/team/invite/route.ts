@@ -90,9 +90,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'User limit reached',
-          message: `Your plan allows ${limits.maxUsers} users. You currently have ${currentCount} users.`,
+          message: `Your plan allows ${limits.maxSeats} users. You currently have ${currentCount} users.`,
           currentCount,
-          maxUsers: limits.maxUsers,
+          maxSeats: limits.maxSeats,
           upgradeUrl: '/pricing',
         },
         { status: 403 }

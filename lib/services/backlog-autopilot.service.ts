@@ -3,8 +3,6 @@ import {
   autopilotJobs,
   epics,
   stories,
-  tasks,
-  storyDependencies,
   organizations
 } from '@/lib/db/schema'
 import { eq, and, sql, desc } from 'drizzle-orm'
@@ -89,14 +87,14 @@ export async function createAutopilotJob(
     }
 
     // Check if organization has access to Backlog Autopilot
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error('Backlog Autopilot requires Team plan or higher. Please upgrade to continue.')
     }
 
     // Check heavy job rate limit
     const rateLimitCheck = await checkHeavyJobRateLimit(input.organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -109,7 +107,7 @@ export async function createAutopilotJob(
     const tokenCheck = await checkTokenAvailability(input.organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining, but this action requires approximately ${estimatedTokens} tokens. ${tokenCheck.requiresUpgrade ? 'Please upgrade your plan or purchase additional tokens.' : 'Your tokens will reset at the start of the next billing period.'}`
+        tokenCheck.reason || `Insufficient AI tokens. This action requires approximately ${estimatedTokens} tokens. Please upgrade your plan or purchase additional tokens.`
       )
     }
 
