@@ -35,5 +35,5 @@ async function getForecastHistory(req: NextRequest, context: any) {
 }
 
 export const GET = withAuth(
-  withFeatureGate('canUsePlanningForecasting', getForecastHistory)
+  withFeatureGate('canUsePlanningForecast', getForecastHistory)
 )

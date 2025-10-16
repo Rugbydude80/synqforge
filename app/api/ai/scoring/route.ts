@@ -76,5 +76,5 @@ async function getHistory(req: NextRequest, context: any) {
   }
 }
 
-export const POST = withAuth(withFeatureGate('canUseEffortImpactScoring', generateScore))
-export const GET = withAuth(withFeatureGate('canUseEffortImpactScoring', getHistory))
+export const POST = withAuth(withFeatureGate('canUseEffortScoring', generateScore))
+export const GET = withAuth(withFeatureGate('canUseEffortScoring', getHistory))
