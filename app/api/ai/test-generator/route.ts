@@ -110,9 +110,9 @@ async function getArtefacts(req: NextRequest, context: any) {
 }
 
 export const POST = withAuth(
-  withFeatureGate('canUseTestArtefactGeneration', generateArtefacts)
+  withFeatureGate('canUseTestGeneration', generateArtefacts)
 )
 
 export const GET = withAuth(
-  withFeatureGate('canUseTestArtefactGeneration', getArtefacts)
+  withFeatureGate('canUseTestGeneration', getArtefacts)
 )

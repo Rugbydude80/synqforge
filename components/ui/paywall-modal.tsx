@@ -18,11 +18,23 @@ export interface PaywallModalProps {
   onClose: () => void
   feature: string
   currentTier: 'free' | 'team' | 'business' | 'enterprise'
-  requiredTier: 'team' | 'business' | 'enterprise'
+  requiredTier: 'free' | 'team' | 'business' | 'enterprise'
   customMessage?: string
 }
 
 const tierInfo = {
+  free: {
+    name: 'Free',
+    price: 0,
+    icon: Sparkles,
+    color: 'text-gray-500',
+    features: [
+      '1 project',
+      '50 stories per project',
+      '20k AI tokens/month',
+      'Basic features',
+    ],
+  },
   team: {
     name: 'Team',
     price: 49,

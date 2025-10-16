@@ -13,22 +13,35 @@ import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 export interface SubscriptionLimits {
   maxProjects: number
   maxStoriesPerProject: number
-  maxUsers: number
+  maxSeats: number
+  includedSeats: number
+  seatPrice: number
   monthlyAITokens: number
   monthlyAIGenerations: number
   maxStoriesPerGeneration: number
-  canUseAdvancedAI: boolean
-  canUseDocumentAnalysis: boolean
+  canUseBacklogAutopilot: boolean
+  canUseACValidator: boolean
+  canUseTestGeneration: boolean
+  canUsePlanningForecast: boolean
+  canUseEffortScoring: boolean
+  canUseKnowledgeSearch: boolean
+  canUseInboxParsing: boolean
+  canUseRepoAwareness: boolean
+  canUseWorkflowAgents: boolean
+  canUseGovernance: boolean
+  canUseModelControls: boolean
+  canUseAnalytics: boolean
   canExport: boolean
   canUseTemplates: boolean
-  canUseCustomFields: boolean
-  canUseAdvancedAnalytics: boolean
+  canUseAPI: boolean
   canUseSSO: boolean
   supportLevel: string
+  trialDays: number
+  price: number
   displayName: string
 }
 
-const TIER_LIMITS: Record<string, SubscriptionLimits> = SUBSCRIPTION_LIMITS
+const TIER_LIMITS: Record<string, SubscriptionLimits> = SUBSCRIPTION_LIMITS as any
 
 /**
  * Get subscription limits for a user's organization

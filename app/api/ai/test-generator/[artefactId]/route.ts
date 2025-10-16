@@ -76,9 +76,9 @@ async function deleteArtefactHandler(req: NextRequest, context: any) {
 }
 
 export const GET = withAuth(
-  withFeatureGate('canUseTestArtefactGeneration', getArtefact)
+  withFeatureGate('canUseTestGeneration', getArtefact)
 )
 
 export const DELETE = withAuth(
-  withFeatureGate('canUseTestArtefactGeneration', deleteArtefactHandler)
+  withFeatureGate('canUseTestGeneration', deleteArtefactHandler)
 )

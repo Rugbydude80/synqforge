@@ -25,7 +25,7 @@ async function getCurrentUsage(_req: NextRequest, context: AuthContext) {
         monthlyGenerations: limits.monthlyAIGenerations,
         maxStoriesPerGeneration: limits.maxStoriesPerGeneration,
         maxProjects: limits.maxProjects,
-        maxUsers: limits.maxUsers,
+        maxSeats: limits.maxSeats,
         tier: limits.displayName,
       },
       billingResetDate,
