@@ -51,15 +51,15 @@ export async function GET(_request: NextRequest) {
     const currentCount = await getUserCount(currentUser.organizationId)
 
     // Calculate remaining slots
-    const remainingSlots = limits.maxUsers === Infinity
+    const remainingSlots = limits.maxSeats === Infinity
       ? Infinity
-      : limits.maxUsers - currentCount
+      : limits.maxSeats - currentCount
 
-    const canAddMore = limits.maxUsers === Infinity || currentCount < limits.maxUsers
+    const canAddMore = limits.maxSeats === Infinity || currentCount < limits.maxSeats
 
     return NextResponse.json({
       currentCount,
-      maxUsers: limits.maxUsers,
+      maxSeats: limits.maxSeats,
       remainingSlots,
       canAddMore,
       subscriptionTier: limits.displayName,

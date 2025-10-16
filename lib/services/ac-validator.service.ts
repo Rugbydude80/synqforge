@@ -114,11 +114,11 @@ export async function getValidationRules(
 
     return rules.map((rule) => ({
       id: rule.id,
-      name: rule.name,
-      description: rule.description,
-      severity: rule.severity as 'error' | 'warning' | 'info',
-      enabled: rule.enabled,
-      customPrompt: rule.customPrompt || undefined,
+      name: rule.ruleName,
+      description: rule.ruleConfig?.description || rule.ruleName,
+      severity: (rule.ruleConfig?.severity as 'error' | 'warning' | 'info') || 'warning',
+      enabled: rule.ruleConfig?.enabled !== false,
+      customPrompt: rule.ruleConfig?.customPrompt || undefined,
     }))
   } catch (error) {
     console.error('Error fetching validation rules:', error)
@@ -144,11 +144,15 @@ export async function saveValidationRules(
       await db.insert(acValidationRules).values({
         id: generateId(),
         organizationId,
-        name: rule.name,
-        description: rule.description,
-        severity: rule.severity,
-        enabled: rule.enabled,
-        customPrompt: rule.customPrompt || null,
+        createdBy: organizationId, // Use org ID as placeholder
+        ruleName: rule.name,
+        ruleType: 'custom' as any, // Map to a rule type
+        ruleConfig: {
+          description: rule.description,
+          severity: rule.severity,
+          enabled: rule.enabled,
+          customPrompt: rule.customPrompt || null,
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -180,14 +184,14 @@ export async function validateStoryAC(
     }
 
     // Check if organization has access to AC Validator
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error('AC Validator requires Team plan or higher. Please upgrade to continue.')
     }
 
     // Check rate limit
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -219,7 +223,7 @@ export async function validateStoryAC(
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining. ${tokenCheck.requiresUpgrade ? 'Please upgrade your plan or purchase additional tokens.' : 'Your tokens will reset at the start of the next billing period.'}`
+        tokenCheck.reason || 'Insufficient AI tokens. Please upgrade your plan or purchase additional tokens.'
       )
     }
 
@@ -232,14 +236,19 @@ export async function validateStoryAC(
 
     // Save validation result
     const validationId = generateId()
+    const overallScore = validationResult.overallStatus === 'pass' ? 100 :
+                        validationResult.overallStatus === 'warning' ? 75 :
+                        50 - (validationResult.errors * 10)
+
     await db.insert(acValidationResults).values({
       id: validationId,
       organizationId,
       storyId,
-      overallStatus: validationResult.overallStatus,
-      issuesFound: validationResult.issues,
-      autoFixApplied: autoFix,
-      tokensUsed: validationResult.tokensUsed,
+      overallScore: Math.max(0, overallScore),
+      passedRules: [],
+      failedRules: validationResult.issues,
+      suggestions: validationResult.issues.map(i => i.message),
+      autoFixAvailable: autoFix && validationResult.issues.some(i => i.autoFixable),
       createdAt: new Date(),
     })
 
@@ -541,12 +550,12 @@ export async function getValidationStats(
 
     const uniqueStories = new Set(results.map((r) => r.storyId))
     const totalIssues = results.reduce((sum, r) => {
-      const issues = r.issuesFound as any
-      return sum + (Array.isArray(issues) ? issues.length : 0)
+      const failed = r.failedRules as any
+      return sum + (Array.isArray(failed) ? failed.length : 0)
     }, 0)
-    const errorsCount = results.filter((r) => r.overallStatus === 'fail').length
-    const warningsCount = results.filter((r) => r.overallStatus === 'warning').length
-    const autoFixCount = results.filter((r) => r.autoFixApplied).length
+    const errorsCount = results.filter((r) => r.overallScore < 50).length
+    const warningsCount = results.filter((r) => r.overallScore >= 50 && r.overallScore < 100).length
+    const autoFixCount = results.filter((r) => r.autoFixAvailable).length
 
     return {
       totalValidations: results.length,

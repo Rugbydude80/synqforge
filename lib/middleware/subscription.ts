@@ -115,7 +115,7 @@ export async function canExport(user: UserContext): Promise<boolean> {
 export async function canAddUser(user: UserContext): Promise<boolean> {
   const limits = await getSubscriptionLimits(user)
 
-  if (limits.maxUsers === Infinity) {
+  if (limits.maxSeats === Infinity) {
     return true
   }
 
@@ -124,7 +124,7 @@ export async function canAddUser(user: UserContext): Promise<boolean> {
     .from(users)
     .where(eq(users.organizationId, user.organizationId))
 
-  return (result?.count || 0) < limits.maxUsers
+  return (result?.count || 0) < limits.maxSeats
 }
 
 /**
@@ -246,7 +246,7 @@ export async function checkFeatureLimit(
         allowed,
         error: allowed
           ? undefined
-          : `User limit reached (${currentCount}/${limits.maxUsers} users). Upgrade to add more team members.`,
+          : `User limit reached (${currentCount}/${limits.maxSeats} users). Upgrade to add more team members.`,
         upgradeUrl: allowed ? undefined : upgradeUrl,
       }
     }

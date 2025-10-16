@@ -174,10 +174,11 @@ export async function checkAdvancedAIAccess(user: UserContext): Promise<UsageChe
   try {
     const limits = await getOrganizationLimits(user.organizationId);
 
-    if (!limits.canUseAdvancedAI) {
+    // Check if organization has any AI modules enabled
+    if (!limits.canUseBacklogAutopilot && !limits.canUseACValidator && !limits.canUseTestGeneration) {
       return {
         allowed: false,
-        reason: 'Advanced AI features require a Pro or Enterprise subscription. Upgrade to unlock unlimited AI generations, document analysis, and more.',
+        reason: 'AI features require Team plan or higher. Upgrade to unlock AI-powered features.',
         upgradeUrl: '/pricing',
       };
     }
@@ -199,10 +200,11 @@ export async function checkDocumentAnalysisAccess(user: UserContext): Promise<Us
   try {
     const limits = await getOrganizationLimits(user.organizationId);
 
-    if (!limits.canUseDocumentAnalysis) {
+    // Document analysis is part of Backlog Autopilot
+    if (!limits.canUseBacklogAutopilot) {
       return {
         allowed: false,
-        reason: 'Document analysis requires a Pro or Enterprise subscription. Upgrade to analyze PDFs, Word docs, and more.',
+        reason: 'Document analysis requires Team plan or higher. Upgrade to analyze PRDs and generate stories.',
         upgradeUrl: '/pricing',
       };
     }
@@ -247,10 +249,10 @@ export async function checkUserLimit(organizationId: string, currentUserCount: n
   try {
     const limits = await getOrganizationLimits(organizationId);
 
-    if (limits.maxUsers !== Infinity && currentUserCount >= limits.maxUsers) {
+    if (limits.maxSeats !== Infinity && currentUserCount >= limits.maxSeats) {
       return {
         allowed: false,
-        reason: `User limit reached (${currentUserCount}/${limits.maxUsers} users). Upgrade to add more team members.`,
+        reason: `User limit reached (${currentUserCount}/${limits.maxSeats} users). Upgrade to add more team members.`,
         upgradeUrl: '/pricing',
       };
     }

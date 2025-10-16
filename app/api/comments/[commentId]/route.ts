@@ -5,7 +5,7 @@ import { commentsRepository } from '@/lib/repositories/comments.repository'
 import { z } from 'zod'
 
 const updateCommentSchema = z.object({
-  content: z.string().min(1),
+  content: z.string().min(1).optional(),
 })
 
 export async function PATCH(

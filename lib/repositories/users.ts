@@ -13,7 +13,7 @@ export interface UserProfile {
   email: string
   name: string | null
   avatarUrl: string | null
-  role: 'admin' | 'member' | 'viewer' | null
+  role: 'owner' | 'admin' | 'member' | 'viewer' | null
   isActive: boolean | null
   preferences: Record<string, any> | null
   lastActiveAt: Date | null

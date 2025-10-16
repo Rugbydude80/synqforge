@@ -64,7 +64,7 @@ async function bulkCreateStories(req: NextRequest, context: { user: any }) {
       bulkData.stories.map(story => ({
         ...story,
         projectId: bulkData.projectId
-      })),
+      })) as any,
       context.user.id
     );
 
