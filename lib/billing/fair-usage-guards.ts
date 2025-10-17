@@ -7,7 +7,7 @@
 
 import { db, generateId } from '@/lib/db'
 import { organizations, workspaceUsage } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 
 export interface FairUsageCheck {
   allowed: boolean
@@ -163,7 +163,7 @@ export async function incrementTokenUsage(
   await db
     .update(workspaceUsage)
     .set({
-      tokensUsed: db.raw(`tokens_used + ${tokensUsed}`),
+      tokensUsed: sql`${workspaceUsage.tokensUsed} + ${tokensUsed}`,
       updatedAt: new Date(),
     })
     .where(
@@ -238,7 +238,7 @@ export async function incrementDocIngestion(
   await db
     .update(workspaceUsage)
     .set({
-      docsIngested: db.raw('docs_ingested + 1'),
+      docsIngested: sql`${workspaceUsage.docsIngested} + 1`,
       updatedAt: new Date(),
     })
     .where(
