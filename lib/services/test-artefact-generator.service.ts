@@ -8,6 +8,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
+import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -91,7 +92,20 @@ export async function generateTestArtefact(
     // Estimate token usage
     const estimatedTokens = 4000 // Test generation can be complex
 
-    // Check token availability
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const aiCheck = await canUseAI(organizationId, estimatedTokens)
+    if (!aiCheck.allowed) {
+      throw new Error(
+        aiCheck.reason || 'AI token limit reached. Please upgrade your plan or wait until next month.'
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
@@ -153,6 +167,9 @@ export async function generateTestArtefact(
 
     // Record token usage
     await recordTokenUsage(organizationId, tokensUsed, 'test_generation', false)
+
+    // Track fair-usage token consumption
+    await incrementTokenUsage(organizationId, tokensUsed)
 
     return {
       id: artefactId,

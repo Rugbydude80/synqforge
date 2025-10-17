@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 import { checkAIUsageLimit, checkDocumentAnalysisAccess } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
+import { canUseAI, incrementTokenUsage, canIngestDocument, incrementDocIngestion, checkPageLimit } from '@/lib/billing/fair-usage-guards';
 
 async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
@@ -38,6 +39,27 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
       );
     }
 
+    // Check fair-usage document ingestion limit (HARD BLOCK)
+    const docCheck = await canIngestDocument(context.user.organizationId)
+    if (!docCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: docCheck.reason,
+          upgradeUrl: docCheck.upgradeUrl,
+          manageUrl: docCheck.manageUrl,
+          used: docCheck.used,
+          limit: docCheck.limit,
+          percentage: docCheck.percentage,
+        },
+        { status: 402 }
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (docCheck.isWarning && docCheck.reason) {
+      console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${docCheck.reason}`)
+    }
+
     // Check document analysis access (Pro/Enterprise feature)
     const accessCheck = await checkDocumentAnalysisAccess(context.user);
     if (!accessCheck.allowed) {
@@ -50,7 +72,30 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
       );
     }
 
-    // Check AI usage limits
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const estimatedTokens = AI_TOKEN_COSTS.DOCUMENT_ANALYSIS
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens)
+
+    if (!aiCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: aiCheck.reason,
+          upgradeUrl: aiCheck.upgradeUrl,
+          manageUrl: aiCheck.manageUrl,
+          used: aiCheck.used,
+          limit: aiCheck.limit,
+          percentage: aiCheck.percentage,
+        },
+        { status: 402 }
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy usage check (keep for backward compatibility)
     const usageCheck = await checkAIUsageLimit(context.user, AI_TOKEN_COSTS.DOCUMENT_ANALYSIS);
     if (!usageCheck.allowed) {
       return NextResponse.json(
@@ -89,10 +134,20 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
       JSON.stringify(response.analysis)
     );
 
+    // Track fair-usage token consumption
+    const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+    await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
+
+    // Track fair-usage document ingestion
+    await incrementDocIngestion(context.user.organizationId)
+
     return NextResponse.json({
       success: true,
       analysis: response.analysis,
       usage: response.usage,
+      fairUsageWarning: aiCheck.isWarning || docCheck.isWarning
+        ? (aiCheck.reason || docCheck.reason)
+        : undefined,
     });
 
   } catch (error) {

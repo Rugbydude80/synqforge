@@ -9,6 +9,7 @@ import { eq, and, sql, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkHeavyJobRateLimit } from './ai-rate-limit.service'
+import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -103,7 +104,20 @@ export async function createAutopilotJob(
     // Estimate token usage (rough estimate: 1 token per 4 chars)
     const estimatedTokens = Math.ceil(input.documentContent.length / 4) + 4000 // +4000 for response
 
-    // Check token availability
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const aiCheck = await canUseAI(input.organizationId, estimatedTokens)
+    if (!aiCheck.allowed) {
+      throw new Error(
+        aiCheck.reason || 'AI token limit reached. Please upgrade your plan or wait until next month.'
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${input.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(input.organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
@@ -223,6 +237,9 @@ async function processAutopilotJob(jobId: string): Promise<void> {
       'backlog_autopilot',
       true
     )
+
+    // Track fair-usage token consumption
+    await incrementTokenUsage(job.organizationId, result.tokensUsed)
   } catch (error: any) {
     console.error('Error processing autopilot job:', error)
 
