@@ -2,14 +2,22 @@ import Stripe from "stripe";
 
 /**
  * Entitlements Model - Feature flags and limits based on subscription plan
+ * Fair-usage model: Token-based AI usage, document ingestion limits, throughput controls
  */
 export type Entitlements = {
   plan: string;
   plan_cycle: "monthly" | "annual";
   seats_included: number | -1; // -1 = unlimited
   projects_included: number | -1; // -1 = unlimited
-  stories_per_month: number | -1; // -1 = unlimited
-  ai_tokens_included: number | -1; // -1 = unlimited/high
+
+  // Fair-usage limits
+  ai_tokens_included: number | -1; // Monthly AI token quota (-1 = unlimited)
+  docs_per_month: number | -1; // Monthly document ingestion limit
+  throughput_spm: number; // Stories per minute (throughput limit)
+  bulk_story_limit: number; // Max stories in single bulk generation
+  max_pages_per_upload: number; // Max PDF pages per upload
+
+  // Feature flags
   advanced_ai: boolean;
   exports: boolean;
   templates: boolean;
@@ -48,12 +56,17 @@ export function entitlementsFromPrice(price: Stripe.Price): Entitlements {
     plan_cycle: (m.cycle as "monthly" | "annual") || "monthly",
     seats_included: m.seats_included === "unlimited" ? -1 : toNum(m.seats_included || "1"),
     projects_included: m.projects_included === "unlimited" ? -1 : toNum(m.projects_included || "1"),
-    stories_per_month: ["unlimited", "high"].includes(m.stories_per_month)
-      ? -1
-      : toNum(m.stories_per_month || "2000"),
+
+    // Fair-usage limits from metadata
     ai_tokens_included: ["unlimited", "high"].includes(m.ai_tokens_included)
       ? -1
       : toNum(m.ai_tokens_included || "50000"),
+    docs_per_month: m.docs_per_month === "unlimited" ? -1 : toNum(m.docs_per_month || "10"),
+    throughput_spm: toNum(m.throughput_spm || "5"),
+    bulk_story_limit: toNum(m.bulk_story_limit || "20"),
+    max_pages_per_upload: toNum(m.max_pages_per_upload || "50"),
+
+    // Feature flags
     advanced_ai: toBool(m.advanced_ai),
     exports: toBool(m.exports),
     templates: toBool(m.templates),
@@ -76,8 +89,16 @@ export function entitlementsToDbValues(ent: Entitlements) {
     planCycle: ent.plan_cycle,
     seatsIncluded: ent.seats_included < 0 ? UNLIMITED : ent.seats_included,
     projectsIncluded: ent.projects_included < 0 ? UNLIMITED : ent.projects_included,
-    storiesPerMonth: ent.stories_per_month < 0 ? UNLIMITED : ent.stories_per_month,
+    storiesPerMonth: 0, // Legacy field, no longer used
     aiTokensIncluded: ent.ai_tokens_included < 0 ? UNLIMITED : ent.ai_tokens_included,
+
+    // Fair-usage limits
+    docsPerMonth: ent.docs_per_month < 0 ? UNLIMITED : ent.docs_per_month,
+    throughputSpm: ent.throughput_spm,
+    bulkStoryLimit: ent.bulk_story_limit,
+    maxPagesPerUpload: ent.max_pages_per_upload,
+
+    // Feature flags
     advancedAi: ent.advanced_ai,
     exportsEnabled: ent.exports,
     templatesEnabled: ent.templates,
@@ -98,8 +119,15 @@ export function getFreeTierEntitlements(): Entitlements {
     plan_cycle: "monthly",
     seats_included: 1,
     projects_included: 1,
-    stories_per_month: 200,
-    ai_tokens_included: 5000,
+
+    // Fair-usage limits for free tier
+    ai_tokens_included: 5000, // 5K tokens/month
+    docs_per_month: 2, // 2 docs/month
+    throughput_spm: 2, // 2 stories/minute
+    bulk_story_limit: 5, // Max 5 stories per bulk generation
+    max_pages_per_upload: 10, // Max 10 PDF pages
+
+    // Feature flags
     advanced_ai: false,
     exports: false,
     templates: true,

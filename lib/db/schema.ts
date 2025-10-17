@@ -109,7 +109,7 @@ export const organizations = pgTable(
     planCycle: text('plan_cycle').notNull().default('monthly'),
     seatsIncluded: integer('seats_included').notNull().default(1),
     projectsIncluded: integer('projects_included').notNull().default(1),
-    storiesPerMonth: integer('stories_per_month').notNull().default(2000),
+    storiesPerMonth: integer('stories_per_month').notNull().default(2000), // Legacy, kept for compatibility
     aiTokensIncluded: integer('ai_tokens_included').notNull().default(50000),
     advancedAi: boolean('advanced_ai').notNull().default(false),
     exportsEnabled: boolean('exports_enabled').notNull().default(true),
@@ -119,6 +119,12 @@ export const organizations = pgTable(
     ssoEnabled: boolean('sso_enabled').notNull().default(false),
     supportTier: text('support_tier').notNull().default('community'),
     fairUse: boolean('fair_use').notNull().default(true),
+
+    // Fair-Usage Limits
+    docsPerMonth: integer('docs_per_month').notNull().default(10),
+    throughputSpm: integer('throughput_spm').notNull().default(5),
+    bulkStoryLimit: integer('bulk_story_limit').notNull().default(20),
+    maxPagesPerUpload: integer('max_pages_per_upload').notNull().default(50),
 
     // Stripe Integration
     stripeSubscriptionId: text('stripe_subscription_id'),
@@ -938,6 +944,38 @@ export const aiUsageAlerts = pgTable(
   (table) => ({
     orgIdx: index('idx_usage_alerts_org').on(table.organizationId),
     triggeredIdx: index('idx_usage_alerts_triggered').on(table.triggered),
+  })
+)
+
+// ============================================
+// FAIR-USAGE TRACKING
+// ============================================
+
+export const workspaceUsage = pgTable(
+  'workspace_usage',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    billingPeriodStart: timestamp('billing_period_start').notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+
+    // Token usage (primary fair-usage metric)
+    tokensUsed: integer('tokens_used').notNull().default(0),
+    tokensLimit: integer('tokens_limit').notNull().default(50000),
+
+    // Document ingestion
+    docsIngested: integer('docs_ingested').notNull().default(0),
+    docsLimit: integer('docs_limit').notNull().default(10),
+
+    // Timestamps
+    lastResetAt: timestamp('last_reset_at').defaultNow(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_workspace_usage_org').on(table.organizationId),
+    periodIdx: index('idx_workspace_usage_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    uniqueOrgPeriod: uniqueIndex('unique_org_period').on(table.organizationId, table.billingPeriodStart),
   })
 )
 

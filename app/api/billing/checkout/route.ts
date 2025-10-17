@@ -7,12 +7,28 @@ import { organizations, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 /**
+ * Map tier and cycle to Stripe Price ID from environment variables
+ */
+function getPriceId(tier: string, cycle: 'monthly' | 'annual'): string | null {
+  const key = `STRIPE_PRICE_${tier.toUpperCase()}_${cycle.toUpperCase()}`
+  return process.env[key] || null
+}
+
+/**
  * POST /api/billing/checkout
  * Create a Stripe Checkout session for subscription signup
  *
  * Body:
+ * Option 1: Provide priceId directly
  * - priceId: Stripe price ID (required)
  * - organizationId: Organization to attach subscription (required)
+ *
+ * Option 2: Provide tier and cycle (will lookup price ID from env vars)
+ * - tier: "solo" | "team" | "pro" | "enterprise" (required)
+ * - cycle: "monthly" | "annual" (required)
+ * - organizationId: Organization to attach subscription (required)
+ *
+ * Optional:
  * - successUrl: URL to redirect on success (optional)
  * - cancelUrl: URL to redirect on cancel (optional)
  */
@@ -28,11 +44,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { priceId, organizationId, successUrl, cancelUrl } = body
+    let { priceId, tier, cycle, organizationId, successUrl, cancelUrl } = body
+
+    // Support both priceId and tier/cycle
+    if (!priceId && tier && cycle) {
+      priceId = getPriceId(tier, cycle)
+      if (!priceId) {
+        return NextResponse.json(
+          { error: `No price ID configured for ${tier} ${cycle}. Please set STRIPE_PRICE_${tier.toUpperCase()}_${cycle.toUpperCase()} environment variable.` },
+          { status: 400 }
+        )
+      }
+    }
 
     if (!priceId || !organizationId) {
       return NextResponse.json(
-        { error: 'Missing required fields: priceId and organizationId' },
+        { error: 'Missing required fields: (priceId OR tier+cycle) and organizationId' },
         { status: 400 }
       )
     }
