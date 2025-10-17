@@ -103,11 +103,34 @@ export const organizations = pgTable(
     stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
+
+    // Entitlements Model - Flexible subscription limits
+    plan: text('plan').notNull().default('solo'),
+    planCycle: text('plan_cycle').notNull().default('monthly'),
+    seatsIncluded: integer('seats_included').notNull().default(1),
+    projectsIncluded: integer('projects_included').notNull().default(1),
+    storiesPerMonth: integer('stories_per_month').notNull().default(2000),
+    aiTokensIncluded: integer('ai_tokens_included').notNull().default(50000),
+    advancedAi: boolean('advanced_ai').notNull().default(false),
+    exportsEnabled: boolean('exports_enabled').notNull().default(true),
+    templatesEnabled: boolean('templates_enabled').notNull().default(true),
+    rbacLevel: text('rbac_level').notNull().default('none'),
+    auditLevel: text('audit_level').notNull().default('none'),
+    ssoEnabled: boolean('sso_enabled').notNull().default(false),
+    supportTier: text('support_tier').notNull().default('community'),
+    fairUse: boolean('fair_use').notNull().default(true),
+
+    // Stripe Integration
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    stripePriceId: text('stripe_price_id'),
+    subscriptionStatus: text('subscription_status').notNull().default('inactive'),
+    subscriptionRenewalAt: timestamp('subscription_renewal_at'),
   },
   (table) => ({
     slugIdx: uniqueIndex('idx_org_slug').on(table.slug),
     tierIdx: index('idx_org_tier').on(table.subscriptionTier),
     stripeCustomerIdx: index('idx_org_stripe_customer').on(table.stripeCustomerId),
+    stripeSubscriptionIdx: index('idx_organizations_stripe_subscription').on(table.stripeSubscriptionId),
   })
 )
 

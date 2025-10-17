@@ -4,6 +4,7 @@ import { db, generateId } from '@/lib/db'
 import { organizations, stripeSubscriptions } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
+import { entitlementsFromPrice, entitlementsToDbValues, getFreeTierEntitlements } from '@/lib/billing/entitlements'
 
 /**
  * POST /api/webhooks/stripe
@@ -83,17 +84,26 @@ export async function POST(req: NextRequest) {
 
 /**
  * Handle subscription creation or update
+ * Uses entitlements model - reads all limits from Stripe Price metadata
  */
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string
   const subscriptionId = subscription.id
   const status = subscription.status
-  const priceId = subscription.items.data[0]?.price.id
+  const priceItem = subscription.items.data[0]
+
+  if (!priceItem) {
+    console.error('No price item found in subscription')
+    return
+  }
+
+  const priceId = priceItem.price.id
 
   console.log('Handling subscription update:', {
     customerId,
     subscriptionId,
     status,
+    priceId,
   })
 
   // Find organization by Stripe customer ID
@@ -108,47 +118,31 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return
   }
 
-  // Determine subscription tier based on price ID
-  let tier: 'free' | 'team' | 'business' | 'enterprise' = 'free'
-  const TEAM_PRICE_ID = process.env.STRIPE_TEAM_PRICE_ID
-  const TEAM_ANNUAL_PRICE_ID = process.env.STRIPE_TEAM_ANNUAL_PRICE_ID
-  const BUSINESS_PRICE_ID = process.env.STRIPE_BUSINESS_PRICE_ID
-  const BUSINESS_ANNUAL_PRICE_ID = process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID
-  const ENTERPRISE_PRICE_ID = process.env.STRIPE_ENTERPRISE_PRICE_ID
+  // Fetch full price object with metadata from Stripe
+  const price = await stripe.prices.retrieve(priceId)
 
-  if (priceId === TEAM_PRICE_ID || priceId === TEAM_ANNUAL_PRICE_ID) {
-    tier = 'team'
-  } else if (priceId === BUSINESS_PRICE_ID || priceId === BUSINESS_ANNUAL_PRICE_ID) {
-    tier = 'business'
-  } else if (priceId === ENTERPRISE_PRICE_ID) {
-    tier = 'enterprise'
-  } else {
-    // Also check metadata for tier information
-    const tierFromMetadata = subscription.metadata?.tier as 'team' | 'business' | 'enterprise' | undefined
-    if (tierFromMetadata) {
-      tier = tierFromMetadata
-    }
-  }
+  // Parse entitlements from price metadata
+  const entitlements = entitlementsFromPrice(price)
+  const dbValues = entitlementsToDbValues(entitlements)
+
+  console.log('Parsed entitlements:', {
+    plan: entitlements.plan,
+    cycle: entitlements.plan_cycle,
+    seats: entitlements.seats_included,
+    projects: entitlements.projects_included,
+    stories: entitlements.stories_per_month,
+    tokens: entitlements.ai_tokens_included,
+  })
 
   // Extract seat information from subscription items
-  let includedSeats = 0
+  let includedSeats = dbValues.seatsIncluded
   let addonSeats = 0
-  let billingInterval: 'monthly' | 'annual' = 'monthly'
+  const billingInterval = entitlements.plan_cycle
 
+  // Check for additional seat addons
   for (const item of subscription.items.data) {
-    const price = item.price
-    const metadata = price.metadata || {}
-
-    // Determine billing interval
-    if (price.recurring?.interval === 'year') {
-      billingInterval = 'annual'
-    }
-
-    if (metadata.type === 'base_plan') {
-      // Base plan includes seats based on metadata
-      includedSeats = parseInt(metadata.included_seats || '0')
-    } else if (metadata.type === 'seat_addon') {
-      // Addon seats
+    const metadata = item.price.metadata || {}
+    if (metadata.type === 'seat_addon') {
       addonSeats += item.quantity || 0
     }
   }
@@ -164,23 +158,23 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     organizationId: organization.id,
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
-    stripePriceId: priceId || '',
+    stripePriceId: priceId,
     status: status as any,
-    currentPeriodStart: (subscription as any).current_period_start
-      ? new Date((subscription as any).current_period_start * 1000)
+    currentPeriodStart: subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000)
       : null,
-    currentPeriodEnd: (subscription as any).current_period_end
-      ? new Date((subscription as any).current_period_end * 1000)
+    currentPeriodEnd: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
       : null,
-    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
-    canceledAt: (subscription as any).canceled_at
-      ? new Date((subscription as any).canceled_at * 1000)
+    cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
+    canceledAt: subscription.canceled_at
+      ? new Date(subscription.canceled_at * 1000)
       : null,
-    trialStart: (subscription as any).trial_start
-      ? new Date((subscription as any).trial_start * 1000)
+    trialStart: subscription.trial_start
+      ? new Date(subscription.trial_start * 1000)
       : null,
-    trialEnd: (subscription as any).trial_end
-      ? new Date((subscription as any).trial_end * 1000)
+    trialEnd: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000)
       : null,
     billingInterval,
     includedSeats,
@@ -204,11 +198,31 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     })
   }
 
-  // Update organization subscription tier
+  // Determine legacy tier for backward compatibility
+  let legacyTier: 'free' | 'team' | 'business' | 'enterprise' = 'free'
+  if (entitlements.plan === 'solo') legacyTier = 'free' // Solo uses free features
+  else if (entitlements.plan === 'team') legacyTier = 'team'
+  else if (entitlements.plan === 'pro') legacyTier = 'business'
+  else if (entitlements.plan === 'enterprise') legacyTier = 'enterprise'
+
+  // Update organization with entitlements and Stripe details
   await db
     .update(organizations)
     .set({
-      subscriptionTier: tier,
+      // Legacy tier field for backward compatibility
+      subscriptionTier: legacyTier,
+
+      // New entitlements model
+      ...dbValues,
+
+      // Stripe integration fields
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      subscriptionStatus: status,
+      subscriptionRenewalAt: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000)
+        : null,
+
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, organization.id))
@@ -224,16 +238,20 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   console.log('Subscription updated successfully for org:', organization.name, {
-    tier,
-    includedSeats,
+    plan: entitlements.plan,
+    cycle: entitlements.plan_cycle,
+    seats: dbValues.seatsIncluded,
     addonSeats,
-    billingInterval,
-    trialEnd: subscriptionData.trialEnd,
+    projects: dbValues.projectsIncluded,
+    stories: dbValues.storiesPerMonth,
+    tokens: dbValues.aiTokensIncluded,
+    status,
   })
 }
 
 /**
  * Handle subscription deletion (cancellation)
+ * Resets organization to free tier entitlements
  */
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const subscriptionId = subscription.id
@@ -262,16 +280,35 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     })
     .where(eq(stripeSubscriptions.id, existingSubscription.id))
 
-  // Downgrade organization to free tier
+  // Get free tier entitlements
+  const freeEntitlements = getFreeTierEntitlements()
+  const dbValues = entitlementsToDbValues(freeEntitlements)
+
+  // Downgrade organization to free tier with free tier entitlements
   await db
     .update(organizations)
     .set({
       subscriptionTier: 'free',
+
+      // Reset to free tier entitlements
+      ...dbValues,
+
+      // Clear Stripe subscription details
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      subscriptionStatus: 'inactive',
+      subscriptionRenewalAt: null,
+
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, existingSubscription.organizationId))
 
-  console.log('Subscription canceled, org downgraded to free')
+  console.log('Subscription canceled, org downgraded to free tier with limits:', {
+    seats: dbValues.seatsIncluded,
+    projects: dbValues.projectsIncluded,
+    stories: dbValues.storiesPerMonth,
+    tokens: dbValues.aiTokensIncluded,
+  })
 }
 
 /**

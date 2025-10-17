@@ -40,12 +40,55 @@ function BillingPageContent() {
 
   const fetchSubscription = async () => {
     try {
-      const response = await fetch('/api/stripe/subscription', {
+      // First try new entitlements-based API
+      const userResponse = await fetch('/api/user/me', { credentials: 'include' })
+      if (!userResponse.ok) return
+
+      const userData = await userResponse.json()
+      const orgId = userData.organizationId
+
+      if (!orgId) return
+
+      const response = await fetch(`/api/billing/usage?organizationId=${orgId}`, {
         credentials: 'include',
       })
 
       if (response.ok) {
         const data = await response.json()
+        // Map new structure to old structure for compatibility
+        setSubscription({
+          tier: data.organization.plan,
+          status: data.organization.subscriptionStatus,
+          currentPeriodStart: null,
+          currentPeriodEnd: data.organization.subscriptionRenewalAt,
+          cancelAtPeriodEnd: false,
+        })
+        setUsageData({
+          aiUsage: {
+            tokensUsed: data.currentUsage.tokensThisMonth,
+            tokenPool: data.entitlements.aiTokensIncluded === 999999 ? 999999999 : data.entitlements.aiTokensIncluded,
+            aiActionsCount: 0, // Not tracked in new model
+            heavyJobsCount: 0,
+          },
+          seats: {
+            usedSeats: data.currentUsage.seats,
+            totalAvailableSeats: data.entitlements.seatsIncluded === 999999 ? 999999 : data.entitlements.seatsIncluded,
+            activeSeats: data.currentUsage.seats,
+            pendingInvites: 0,
+            includedSeats: data.entitlements.seatsIncluded === 999999 ? 999999 : data.entitlements.seatsIncluded,
+            addonSeats: 0,
+          },
+        })
+        return
+      }
+
+      // Fallback to old API if new one doesn't exist yet
+      const oldResponse = await fetch('/api/stripe/subscription', {
+        credentials: 'include',
+      })
+
+      if (oldResponse.ok) {
+        const data = await oldResponse.json()
         setSubscription(data)
       }
     } catch (error) {
@@ -54,6 +97,10 @@ function BillingPageContent() {
   }
 
   const fetchUsageData = async () => {
+    // Usage data now fetched in fetchSubscription for new API
+    // Keep this for compatibility with old API
+    if (usageData) return // Already loaded by fetchSubscription
+
     try {
       const response = await fetch('/api/usage', {
         credentials: 'include',
@@ -72,10 +119,34 @@ function BillingPageContent() {
     try {
       setLoading(true)
 
-      const response = await fetch('/api/stripe/create-portal-session', {
+      // Get user's organization ID
+      const userResponse = await fetch('/api/user/me', { credentials: 'include' })
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user info')
+      }
+
+      const userData = await userResponse.json()
+      const orgId = userData.organizationId
+
+      if (!orgId) {
+        throw new Error('No organization found')
+      }
+
+      // Try new portal API first
+      let response = await fetch('/api/billing/portal', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ organizationId: orgId }),
       })
+
+      // Fallback to old API if new one doesn't exist
+      if (!response.ok && response.status === 404) {
+        response = await fetch('/api/stripe/create-portal-session', {
+          method: 'POST',
+          credentials: 'include',
+        })
+      }
 
       const data = await response.json()
 
