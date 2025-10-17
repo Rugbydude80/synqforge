@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { UsageBadge } from '@/components/ui/usage-badge'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
+import { UsageWarningBanner } from '@/components/billing/UsageWarningBanner'
 
 function BillingPageContent() {
   const { status } = useSession()
@@ -78,6 +79,7 @@ function BillingPageContent() {
             includedSeats: data.entitlements.seatsIncluded === 999999 ? 999999 : data.entitlements.seatsIncluded,
             addonSeats: 0,
           },
+          fairUsage: data.fairUsage, // New fair-usage data
         })
         return
       }
@@ -189,6 +191,33 @@ function BillingPageContent() {
         </header>
 
         <div className="p-8 space-y-6 max-w-4xl">
+          {/* Fair-Usage Warnings */}
+          {usageData?.fairUsage && (
+            <>
+              {/* Token usage warning */}
+              {usageData.fairUsage.tokens && usageData.fairUsage.tokens.limit > 0 && (
+                <UsageWarningBanner
+                  resourceType="tokens"
+                  used={usageData.fairUsage.tokens.used}
+                  limit={usageData.fairUsage.tokens.limit}
+                  percentage={usageData.fairUsage.tokens.percentage}
+                  upgradeUrl="/settings/billing"
+                />
+              )}
+
+              {/* Document ingestion warning */}
+              {usageData.fairUsage.docs && usageData.fairUsage.docs.limit > 0 && (
+                <UsageWarningBanner
+                  resourceType="docs"
+                  used={usageData.fairUsage.docs.used}
+                  limit={usageData.fairUsage.docs.limit}
+                  percentage={usageData.fairUsage.docs.percentage}
+                  upgradeUrl="/settings/billing"
+                />
+              )}
+            </>
+          )}
+
           {/* Current Plan */}
           <Card>
             <CardHeader>
