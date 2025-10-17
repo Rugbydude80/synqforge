@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { organizations, users, projects, stories } from '@/lib/db/schema'
 import { eq, and, gte, sql } from 'drizzle-orm'
 import { getUsageSummary } from '@/lib/billing/guards'
+import { getUsageSummary as getFairUsageSummary } from '@/lib/billing/fair-usage-guards'
 
 /**
  * GET /api/billing/usage?organizationId=xxx
@@ -126,6 +127,9 @@ export async function GET(req: NextRequest) {
       tokensThisMonth,
     })
 
+    // Get fair-usage summary (token-based and doc ingestion limits)
+    const fairUsage = await getFairUsageSummary(organizationId)
+
     return NextResponse.json({
       organization: {
         id: organization.id,
@@ -137,6 +141,11 @@ export async function GET(req: NextRequest) {
       },
       entitlements: workspace,
       usage: usageSummary,
+      fairUsage: {
+        tokens: fairUsage.tokens,
+        docs: fairUsage.docs,
+        billingPeriod: fairUsage.billingPeriod,
+      },
       currentUsage: {
         seats: currentSeats,
         projects: currentProjects,

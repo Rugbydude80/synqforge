@@ -9,6 +9,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
+import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
 
 /**
  * POST /api/ai/validate-story
@@ -82,7 +83,34 @@ export const POST = withAuth(
         );
       }
 
-      // Check AI usage limits
+      // Check fair-usage AI token limit (HARD BLOCK)
+      const estimatedTokens = AI_TOKEN_COSTS.STORY_VALIDATION
+      const aiCheck = await canUseAI(user.organizationId, estimatedTokens)
+
+      if (!aiCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'USAGE_LIMIT_EXCEEDED',
+              message: aiCheck.reason,
+            },
+            upgradeUrl: aiCheck.upgradeUrl,
+            manageUrl: aiCheck.manageUrl,
+            used: aiCheck.used,
+            limit: aiCheck.limit,
+            percentage: aiCheck.percentage,
+          },
+          { status: 402 }
+        )
+      }
+
+      // Show 90% warning if approaching limit
+      if (aiCheck.isWarning && aiCheck.reason) {
+        console.warn(`Fair-usage warning for org ${user.organizationId}: ${aiCheck.reason}`)
+      }
+
+      // Legacy usage check (keep for backward compatibility)
       const usageCheck = await checkAIUsageLimit(user, AI_TOKEN_COSTS.STORY_VALIDATION);
       if (!usageCheck.allowed) {
         return NextResponse.json(
@@ -128,9 +156,14 @@ export const POST = withAuth(
         JSON.stringify(response.validation)
       );
 
+      // Track fair-usage token consumption
+      const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+      await incrementTokenUsage(user.organizationId, actualTokensUsed)
+
       return successResponse({
         validation: response.validation,
         usage: response.usage,
+        fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
         story: {
           title: storyData.title,
           description: storyData.description,

@@ -9,6 +9,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
+import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -115,6 +116,21 @@ export async function generateRICEScore(
     }
 
     const estimatedTokens = 3000
+
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const aiCheck = await canUseAI(organizationId, estimatedTokens)
+    if (!aiCheck.allowed) {
+      throw new Error(
+        aiCheck.reason || 'AI token limit reached. Please upgrade your plan or wait until next month.'
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
@@ -143,6 +159,9 @@ export async function generateRICEScore(
     })
 
     await recordTokenUsage(organizationId, riceScore.tokensUsed, 'rice_scoring', false)
+
+    // Track fair-usage token consumption
+    await incrementTokenUsage(organizationId, riceScore.tokensUsed)
 
     return {
       storyId: story.id,
@@ -278,6 +297,21 @@ export async function generateWSJFScore(
     }
 
     const estimatedTokens = 3000
+
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const aiCheck = await canUseAI(organizationId, estimatedTokens)
+    if (!aiCheck.allowed) {
+      throw new Error(
+        aiCheck.reason || 'AI token limit reached. Please upgrade your plan or wait until next month.'
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
@@ -306,6 +340,9 @@ export async function generateWSJFScore(
     })
 
     await recordTokenUsage(organizationId, wsjfScore.tokensUsed, 'wsjf_scoring', false)
+
+    // Track fair-usage token consumption
+    await incrementTokenUsage(organizationId, wsjfScore.tokensUsed)
 
     return {
       storyId: story.id,
@@ -437,6 +474,21 @@ export async function suggestEffortEstimate(
     }
 
     const estimatedTokens = 2500
+
+    // Check fair-usage AI token limit (HARD BLOCK)
+    const aiCheck = await canUseAI(organizationId, estimatedTokens)
+    if (!aiCheck.allowed) {
+      throw new Error(
+        aiCheck.reason || 'AI token limit reached. Please upgrade your plan or wait until next month.'
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(`Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} remaining.`)
@@ -474,6 +526,9 @@ export async function suggestEffortEstimate(
     })
 
     await recordTokenUsage(organizationId, effortEstimate.tokensUsed, 'effort_estimation', false)
+
+    // Track fair-usage token consumption
+    await incrementTokenUsage(organizationId, effortEstimate.tokensUsed)
 
     return {
       storyId: story.id,
