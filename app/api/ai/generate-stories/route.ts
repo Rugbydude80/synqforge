@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
+import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -38,8 +39,45 @@ async function generateStories(req: NextRequest, context: AuthContext) {
       );
     }
 
-    // Check AI usage limits (tokens and generation count)
-    const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION * 5; // Estimate for 5 stories
+    // NEW: Check fair-usage bulk limit
+    const estimatedStoryCount = 5 // Default estimate
+    const bulkCheck = await checkBulkLimit(context.user.organizationId, estimatedStoryCount)
+    if (!bulkCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: bulkCheck.reason,
+          upgradeUrl: bulkCheck.upgradeUrl,
+          used: bulkCheck.used,
+          limit: bulkCheck.limit,
+        },
+        { status: 402 } // Payment Required
+      )
+    }
+
+    // NEW: Check fair-usage AI token limit (HARD BLOCK)
+    const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION * estimatedStoryCount
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens)
+
+    if (!aiCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: aiCheck.reason,
+          upgradeUrl: aiCheck.upgradeUrl,
+          manageUrl: aiCheck.manageUrl,
+          used: aiCheck.used,
+          limit: aiCheck.limit,
+          percentage: aiCheck.percentage,
+        },
+        { status: 402 } // Payment Required
+      )
+    }
+
+    // Show 90% warning if approaching limit
+    if (aiCheck.isWarning && aiCheck.reason) {
+      console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // Legacy usage check (keep for backward compatibility)
     const usageCheck = await checkAIUsageLimit(context.user, estimatedTokens);
 
     if (!usageCheck.allowed) {
@@ -93,11 +131,16 @@ async function generateStories(req: NextRequest, context: AuthContext) {
       JSON.stringify(response.stories)
     );
 
+    // NEW: Track fair-usage token consumption
+    const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+    await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
+
     return NextResponse.json({
       success: true,
       stories: response.stories,
       count: response.stories.length,
       usage: response.usage,
+      fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
     });
 
   } catch (error) {

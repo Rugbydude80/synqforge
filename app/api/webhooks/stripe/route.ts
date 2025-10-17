@@ -235,6 +235,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   if (status === 'trialing' || status === 'active') {
     const { getOrCreateUsageMetering } = await import('@/lib/services/ai-metering.service')
     await getOrCreateUsageMetering(organization.id)
+
+    // Initialize fair-usage workspace tracking
+    const { getOrCreateWorkspaceUsage } = await import('@/lib/billing/fair-usage-guards')
+    await getOrCreateWorkspaceUsage(organization.id)
   }
 
   console.log('Subscription updated successfully for org:', organization.name, {
@@ -243,8 +247,11 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     seats: dbValues.seatsIncluded,
     addonSeats,
     projects: dbValues.projectsIncluded,
-    stories: dbValues.storiesPerMonth,
     tokens: dbValues.aiTokensIncluded,
+    docs: dbValues.docsPerMonth,
+    throughput: dbValues.throughputSpm,
+    bulkLimit: dbValues.bulkStoryLimit,
+    pageLimit: dbValues.maxPagesPerUpload,
     status,
   })
 }
