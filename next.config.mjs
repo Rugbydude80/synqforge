@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // output: 'standalone', // Disabled to avoid email template build issues
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
@@ -20,39 +19,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Allow warnings during build
   },
-  // Skip static optimization for error pages to avoid build issues
-  skipMiddlewareUrlNormalize: true,
-  skipTrailingSlashRedirect: true,
-  // Explicitly configure webpack to handle CSS and exclude email templates
-  webpack: (config, { isServer }) => {
-    // Exclude @react-email/components from the bundle
-    // It contains Html component that conflicts with Next.js
-    config.externals = config.externals || []
-
-    if (isServer) {
-      // For server-side, mark as external so it's not bundled
-      if (Array.isArray(config.externals)) {
-        config.externals.push('@react-email/components')
-      } else {
-        config.externals = [...(Array.isArray(config.externals) ? config.externals : [config.externals]), '@react-email/components']
-      }
-    } else {
-      // For client-side, completely exclude email templates
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@react-email/components': false,
-        '@/emails/story-assigned': false,
-        '@/emails/notification-digest': false,
-      }
-    }
-
-    // Also exclude from server chunks to avoid Html component conflicts
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@react-email/components': false,
-    }
-    return config
-  },
+  // Disable static page generation to avoid build errors
+  output: 'export' === 'export' ? undefined : 'standalone',
   // Security headers for production
   async headers() {
     return [
