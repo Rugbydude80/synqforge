@@ -251,6 +251,14 @@ export const epics = pgTable(
     assignedTo: varchar('assigned_to', { length: 36 }),
     startDate: date('start_date'),
     targetDate: date('target_date'),
+
+    // Aggregate fields (maintained by triggers)
+    totalStories: integer('total_stories').notNull().default(0),
+    completedStories: integer('completed_stories').notNull().default(0),
+    totalPoints: integer('total_points').notNull().default(0),
+    completedPoints: integer('completed_points').notNull().default(0),
+    progressPct: decimal('progress_pct', { precision: 5, scale: 1 }).notNull().default('0'),
+
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
@@ -259,6 +267,8 @@ export const epics = pgTable(
     orgIdx: index('idx_epics_org').on(table.organizationId),
     statusIdx: index('idx_epics_status').on(table.projectId, table.status),
     assigneeIdx: index('idx_epics_assignee').on(table.assignedTo),
+    progressIdx: index('idx_epics_progress').on(table.progressPct),
+    orgStatusIdx: index('idx_epics_org_status').on(table.organizationId, table.status),
   })
 )
 
@@ -287,6 +297,10 @@ export const stories = pgTable(
     aiConfidenceScore: smallint('ai_confidence_score'),
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     assigneeId: varchar('assignee_id', { length: 36 }),
+
+    // Completion tracking
+    doneAt: timestamp('done_at'),
+
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
@@ -298,6 +312,8 @@ export const stories = pgTable(
     assigneeIdx: index('idx_stories_assignee').on(table.assigneeId),
     priorityIdx: index('idx_stories_priority').on(table.projectId, table.priority),
     sourceDocIdx: index('idx_stories_source_doc').on(table.sourceDocumentId),
+    doneAtIdx: index('idx_stories_done_at').on(table.doneAt),
+    sprintDoneIdx: index('idx_stories_sprint_done').on(table.organizationId, table.doneAt, table.status),
   })
 )
 
@@ -320,6 +336,10 @@ export const sprints = pgTable(
     completedPoints: integer('completed_points').default(0),
     velocity: integer('velocity'),
     completionPercentage: smallint('completion_percentage').default(0),
+
+    // Cached velocity for performance
+    velocityCached: integer('velocity_cached').notNull().default(0),
+
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -328,6 +348,7 @@ export const sprints = pgTable(
     projectIdx: index('idx_sprints_project').on(table.projectId),
     statusIdx: index('idx_sprints_status').on(table.projectId, table.status),
     datesIdx: index('idx_sprints_dates').on(table.startDate, table.endDate),
+    velocityIdx: index('idx_sprints_velocity').on(table.projectId, table.velocityCached),
   })
 )
 
