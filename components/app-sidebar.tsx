@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -12,6 +13,8 @@ import {
   LogOut,
   Zap,
   Layers,
+  Menu,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -35,6 +38,24 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [mobileMenuOpen])
 
   const getActiveNav = () => {
     if (pathname.startsWith('/dashboard')) return 'dashboard'
@@ -50,10 +71,42 @@ export function AppSidebar() {
 
   const handleNavClick = (item: NavItem) => {
     router.push(item.href)
+    setMobileMenuOpen(false)
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card">
+    <>
+      {/* Mobile Menu Toggle Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card shadow-lg md:hidden"
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? (
+          <X className="h-5 w-5" />
+        ) : (
+          <Menu className="h-5 w-5" />
+        )}
+      </button>
+
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card transition-transform duration-300 ease-in-out',
+          // Hide on mobile by default, show when menu is open
+          'md:translate-x-0',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
           <Zap className="h-5 w-5 text-white" />
@@ -83,7 +136,10 @@ export function AppSidebar() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2"
-          onClick={() => router.push('/settings')}
+          onClick={() => {
+            router.push('/settings')
+            setMobileMenuOpen(false)
+          }}
         >
           <Settings className="h-4 w-4" />
           Settings
@@ -91,7 +147,10 @@ export function AppSidebar() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:border-red-400"
-          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          onClick={() => {
+            setMobileMenuOpen(false)
+            signOut({ callbackUrl: '/auth/signin' })
+          }}
         >
           <LogOut className="h-4 w-4" />
           Logout
