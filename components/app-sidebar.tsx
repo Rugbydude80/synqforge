@@ -157,5 +157,6 @@ export function AppSidebar() {
         </Button>
       </div>
     </aside>
+    </>
   )
 }
