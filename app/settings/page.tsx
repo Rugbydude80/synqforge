@@ -31,7 +31,7 @@ export default function SettingsPage() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64 flex items-center justify-center">
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
           <div className="text-muted-foreground">Loading...</div>
         </main>
       </div>
@@ -53,24 +53,24 @@ export default function SettingsPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         {/* Header */}
         <div className="border-b border-border bg-card/80 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
-              <Settings className="h-6 w-6 text-white" />
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
+              <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Settings</h1>
-              <p className="text-muted-foreground">Manage your account and preferences</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage your account and preferences</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <Card>

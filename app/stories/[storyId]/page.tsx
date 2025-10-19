@@ -56,10 +56,10 @@ export default async function StoryPage({
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         {/* Header */}
         <div className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto px-8 py-6">
+          <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6">
             <div className="flex items-center gap-4">
               {story.projectId && (
                 <Link href={projectUrl(story.projectId)}>

@@ -311,9 +311,9 @@ export default function DashboardPage() {
       <AppSidebar />
 
       {/* Main Content */}
-      <main className="flex-1 pl-64">
+      <main className="flex-1 md:ml-64">
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-xl px-8">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-xl px-3 sm:px-4 md:px-6 lg:px-8">
           <div>
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-sm text-muted-foreground">Welcome back! Here's what's happening.</p>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
           {!loading && !error && (
             <>
               {/* Metrics Grid */}
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {metrics.map((metric, i) => (
               <Card
                 key={i}

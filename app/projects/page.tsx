@@ -106,13 +106,13 @@ export default function ProjectsPage() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64">
-          <div className="container mx-auto px-6 py-8">
-            <div className="mb-8">
+        <main className="flex-1 md:ml-64">
+          <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-8">
+            <div className="mb-6 md:mb-8">
               <div className="h-8 w-48 bg-gray-700/50 rounded animate-pulse mb-2" />
-              <div className="h-4 w-96 bg-gray-700/50 rounded animate-pulse" />
+              <div className="h-4 w-full max-w-96 bg-gray-700/50 rounded animate-pulse" />
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-64 bg-gray-800/50 rounded-lg animate-pulse" />
               ))}
@@ -127,7 +127,7 @@ export default function ProjectsPage() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64 flex items-center justify-center">
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">Something went wrong</h3>
@@ -142,16 +142,16 @@ export default function ProjectsPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
-        <div className="container mx-auto px-6 py-8">
+      <main className="flex-1 md:ml-64">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
-              <p className="text-gray-400">Manage your projects and track progress</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Projects</h1>
+              <p className="text-sm sm:text-base text-gray-400">Manage your projects and track progress</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Button
                 variant="outline"
                 onClick={() => router.push('/ai-generate')}

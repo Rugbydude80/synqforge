@@ -258,20 +258,20 @@ export default function AIGeneratePage() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
-        <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-8">
-          <div className="max-w-6xl mx-auto space-y-8">
+      <main className="flex-1 md:ml-64">
+        <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-3 sm:p-4 md:p-6 lg:p-8">
+          <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
             AI Story Generation
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-sm sm:text-base md:text-lg text-gray-400">
             Upload a document or describe your requirements to generate user stories
           </p>
         </div>

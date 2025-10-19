@@ -90,17 +90,17 @@ export default function EpicsPage() {
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
 
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         {/* Header */}
         <div className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-8 py-6">
-            <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-gradient-primary">
-                  <Layers className="h-6 w-6 text-white" />
+                  <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">Epics</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold">Epics</h1>
                   <p className="text-sm text-muted-foreground">
                     Manage your epic-level features and initiatives
                   </p>
