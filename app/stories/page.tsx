@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
 import { AppSidebar } from '@/components/app-sidebar'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { cn } from '@/lib/utils'
@@ -52,6 +53,10 @@ function StoriesPageContent() {
   const [epicFilter, setEpicFilter] = React.useState<string>('all')
   const [priorityFilter, setPriorityFilter] = React.useState<string>('all')
   const [searchQuery, setSearchQuery] = React.useState('')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [itemsPerPage, setItemsPerPage] = React.useState(24)
 
   const sortedProjects = React.useMemo(
     () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
@@ -310,6 +315,27 @@ function StoriesPageContent() {
     })
   }, [stories, searchQuery, statusFilter, projectFilter, epicFilter, priorityFilter])
 
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, projectFilter, epicFilter, priorityFilter])
+
+  // Paginate filtered stories
+  const totalStories = filteredStories.length
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedStories = filteredStories.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex min-h-screen bg-background">
@@ -488,8 +514,9 @@ function StoriesPageContent() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredStories.map(story => (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedStories.map(story => (
                 <Card
                   key={story.id}
                   id={`story-${story.id}`}
@@ -578,6 +605,21 @@ function StoriesPageContent() {
                 </Card>
               ))}
             </div>
+
+            {/* Pagination */}
+            {filteredStories.length > 0 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={totalStories}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  itemName="stories"
+                />
+              </div>
+            )}
+            </>
           )}
         </div>
       </main>
