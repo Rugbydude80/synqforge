@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Pagination } from '@/components/ui/pagination'
 import { CreateProjectModal } from '@/components/create-project-modal'
 import { ProjectEditModal } from '@/components/project-edit-modal'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -34,6 +35,10 @@ export default function ProjectsPage() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [itemsPerPage, setItemsPerPage] = React.useState(12)
 
   React.useEffect(() => {
     fetchProjects()
@@ -61,6 +66,27 @@ export default function ProjectsPage() {
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter])
+
+  // Paginate filtered projects
+  const totalProjects = filteredProjects.length
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedProjects = filteredProjects.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
 
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
@@ -213,8 +239,9 @@ export default function ProjectsPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project) => (
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedProjects.map((project) => (
               <Card
                 key={project.id}
                 className="group hover:shadow-2xl hover:shadow-purple-500/10 transition-all cursor-pointer"
@@ -299,6 +326,21 @@ export default function ProjectsPage() {
               </Card>
             ))}
           </div>
+
+          {/* Pagination */}
+          {filteredProjects.length > 0 && (
+            <div className="mt-8">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalProjects}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemName="projects"
+              />
+            </div>
+          )}
+          </>
         )}
         </div>
       </main>

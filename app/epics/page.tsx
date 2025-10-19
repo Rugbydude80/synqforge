@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
 import { AppSidebar } from '@/components/app-sidebar'
 import { EpicFormModal } from '@/components/epic-form-modal'
 import { EpicDetailDrawer } from '@/components/epic-detail-drawer'
@@ -44,6 +45,10 @@ export default function EpicsPage() {
   const [selectedEpic, setSelectedEpic] = React.useState<Epic | null>(null)
   const [detailDrawerOpen, setDetailDrawerOpen] = React.useState(false)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [itemsPerPage, setItemsPerPage] = React.useState(12)
+
   React.useEffect(() => {
     fetchEpics()
   }, [])
@@ -70,6 +75,27 @@ export default function EpicsPage() {
     const matchesPriority = priorityFilter === 'all' || epic.priority === priorityFilter
     return matchesSearch && matchesStatus && matchesPriority
   })
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, priorityFilter])
+
+  // Paginate filtered epics
+  const totalEpics = filteredEpics.length
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedEpics = filteredEpics.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
 
   const handleEpicClick = (epic: Epic) => {
     setSelectedEpic(epic)
@@ -187,8 +213,9 @@ export default function EpicsPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEpics.map((epic) => (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedEpics.map((epic) => (
                 <Card
                   key={epic.id}
                   className="cursor-pointer hover:shadow-lg hover:shadow-purple-500/10 transition-all"
@@ -249,6 +276,21 @@ export default function EpicsPage() {
                 </Card>
               ))}
             </div>
+
+            {/* Pagination */}
+            {filteredEpics.length > 0 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={totalEpics}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  itemName="epics"
+                />
+              </div>
+            )}
+            </>
           )}
         </div>
       </main>
