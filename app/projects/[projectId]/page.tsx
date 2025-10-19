@@ -264,7 +264,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+        <main className="flex-1 md:ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
           <div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full"></div>
         </main>
       </div>
@@ -275,7 +275,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+        <main className="flex-1 md:ml-64 flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
           <div className="text-center">
             <h3 className="text-xl font-semibold text-white mb-2">Failed to load project</h3>
             <p className="text-gray-400 mb-6">{error}</p>
@@ -332,12 +332,12 @@ export default function ProjectDetailPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
           {/* Header */}
           <div className="border-b border-gray-700 bg-gray-800/50 backdrop-blur-xl">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 md:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => router.push('/projects')}>
                 <ArrowLeft className="h-5 w-5" />

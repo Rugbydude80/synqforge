@@ -314,7 +314,7 @@ function StoriesPageContent() {
     return (
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 ml-64">
+        <main className="flex-1 md:ml-64">
           <div className="flex items-center justify-center h-screen">
             <div className="text-muted-foreground">Loading stories...</div>
           </div>
@@ -326,21 +326,21 @@ function StoriesPageContent() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         {/* Header */}
         <div className="border-b border-gray-700 bg-gray-800/50 backdrop-blur-xl sticky top-0 z-10">
-          <div className="container mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
-                  <FileText className="h-6 w-6 text-white" />
+          <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
+                  <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-white">All Stories</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white">All Stories</h1>
                   <p className="text-gray-400">View and manage all your user stories across projects</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <Button
                   variant="outline"
                   size="sm"
