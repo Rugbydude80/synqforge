@@ -135,4 +135,5 @@ async function deleteProject(_req: NextRequest, context: any) {
 
 export const GET = withAuth(getProject)
 export const PUT = withAuth(updateProject)
+export const PATCH = withAuth(updateProject) // Alias PATCH to PUT for API client compatibility
 export const DELETE = withAuth(deleteProject)
