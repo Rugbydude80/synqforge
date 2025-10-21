@@ -71,7 +71,7 @@ export function SubscriptionCard({ plan, currentPlan, organizationId, onSubscrib
           {isCurrentPlan && <Badge variant="secondary">Current Plan</Badge>}
         </CardTitle>
         <CardDescription>
-          <span className="text-3xl font-bold">${plan.price}</span>
+          <span className="text-3xl font-bold">£{plan.price}</span>
           <span className="text-muted-foreground">/{plan.interval === 'annual' ? 'year' : 'month'}</span>
         </CardDescription>
       </CardHeader>
