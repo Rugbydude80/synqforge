@@ -30,6 +30,20 @@ const rateLimiters = {
       prefix: 'ratelimit:ai_heavy:free',
     }),
   },
+  solo: {
+    standard: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai:solo',
+    }),
+    heavy: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(3, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai_heavy:solo',
+    }),
+  },
   team: {
     standard: new Ratelimit({
       redis,
@@ -42,6 +56,20 @@ const rateLimiters = {
       limiter: Ratelimit.slidingWindow(6, '60 s'),
       analytics: true,
       prefix: 'ratelimit:ai_heavy:team',
+    }),
+  },
+  pro: {
+    standard: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(90, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai:pro',
+    }),
+    heavy: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(9, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai_heavy:pro',
     }),
   },
   business: {
@@ -87,7 +115,7 @@ export interface RateLimitResult {
  */
 export async function checkAIRateLimit(
   organizationId: string,
-  tier: 'free' | 'team' | 'business' | 'enterprise'
+  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
   try {
     const limiter = rateLimiters[tier].standard
@@ -117,7 +145,7 @@ export async function checkAIRateLimit(
  */
 export async function checkHeavyJobRateLimit(
   organizationId: string,
-  tier: 'free' | 'team' | 'business' | 'enterprise'
+  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
   try {
     const limiter = rateLimiters[tier].heavy
@@ -147,7 +175,7 @@ export async function checkHeavyJobRateLimit(
  */
 export async function getAIQuota(
   organizationId: string,
-  tier: 'free' | 'team' | 'business' | 'enterprise'
+  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<{
   standard: { limit: number; remaining: number; reset: Date }
   heavy: { limit: number; remaining: number; reset: Date }
@@ -201,7 +229,7 @@ export async function getAIQuota(
  * Reset rate limits for an organization (admin function)
  */
 export async function resetRateLimits(organizationId: string): Promise<void> {
-  const tiers = ['free', 'team', 'business', 'enterprise'] as const
+  const tiers = ['free', 'solo', 'team', 'pro', 'business', 'enterprise'] as const
 
   try {
     const keys = tiers.flatMap(tier => [
@@ -220,7 +248,7 @@ export async function resetRateLimits(organizationId: string): Promise<void> {
  */
 export async function shouldQueueAction(
   organizationId: string,
-  tier: 'free' | 'team' | 'business' | 'enterprise',
+  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise',
   isHeavyJob: boolean = false
 ): Promise<{
   shouldQueue: boolean

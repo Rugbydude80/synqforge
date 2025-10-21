@@ -17,8 +17,8 @@ export interface PaywallModalProps {
   isOpen: boolean
   onClose: () => void
   feature: string
-  currentTier: 'free' | 'team' | 'business' | 'enterprise'
-  requiredTier: 'free' | 'team' | 'business' | 'enterprise'
+  currentTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  requiredTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
   customMessage?: string
 }
 
@@ -33,6 +33,19 @@ const tierInfo = {
       '50 stories per project',
       '20k AI tokens/month',
       'Basic features',
+    ],
+  },
+  solo: {
+    name: 'Solo',
+    price: 9,
+    icon: Sparkles,
+    color: 'text-green-500',
+    features: [
+      '3 projects',
+      '200 stories per project',
+      '50k AI tokens/month',
+      'Export functionality',
+      'Templates',
     ],
   },
   team: {
@@ -50,17 +63,30 @@ const tierInfo = {
       'Export functionality',
     ],
   },
+  pro: {
+    name: 'Pro',
+    price: 99,
+    icon: Zap,
+    color: 'text-orange-500',
+    features: [
+      'Everything in Team',
+      '600k AI tokens/month',
+      'Inbox to Backlog',
+      'API access',
+      'SSO',
+      'Advanced analytics',
+    ],
+  },
   business: {
     name: 'Business',
     price: 149,
     icon: Building2,
     color: 'text-purple-500',
     features: [
-      'Everything in Team',
+      'Everything in Pro',
       '1M AI tokens/month',
-      'Inbox to Backlog',
-      'API access',
-      'Advanced analytics',
+      'Knowledge Search',
+      'Advanced integrations',
       'Priority support',
     ],
   },

@@ -130,7 +130,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     cycle: entitlements.plan_cycle,
     seats: entitlements.seats_included,
     projects: entitlements.projects_included,
-    stories: entitlements.stories_per_month,
+    stories: dbValues.storiesPerMonth,
     tokens: entitlements.ai_tokens_included,
   })
 

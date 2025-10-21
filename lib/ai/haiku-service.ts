@@ -13,6 +13,7 @@ import {
   getVelocityPrompt,
   getTokenBudget,
 } from './prompts'
+import type { VelocityContext } from './prompts'
 import {
   checkUsageAllowance,
   checkRateLimit,

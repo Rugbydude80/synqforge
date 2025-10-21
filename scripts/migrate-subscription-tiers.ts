@@ -5,7 +5,8 @@
  */
 
 import { db } from '../lib/db'
-import { sql } from 'drizzle-orm'
+import { organizations } from '../lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 
 async function migrateSubscriptionTiers() {
   console.log('Starting subscription tier migration...')
@@ -13,13 +14,12 @@ async function migrateSubscriptionTiers() {
   try {
     // Step 1: Find all organizations with 'pro' tier
     console.log('Step 1: Finding organizations with "pro" tier...')
-    const orgList = await db.execute(sql`
-      SELECT id, name, subscription_tier
-      FROM organizations
-      WHERE subscription_tier = 'pro'
-    `)
+    const orgList = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.subscriptionTier, 'pro'))
 
-    const orgCount = Array.isArray(orgList) ? orgList.length : (orgList.rows?.length || 0)
+    const orgCount = orgList.length
     console.log(`Found ${orgCount} organizations with "pro" tier`)
 
     // Step 2: Add new enum values

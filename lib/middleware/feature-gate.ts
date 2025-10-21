@@ -22,7 +22,7 @@ export interface FeatureGateContext {
   organization: {
     id: string
     name: string
-    tier: 'free' | 'team' | 'business' | 'enterprise'
+    tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
   }
   features: SubscriptionFeatures
 }

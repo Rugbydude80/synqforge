@@ -5,9 +5,10 @@
 
 import { db } from '@/lib/db'
 import { aiUsageMetering, organizations } from '@/lib/db/schema'
-import { eq, and, gte, sql } from 'drizzle-orm'
+import { eq, gte, sql, and } from 'drizzle-orm'
 import { MONTHLY_TOKEN_LIMITS } from './prompts'
 import type { SubscriptionTier } from '@/lib/utils/subscription'
+import { getOrCreateUsageMetering, recordTokenUsage } from '@/lib/services/ai-metering.service'
 import crypto from 'crypto'
 
 interface UsageMetrics {
@@ -30,6 +31,9 @@ interface UsageCheck {
   suggestedMaxOutputTokens?: number
 }
 
+const DEFAULT_PROMPT_HISTORY_WINDOW_MS = 60 * 60 * 1000
+const promptHistory = new Map<string, number[]>()
+
 /**
  * Check if organization can make AI request
  */
@@ -39,59 +43,56 @@ export async function checkUsageAllowance(
   estimatedTokens: number = 1000
 ): Promise<UsageCheck> {
   const limits = MONTHLY_TOKEN_LIMITS[tier]
-  const currentMonth = new Date()
-  currentMonth.setDate(1)
-  currentMonth.setHours(0, 0, 0, 0)
+  const usage = await getOrCreateUsageMetering(organizationId)
 
-  // Get current month's usage
-  const [usage] = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(${aiUsageMetering.tokensUsed}), 0)`,
-    })
-    .from(aiUsageMetering)
-    .where(
-      and(
-        eq(aiUsageMetering.organizationId, organizationId),
-        gte(aiUsageMetering.timestamp, currentMonth)
-      )
-    )
-
-  const currentUsage = Number(usage?.total || 0)
-  const usagePercentage = (currentUsage / limits.hard) * 100
-
-  // Hard cap - block all requests
-  if (currentUsage >= limits.hard) {
+  if (!usage) {
     return {
       allowed: false,
-      reason: `Hard limit reached (${limits.hard.toLocaleString()} tokens/month). Upgrade plan or wait for monthly reset.`,
-      currentUsage,
+      reason: 'Organization not found',
+      currentUsage: 0,
       limit: limits.hard,
-      usagePercentage,
+      usagePercentage: 0,
       throttled: true,
     }
   }
 
-  // Soft cap - allow but throttle
-  if (currentUsage >= limits.soft) {
-    const remainingTokens = limits.hard - currentUsage
-    const throttledMaxOutput = Math.min(500, Math.floor(remainingTokens / 2))
+  const hardLimit = limits.hard
+  const softLimit = limits.soft
+  const currentUsage = usage.tokensUsed
+  const projectedUsage = currentUsage + estimatedTokens
+  const usagePercentage = hardLimit > 0 ? Math.min(100, (currentUsage / hardLimit) * 100) : 0
+
+  if (projectedUsage >= hardLimit) {
+    return {
+      allowed: false,
+      reason: `Hard limit reached (${hardLimit.toLocaleString()} tokens/month). Upgrade plan or wait for monthly reset.`,
+      currentUsage,
+      limit: hardLimit,
+      usagePercentage,
+      throttled: true,
+      suggestedMaxOutputTokens: 0,
+    }
+  }
+
+  if (currentUsage >= softLimit) {
+    const remaining = Math.max(hardLimit - currentUsage, 0)
+    const throttledMax = Math.max(100, Math.min(500, remaining))
 
     return {
       allowed: true,
-      reason: `Soft limit exceeded. Throttling output to ${throttledMaxOutput} tokens.`,
+      reason: `Soft limit exceeded. Throttling output to ${throttledMax} tokens.`,
       currentUsage,
-      limit: limits.soft,
+      limit: softLimit,
       usagePercentage,
       throttled: true,
-      suggestedMaxOutputTokens: throttledMaxOutput,
+      suggestedMaxOutputTokens: throttledMax,
     }
   }
 
-  // Normal operation
   return {
     allowed: true,
     currentUsage,
-    limit: limits.soft,
+    limit: softLimit,
     usagePercentage,
     throttled: false,
   }
@@ -107,21 +108,16 @@ export async function recordUsage(
   metrics: UsageMetrics,
   metadata?: Record<string, any>
 ): Promise<void> {
-  await db.insert(aiUsageMetering).values({
-    id: crypto.randomUUID(),
-    organizationId,
-    userId,
-    generationType: generationType as any,
-    model: metrics.model,
-    tokensUsed: metrics.totalTokens,
-    inputTokens: metrics.inputTokens,
-    outputTokens: metrics.outputTokens,
-    latencyMs: metrics.latencyMs,
-    cacheHit: metrics.cacheHit,
-    promptHash: metrics.promptSha256,
-    metadata: metadata || {},
-    timestamp: new Date(),
-  })
+  await recordTokenUsage(organizationId, metrics.totalTokens, generationType, metadata?.isHeavyJob === true)
+
+  if (metrics.promptSha256) {
+    const key = `${organizationId}:${metrics.promptSha256}`
+    const entries = promptHistory.get(key) ?? []
+    const now = Date.now()
+    const cutoff = now - DEFAULT_PROMPT_HISTORY_WINDOW_MS
+    const updatedEntries = [...entries.filter((ts) => ts >= cutoff), now]
+    promptHistory.set(key, updatedEntries)
+  }
 }
 
 /**
@@ -139,23 +135,13 @@ export async function checkDuplicatePrompts(
   promptHash: string,
   windowMinutes: number = 10
 ): Promise<{ isDuplicate: boolean; count: number }> {
-  const windowStart = new Date()
-  windowStart.setMinutes(windowStart.getMinutes() - windowMinutes)
-
-  const [result] = await db
-    .select({
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(aiUsageMetering)
-    .where(
-      and(
-        eq(aiUsageMetering.organizationId, organizationId),
-        eq(aiUsageMetering.promptHash, promptHash),
-        gte(aiUsageMetering.timestamp, windowStart)
-      )
-    )
-
-  const count = Number(result?.count || 0)
+  const now = Date.now()
+  const windowMs = windowMinutes * 60 * 1000
+  const key = `${organizationId}:${promptHash}`
+  const entries = promptHistory.get(key) ?? []
+  const recentEntries = entries.filter((timestamp) => now - timestamp <= windowMs)
+  promptHistory.set(key, recentEntries)
+  const count = recentEntries.length
 
   return {
     isDuplicate: count > 3, // More than 3 identical requests in window
@@ -174,15 +160,13 @@ export async function getUsageSummary(organizationId: string) {
   const [usage] = await db
     .select({
       totalTokens: sql<number>`COALESCE(SUM(${aiUsageMetering.tokensUsed}), 0)`,
-      totalCalls: sql<number>`COUNT(*)`,
-      avgLatency: sql<number>`COALESCE(AVG(${aiUsageMetering.latencyMs}), 0)`,
-      cacheHitRate: sql<number>`COALESCE(AVG(CASE WHEN ${aiUsageMetering.cacheHit} THEN 100.0 ELSE 0.0 END), 0)`,
+      totalActions: sql<number>`COALESCE(SUM(${aiUsageMetering.aiActionsCount}), 0)`,
     })
     .from(aiUsageMetering)
     .where(
       and(
         eq(aiUsageMetering.organizationId, organizationId),
-        gte(aiUsageMetering.timestamp, currentMonth)
+        gte(aiUsageMetering.billingPeriodStart, currentMonth)
       )
     )
 
@@ -198,16 +182,19 @@ export async function getUsageSummary(organizationId: string) {
 
   const tier = (org?.plan || org?.subscriptionTier || 'free') as SubscriptionTier
   const limits = MONTHLY_TOKEN_LIMITS[tier]
+  const currentUsage = Number(usage?.totalTokens || 0)
+  const totalCalls = Number(usage?.totalActions || 0)
+  const usageRatio = limits.hard > 0 ? (currentUsage / limits.hard) * 100 : 0
 
   return {
     tier,
-    currentUsage: Number(usage?.totalTokens || 0),
+    currentUsage,
     softLimit: limits.soft,
     hardLimit: limits.hard,
-    totalCalls: Number(usage?.totalCalls || 0),
-    avgLatency: Math.round(Number(usage?.avgLatency || 0)),
-    cacheHitRate: Math.round(Number(usage?.cacheHitRate || 0)),
-    usagePercentage: ((Number(usage?.totalTokens || 0) / limits.hard) * 100).toFixed(1),
+    totalCalls,
+    avgLatency: 0,
+    cacheHitRate: 0,
+    usagePercentage: usageRatio.toFixed(1),
   }
 }
 
