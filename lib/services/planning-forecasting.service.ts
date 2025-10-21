@@ -2,11 +2,12 @@ import { db, generateId } from '@/lib/db'
 import {
   sprintForecasts,
   sprints,
+  sprintStories,
   stories,
   organizations,
   users,
 } from '@/lib/db/schema'
-import { eq, and, sql, desc } from 'drizzle-orm'
+import { eq, and, desc, inArray } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
@@ -88,7 +89,6 @@ export async function calculateHistoricalVelocity(
       .from(sprints)
       .where(
         and(
-          eq(sprints.organizationId, organizationId),
           eq(sprints.projectId, projectId),
           eq(sprints.status, 'completed')
         )
@@ -108,22 +108,30 @@ export async function calculateHistoricalVelocity(
     const historicalData: VelocityData[] = []
 
     for (const sprint of completedSprints) {
-      // Get stories in this sprint
-      const sprintStories = await db
-        .select()
-        .from(stories)
-        .where(
-          and(
-            eq(stories.organizationId, organizationId),
-            eq(stories.sprintId, sprint.id)
-          )
-        )
+      // Get stories in this sprint via join table
+      const sprintStoriesLinks = await db
+        .select({ storyId: sprintStories.storyId })
+        .from(sprintStories)
+        .where(eq(sprintStories.sprintId, sprint.id))
 
-      const planned = sprintStories.reduce(
+      const storyIds = sprintStoriesLinks.map(link => link.storyId)
+      
+      let sprintStoriesData: any[] = []
+      if (storyIds.length > 0) {
+        sprintStoriesData = await db
+          .select()
+          .from(stories)
+          .where(and(
+            eq(stories.organizationId, organizationId),
+            inArray(stories.id, storyIds)
+          ))
+      }
+
+      const planned = sprintStoriesData.reduce(
         (sum, story) => sum + (story.estimatedEffort || 0),
         0
       )
-      const completed = sprintStories
+      const completed = sprintStoriesData
         .filter((story) => story.status === 'done')
         .reduce((sum, story) => sum + (story.estimatedEffort || 0), 0)
 
@@ -223,7 +231,7 @@ export async function generateSprintForecast(
     }
 
     // Check if organization has access to Planning & Forecasting
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error(
         'Planning & Forecasting requires Team plan or higher. Please upgrade to continue.'
@@ -232,7 +240,7 @@ export async function generateSprintForecast(
 
     // Check rate limit
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -243,10 +251,7 @@ export async function generateSprintForecast(
       .select()
       .from(sprints)
       .where(
-        and(
-          eq(sprints.id, sprintId),
-          eq(sprints.organizationId, organizationId)
-        )
+        eq(sprints.id, sprintId)
       )
       .limit(1)
 
@@ -288,7 +293,7 @@ export async function generateSprintForecast(
         capacityOverride?.confidenceLevel || velocityData.confidenceLevel,
     }
 
-    // Get backlog stories (not in a sprint, ordered by priority)
+    // Get backlog stories (ordered by priority)
     const backlogStories = await db
       .select()
       .from(stories)
@@ -296,7 +301,6 @@ export async function generateSprintForecast(
         and(
           eq(stories.organizationId, organizationId),
           eq(stories.projectId, projectId),
-          sql`${stories.sprintId} IS NULL`,
           eq(stories.status, 'backlog')
         )
       )
@@ -323,7 +327,7 @@ export async function generateSprintForecast(
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining. ${tokenCheck.requiresUpgrade ? 'Please upgrade your plan or purchase additional tokens.' : 'Your tokens will reset at the start of the next billing period.'}`
+        `Insufficient AI tokens. You have ${tokenCheck.tokensAvailable} tokens remaining. ${tokenCheck.reason || 'Your tokens will reset at the start of the next billing period.'}`
       )
     }
 
