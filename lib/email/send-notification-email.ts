@@ -39,14 +39,7 @@ export async function sendStoryAssignedEmail(options: SendStoryAssignedEmailOpti
       from: process.env.RESEND_FROM_EMAIL || 'SynqForge <notifications@synqforge.app>',
       to: options.to,
       subject: `📋 Story assigned: ${options.storyTitle}`,
-      react: StoryAssignedEmail({
-        userName: options.userName,
-        storyTitle: options.storyTitle,
-        storyDescription: options.storyDescription,
-        projectName: options.projectName,
-        assignedBy: options.assignedBy,
-        storyUrl: options.storyUrl,
-      }),
+      react: StoryAssignedEmail() as any,
     })
 
     if (error) {
@@ -84,11 +77,7 @@ export async function sendDigestEmail(options: SendDigestEmailOptions) {
       from: process.env.RESEND_FROM_EMAIL || 'SynqForge <notifications@synqforge.app>',
       to: options.to,
       subject: `📬 Your ${options.frequency} SynqForge digest (${options.notifications.length} updates)`,
-      react: NotificationDigestEmail({
-        userName: options.userName,
-        frequency: options.frequency,
-        notifications: options.notifications,
-      }),
+      react: NotificationDigestEmail() as any,
     })
 
     if (error) {

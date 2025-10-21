@@ -132,10 +132,10 @@ export async function createAutopilotJob(
       organizationId: input.organizationId,
       projectId: input.projectId,
       userId: input.userId,
-      status: 'queued',
-      documentName: input.documentName,
-      documentContent: input.documentContent,
-      requireReview: input.requireReview,
+      status: 'pending',
+      sourceDocumentId: null,
+      inputText: input.documentContent || '',
+      requiresReview: input.requireReview,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -181,14 +181,13 @@ async function processAutopilotJob(jobId: string): Promise<void> {
       .update(autopilotJobs)
       .set({
         status: 'processing',
-        startedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(autopilotJobs.id, jobId))
 
     // Call Claude to generate epics and stories
     const result = await generateBacklogFromDocument(
-      job.documentContent,
+      job.inputText,
       job.organizationId,
       job.projectId
     )
@@ -204,24 +203,13 @@ async function processAutopilotJob(jobId: string): Promise<void> {
     const dependencies = await detectDependencies(result.stories)
 
     // If review is required, stage items
-    if (job.requireReview) {
+    if (job.requiresReview) {
       await db
         .update(autopilotJobs)
         .set({
-          status: 'pending_review',
-          outputData: {
-            epics: result.epics,
-            stories: result.stories,
-            tasks: result.tasks,
-            duplicates,
-            dependencies,
-          },
-          epicsCount: result.epics.length,
-          storiesCount: result.stories.length,
-          tasksCount: result.tasks.length,
-          duplicatesCount: duplicates.length,
-          dependenciesCount: dependencies.length,
-          completedAt: new Date(),
+          status: 'review',
+          detectedDuplicates: duplicates,
+          detectedDependencies: dependencies,
           updatedAt: new Date(),
         })
         .where(eq(autopilotJobs.id, jobId))
@@ -249,7 +237,6 @@ async function processAutopilotJob(jobId: string): Promise<void> {
       .set({
         status: 'failed',
         errorMessage: error.message,
-        completedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(autopilotJobs.id, jobId))
@@ -642,6 +629,7 @@ async function publishAutopilotResults(
       id: epic.id,
       organizationId: job.organizationId,
       projectId: job.projectId,
+      createdBy: job.userId,
       title: epic.title,
       description: epic.description,
       status: 'planned',
@@ -662,63 +650,31 @@ async function publishAutopilotResults(
         organizationId: job.organizationId,
         projectId: job.projectId,
         epicId: story.epicId,
+        createdBy: job.userId,
         title: story.title,
         description: story.description,
         acceptanceCriteria: story.acceptanceCriteria,
         status: 'backlog',
         priority: 'medium',
-        estimatedEffort: story.estimatedEffort,
+        storyPoints: story.estimatedEffort,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
     }
   }
 
-  // Insert tasks
-  for (const task of result.tasks) {
-    await db.insert(tasks).values({
-      id: task.id,
-      organizationId: job.organizationId,
-      storyId: task.storyId,
-      title: task.title,
-      description: task.description,
-      status: 'todo',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-  }
+  // Note: Tasks and dependency tables not yet implemented in schema
+  // TODO: Implement task and dependency tracking when schema is ready
 
-  // Insert dependencies
-  for (const dependency of dependencies) {
-    await db.insert(storyDependencies).values({
-      id: generateId(),
-      organizationId: job.organizationId,
-      sourceStoryId: dependency.sourceStoryId,
-      targetStoryId: dependency.targetStoryId,
-      dependencyType: dependency.dependencyType,
-      description: dependency.description,
-      createdAt: new Date(),
-    })
-  }
-
-  // Update job status
+  // Mark job as completed
   await db
     .update(autopilotJobs)
     .set({
       status: 'completed',
-      outputData: {
-        epics: result.epics,
-        stories: result.stories,
-        tasks: result.tasks,
-        duplicates,
-        dependencies,
-      },
-      epicsCount: result.epics.length,
-      storiesCount: result.stories.length,
-      tasksCount: result.tasks.length,
-      duplicatesCount: duplicates.length,
-      dependenciesCount: dependencies.length,
-      completedAt: new Date(),
+      generatedEpicIds: result.epics.map((e: any) => e.id),
+      generatedStoryIds: result.stories.filter(s => !duplicates.find(d => d.existingStoryId === s.id)).map((s: any) => s.id),
+      detectedDuplicates: duplicates,
+      detectedDependencies: dependencies,
       updatedAt: new Date(),
     })
     .where(eq(autopilotJobs.id, jobId))
@@ -743,11 +699,11 @@ export async function getAutopilotJob(
   return {
     jobId: job.id,
     status: job.status as any,
-    epicsCreated: job.epicsCount || 0,
-    storiesCreated: job.storiesCount || 0,
-    tasksCreated: job.tasksCount || 0,
-    duplicatesDetected: job.duplicatesCount || 0,
-    dependenciesDetected: job.dependenciesCount || 0,
+    epicsCreated: (job.generatedEpicIds as string[] || []).length,
+    storiesCreated: (job.generatedStoryIds as string[] || []).length,
+    tasksCreated: 0, // Tasks not yet implemented
+    duplicatesDetected: (job.detectedDuplicates as any[] || []).length,
+    dependenciesDetected: (job.detectedDependencies as any[] || []).length,
     error: job.errorMessage || undefined,
   }
 }
@@ -776,10 +732,8 @@ export async function retryAutopilotJob(
   await db
     .update(autopilotJobs)
     .set({
-      status: 'queued',
+      status: 'pending',
       errorMessage: null,
-      startedAt: null,
-      completedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(autopilotJobs.id, jobId))
@@ -817,7 +771,7 @@ export async function approveAutopilotJob(
     throw new Error('Job not found')
   }
 
-  if (job.status !== 'pending_review') {
+  if (job.status !== 'review') {
     throw new Error('Only jobs pending review can be approved')
   }
 
