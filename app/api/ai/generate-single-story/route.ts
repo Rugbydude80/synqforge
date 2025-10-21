@@ -142,7 +142,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     );
 
     // Track fair-usage token consumption
-    const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+    const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
     await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
 
     return NextResponse.json({

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 import { checkAIUsageLimit, checkDocumentAnalysisAccess } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
-import { canUseAI, incrementTokenUsage, canIngestDocument, incrementDocIngestion, checkPageLimit } from '@/lib/billing/fair-usage-guards';
+import { canUseAI, incrementTokenUsage, canIngestDocument, incrementDocIngestion } from '@/lib/billing/fair-usage-guards';
 
 async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
@@ -135,7 +135,7 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
     );
 
     // Track fair-usage token consumption
-    const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+    const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
     await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
 
     // Track fair-usage document ingestion

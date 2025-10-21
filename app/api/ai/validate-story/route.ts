@@ -157,7 +157,7 @@ export const POST = withAuth(
       );
 
       // Track fair-usage token consumption
-      const actualTokensUsed = response.usage?.total_tokens || estimatedTokens
+      const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
       await incrementTokenUsage(user.organizationId, actualTokensUsed)
 
       return successResponse({

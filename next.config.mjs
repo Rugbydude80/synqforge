@@ -13,12 +13,6 @@ const nextConfig = {
       ],
     },
   },
-  typescript: {
-    ignoreBuildErrors: true, // Temporarily ignore to unblock deployment
-  },
-  eslint: {
-    ignoreDuringBuilds: true, // Allow warnings during build
-  },
   // Disable static page generation to avoid build errors
   output: 'export' === 'export' ? undefined : 'standalone',
   // Security headers for production
