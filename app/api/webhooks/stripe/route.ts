@@ -135,7 +135,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   })
 
   // Extract seat information from subscription items
-  let includedSeats = dbValues.seatsIncluded
+  const includedSeats = dbValues.seatsIncluded
   let addonSeats = 0
   const billingInterval = entitlements.plan_cycle
 

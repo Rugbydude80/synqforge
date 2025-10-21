@@ -143,7 +143,7 @@ export async function getUserCount(organizationId: string): Promise<number> {
  * Middleware wrapper to require specific subscription tier
  */
 export function requireSubscription(requiredTier: 'pro' | 'enterprise') {
-  return async (handler: Function) => {
+  return async (handler: (req: Request, context: any) => Promise<Response>) => {
     return async (req: Request, context: any) => {
       const user: UserContext = context.user
 

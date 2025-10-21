@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     // This would integrate with your AI metering service
     const { getUsageMetering } = await import('@/lib/services/ai-metering.service')
     const aiUsage = await getUsageMetering(organizationId)
-    const tokensThisMonth = aiUsage?.tokensUsedThisMonth || 0
+    const tokensThisMonth = aiUsage?.tokensUsed || 0
 
     // Build entitlements object for guards
     const workspace = {

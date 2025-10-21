@@ -240,7 +240,7 @@ Provide realistic, data-driven estimates with clear reasoning.`
     const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
     const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
     parsedData = JSON.parse(jsonString.trim())
-  } catch (error) {
+  } catch (_error) {
     console.error('Failed to parse Claude response:', textContent.text)
     throw new Error('Failed to parse AI response. Please try again.')
   }
@@ -422,7 +422,7 @@ Provide realistic, strategic assessments with clear reasoning.`
     const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
     const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
     parsedData = JSON.parse(jsonString.trim())
-  } catch (error) {
+  } catch (_error) {
     console.error('Failed to parse Claude response:', textContent.text)
     throw new Error('Failed to parse AI response. Please try again.')
   }
@@ -613,7 +613,7 @@ Be conservative with estimates. When in doubt, estimate higher.`
     const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
     const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
     parsedData = JSON.parse(jsonString.trim())
-  } catch (error) {
+  } catch (_error) {
     console.error('Failed to parse Claude response:', textContent.text)
     throw new Error('Failed to parse AI response. Please try again.')
   }

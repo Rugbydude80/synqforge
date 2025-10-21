@@ -122,7 +122,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
   const getReplies = (parentId: string) =>
     comments.filter((c) => c.parentCommentId === parentId)
 
-  const renderComment = (comment: Comment, isReply = false) => {
+  const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
     const [copied, setCopied] = useState(false)
 
     const copyPermalink = () => {
@@ -223,7 +223,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
         )}
 
         {/* Render replies */}
-        {getReplies(comment.id).map((reply) => renderComment(reply, true))}
+        {getReplies(comment.id).map((reply) => <CommentItem key={reply.id} comment={reply} isReply={true} />)}
       </Card>
     )
   }
@@ -254,7 +254,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
       </Card>
 
       {/* Comment list */}
-      <div>{topLevelComments.map((comment) => renderComment(comment))}</div>
+      <div>{topLevelComments.map((comment) => <CommentItem key={comment.id} comment={comment} />)}</div>
 
       {comments.length === 0 && (
         <div className="text-center py-8 text-gray-500">

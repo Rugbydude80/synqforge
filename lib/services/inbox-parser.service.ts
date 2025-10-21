@@ -24,7 +24,7 @@ export async function parseInboxContent(
   projectId: string,
   source: 'slack' | 'teams' | 'email',
   content: string,
-  metadata?: { channel?: string; threadId?: string; from?: string }
+  _metadata?: { channel?: string; threadId?: string; from?: string }
 ): Promise<{ parsed: ParsedContent; storiesCreated: number; tokensUsed: number }> {
   try {
     const [organization] = await db
