@@ -39,14 +39,13 @@ export async function setModelPolicy(
   await db.insert(aiModelPolicies).values({
     id: policyId,
     organizationId,
-    preferredModel: policy.preferredModel,
-    fallbackModels: policy.fallbackModels,
-    maxTokensPerRequest: policy.maxTokensPerRequest,
-    temperature: policy.temperature,
-    customSystemPrompt: policy.customSystemPrompt,
-    contextOptimization: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdBy: organizationId, // Using organizationId as placeholder
+    featureType: 'autopilot',
+    modelTier: 'balanced',
+    modelName: policy.preferredModel || 'claude-3-5-sonnet-latest',
+    maxTokensPerRequest: policy.maxTokensPerRequest || 10000,
+    enableContextOptimization: true,
+    customInstructions: policy.customSystemPrompt,
   })
 
   return { policyId }
@@ -67,11 +66,11 @@ export async function getModelPolicy(organizationId: string): Promise<ModelPolic
   return {
     id: policy.id,
     organizationId: policy.organizationId,
-    preferredModel: policy.preferredModel,
-    fallbackModels: policy.fallbackModels as any,
-    maxTokensPerRequest: policy.maxTokensPerRequest,
-    temperature: policy.temperature,
-    customSystemPrompt: policy.customSystemPrompt || undefined,
+    preferredModel: policy.modelName || 'claude-3-5-sonnet-latest',
+    fallbackModels: [],
+    maxTokensPerRequest: policy.maxTokensPerRequest || 10000,
+    temperature: 0.7,
+    customSystemPrompt: policy.customInstructions || undefined,
     enabledFeatures: [],
     rateOverrides: {},
   }

@@ -22,7 +22,7 @@ export interface AuditLogEntry {
   changes: Record<string, any>
   ipAddress: string
   userAgent: string
-  timestamp: Date
+  createdAt: Date
 }
 
 /**
@@ -52,17 +52,21 @@ export async function scanForPII(
 
   const detection = await detectPIIWithAI(story)
 
-  // Save detection
-  await db.insert(piiDetections).values({
-    id: generateId(),
-    organizationId,
-    storyId,
-    piiTypes: detection.piiTypes,
-    locations: detection.locations as any,
-    severity: detection.severity,
-    autoRedacted: false,
-    createdAt: new Date(),
-  })
+  // Save detection  
+  // Note: Saving each PII type separately as per schema
+  for (const piiType of detection.piiTypes) {
+    await db.insert(piiDetections).values({
+      id: generateId(),
+      organizationId,
+      resourceType: 'story',
+      resourceId: storyId,
+      piiType: piiType as any,
+      detectedValue: '', // Would be encrypted in production
+      maskedValue: '[REDACTED]',
+      position: detection.locations[0] || {},
+      createdAt: new Date(),
+    })
+  }
 
   return detection
 }
@@ -135,10 +139,10 @@ export async function logAuditEvent(
     action: event.action,
     resourceType: event.resourceType,
     resourceId: event.resourceId,
-    changes: event.changes as any,
+    changes: event.changes,
     ipAddress: event.ipAddress,
     userAgent: event.userAgent,
-    timestamp: new Date(),
+    createdAt: new Date(),
   })
 }
 
@@ -167,10 +171,10 @@ export async function exportAuditLogs(
     .where(
       and(
         eq(auditLogs.organizationId, organizationId),
-        gte(auditLogs.timestamp, startDate)
+        gte(auditLogs.createdAt, startDate)
       )
     )
-    .orderBy(desc(auditLogs.timestamp))
+    .orderBy(desc(auditLogs.createdAt))
 
   if (format === 'json') {
     return JSON.stringify(logs, null, 2)
@@ -180,7 +184,7 @@ export async function exportAuditLogs(
     const rows = logs
       .map(
         (log) =>
-          `${log.timestamp},${log.userId},${log.action},${log.resourceType},${log.resourceId},${log.ipAddress}`
+          `${log.createdAt},${log.userId},${log.action},${log.resourceType},${log.resourceId},${log.ipAddress}`
       )
       .join('\n')
     return headers + rows
@@ -205,7 +209,7 @@ export async function applyRetentionPolicy(
     .where(
       and(
         eq(auditLogs.organizationId, organizationId),
-        gte(auditLogs.timestamp, cutoffDate)
+        gte(auditLogs.createdAt, cutoffDate)
       )
     )
 

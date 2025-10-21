@@ -1,6 +1,6 @@
 import { db, generateId } from '@/lib/db'
 import { knowledgeSearches, stories, organizations } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
@@ -56,13 +56,13 @@ export async function semanticSearch(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (!['business', 'enterprise'].includes(tier)) {
       throw new Error('Knowledge Search requires Business plan or higher. Please upgrade to continue.')
     }
 
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`
       )
@@ -71,7 +71,7 @@ export async function semanticSearch(
     const estimatedTokens = 4000
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
-      throw new Error(`Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} remaining.`)
+      throw new Error(`Insufficient AI tokens. You have ${tokenCheck.tokensAvailable} remaining.`)
     }
 
     // In a production system, you'd use vector embeddings with pgvector
@@ -83,11 +83,10 @@ export async function semanticSearch(
     await db.insert(knowledgeSearches).values({
       id: searchId,
       organizationId,
+      userId: organizationId, // Using organizationId as placeholder
       query,
-      results: searchResults.results as any,
-      answer: searchResults.answer,
-      tokensUsed: searchResults.tokensUsed,
-      createdAt: new Date(),
+      results: searchResults.results,
+      resultCount: searchResults.results?.length || 0,
     })
 
     await recordTokenUsage(organizationId, searchResults.tokensUsed, 'knowledge_search', false)
@@ -108,17 +107,16 @@ async function performAISearch(
   filters?: any
 ): Promise<Omit<KnowledgeSearchResult, 'searchedAt'>> {
   // Get stories as knowledge base
-  let storiesQuery = db
-    .select()
-    .from(stories)
-    .where(eq(stories.organizationId, organizationId))
-    .limit(50)
-
+  const whereConditions = [eq(stories.organizationId, organizationId)]
   if (filters?.projectId) {
-    storiesQuery = storiesQuery.where(eq(stories.projectId, filters.projectId)) as any
+    whereConditions.push(eq(stories.projectId, filters.projectId))
   }
 
-  const knowledgeBase = await storiesQuery
+  const knowledgeBase = await db
+    .select()
+    .from(stories)
+    .where(and(...whereConditions))
+    .limit(50)
 
   const context = knowledgeBase
     .map((story) => `[${story.id}] ${story.title}: ${story.description?.substring(0, 200) || ''}`)
