@@ -1,6 +1,6 @@
 import { db, generateId } from '@/lib/db'
-import { knowledgeEmbeddings, knowledgeSearches, stories, organizations } from '@/lib/db/schema'
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { knowledgeSearches, stories, organizations } from '@/lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'

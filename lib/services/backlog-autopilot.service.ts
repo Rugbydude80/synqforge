@@ -5,7 +5,7 @@ import {
   stories,
   organizations
 } from '@/lib/db/schema'
-import { eq, and, sql, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkHeavyJobRateLimit } from './ai-rate-limit.service'
@@ -23,7 +23,7 @@ const SUPPORTED_MIME_TYPES = [
   'text/plain',
 ]
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+// const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 
 export interface AutopilotJobInput {
   organizationId: string

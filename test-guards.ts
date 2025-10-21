@@ -6,7 +6,6 @@ import {
   canIngestDocument,
   incrementDocIngestion,
   checkBulkLimit,
-  checkThroughput,
   checkPageLimit,
   getUsageSummary,
   getOrCreateWorkspaceUsage

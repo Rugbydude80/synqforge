@@ -7,7 +7,7 @@
 
 import { db } from '@/lib/db'
 import { sprints, sprintStories, stories, projects } from '@/lib/db/schema'
-import { eq, and, desc, sql, inArray, gte, lt } from 'drizzle-orm'
+import { eq, and, desc, sql, gte, lt } from 'drizzle-orm'
 
 // ============================================================================
 // Types

@@ -4,7 +4,7 @@
  */
 
 import { db } from '@/lib/db'
-import { organizations, users } from '@/lib/db/schema'
+import { organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export interface SSOConfig {
@@ -102,7 +102,7 @@ export async function scimCreateUser(
   }
 
   // Create user in database
-  const primaryEmail = userData.emails.find((e) => e.primary)?.value || userData.emails[0].value
+  // const primaryEmail = userData.emails.find((e) => e.primary)?.value || userData.emails[0].value
 
   // In production, create actual user
   return {

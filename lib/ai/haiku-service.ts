@@ -12,8 +12,6 @@ import {
   getDecomposerPrompt,
   getVelocityPrompt,
   getTokenBudget,
-  type VelocityContext,
-  type DecomposerContext,
 } from './prompts'
 import {
   checkUsageAllowance,
