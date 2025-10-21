@@ -5,7 +5,7 @@
 
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
-export type SubscriptionTier = 'free' | 'team' | 'business' | 'enterprise'
+export type SubscriptionTier = 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
 
 export interface SubscriptionFeatures {
   // Projects & Stories
@@ -123,26 +123,49 @@ export function getUpgradeMessage(
       canUsePlanningForecast: 'Upgrade to Team to use Planning & Forecasting',
       canUseEffortScoring: 'Upgrade to Team to use Effort Scoring',
       canUseKnowledgeSearch: 'Upgrade to Team to use Knowledge Search',
-      canUseInboxParsing: 'Upgrade to Business to use Inbox to Backlog',
+      canUseInboxParsing: 'Upgrade to Pro to use Inbox to Backlog',
       canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
       canUseWorkflowAgents: 'Upgrade to Enterprise to use Workflow Agents',
       canUseGovernance: 'Upgrade to Enterprise to use Governance & Compliance',
       canUseModelControls: 'Upgrade to Enterprise to use Model Controls',
       canUseAnalytics: 'Upgrade to Team to use Analytics',
-      canExport: 'Upgrade to Team to export projects',
-      canUseTemplates: 'Upgrade to Team to use templates',
-      canUseAPI: 'Upgrade to Business to use the API',
-      canUseSSO: 'Upgrade to Enterprise to use SSO',
+      canExport: 'Upgrade to Solo to export projects',
+      canUseTemplates: 'Upgrade to Solo to use templates',
+      canUseAPI: 'Upgrade to Pro to use the API',
+      canUseSSO: 'Upgrade to Pro to use SSO',
       canAddSeats: 'Upgrade to Team to add more seats',
     },
-    team: {
-      canUseInboxParsing: 'Upgrade to Business to use Inbox to Backlog',
+    solo: {
+      canUseBacklogAutopilot: 'Upgrade to Team to use Backlog Autopilot',
+      canUseACValidator: 'Upgrade to Team to use AC Validator',
+      canUseTestGeneration: 'Upgrade to Team to use Test Generation',
+      canUsePlanningForecast: 'Upgrade to Team to use Planning & Forecasting',
+      canUseEffortScoring: 'Upgrade to Team to use Effort Scoring',
+      canUseKnowledgeSearch: 'Upgrade to Team to use Knowledge Search',
+      canUseInboxParsing: 'Upgrade to Pro to use Inbox to Backlog',
       canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
       canUseWorkflowAgents: 'Upgrade to Enterprise to use Workflow Agents',
       canUseGovernance: 'Upgrade to Enterprise to use Governance & Compliance',
       canUseModelControls: 'Upgrade to Enterprise to use Model Controls',
-      canUseAPI: 'Upgrade to Business to use the API',
-      canUseSSO: 'Upgrade to Enterprise to use SSO',
+      canUseAnalytics: 'Upgrade to Team to use Analytics',
+      canUseAPI: 'Upgrade to Pro to use the API',
+      canUseSSO: 'Upgrade to Pro to use SSO',
+      canAddSeats: 'Upgrade to Team to add more seats',
+    },
+    team: {
+      canUseInboxParsing: 'Upgrade to Pro to use Inbox to Backlog',
+      canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
+      canUseWorkflowAgents: 'Upgrade to Enterprise to use Workflow Agents',
+      canUseGovernance: 'Upgrade to Enterprise to use Governance & Compliance',
+      canUseModelControls: 'Upgrade to Enterprise to use Model Controls',
+      canUseAPI: 'Upgrade to Pro to use the API',
+      canUseSSO: 'Upgrade to Pro to use SSO',
+    },
+    pro: {
+      canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
+      canUseWorkflowAgents: 'Upgrade to Enterprise to use Workflow Agents',
+      canUseGovernance: 'Upgrade to Enterprise to use Governance & Compliance',
+      canUseModelControls: 'Upgrade to Enterprise to use Model Controls',
     },
     business: {
       canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
@@ -161,7 +184,7 @@ export function getUpgradeMessage(
  * Get the minimum tier required for a feature
  */
 export function getMinimumTierForFeature(feature: keyof SubscriptionFeatures): SubscriptionTier {
-  const tiers: SubscriptionTier[] = ['free', 'team', 'business', 'enterprise']
+  const tiers: SubscriptionTier[] = ['free', 'solo', 'team', 'pro', 'business', 'enterprise']
 
   for (const tier of tiers) {
     if (hasFeature(tier, feature)) {
@@ -179,7 +202,7 @@ export function needsUpgrade(
   currentTier: SubscriptionTier,
   requiredTier: SubscriptionTier
 ): boolean {
-  const tierOrder: SubscriptionTier[] = ['free', 'team', 'business', 'enterprise']
+  const tierOrder: SubscriptionTier[] = ['free', 'solo', 'team', 'pro', 'business', 'enterprise']
   const currentIndex = tierOrder.indexOf(currentTier)
   const requiredIndex = tierOrder.indexOf(requiredTier)
 
@@ -191,8 +214,10 @@ export function needsUpgrade(
  */
 export function getRecommendedUpgrade(currentTier: SubscriptionTier): SubscriptionTier | null {
   const upgradeMap: Record<SubscriptionTier, SubscriptionTier | null> = {
-    free: 'team',
-    team: 'business',
+    free: 'solo',
+    solo: 'team',
+    team: 'pro',
+    pro: 'business',
     business: 'enterprise',
     enterprise: null,
   }

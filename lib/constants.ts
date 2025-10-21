@@ -92,6 +92,58 @@ export const SUBSCRIPTION_LIMITS = {
     // Display name
     displayName: 'Free',
   },
+  solo: {
+    // Projects & Stories
+    maxProjects: 3,
+    maxStoriesPerProject: Infinity,
+    maxSeats: 1,
+    includedSeats: 1,
+    seatPrice: 0,
+
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: 50000, // 50k pooled tokens/month
+    monthlyAIGenerations: 50,
+    maxStoriesPerGeneration: 10,
+
+    // Advanced AI Modules
+    canUseBacklogAutopilot: false,
+    canUseACValidator: false,
+    canUseTestGeneration: false,
+    canUsePlanningForecast: false,
+    canUseEffortScoring: false,
+    canUseKnowledgeSearch: false,
+    canUseInboxParsing: false,
+    canUseRepoAwareness: false,
+    canUseWorkflowAgents: false,
+    canUseGovernance: false,
+    canUseModelControls: false,
+    canUseAnalytics: false,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: false,
+    canUseCustomFields: false,
+    canUseAdvancedAnalytics: false,
+    canUseSSO: false,
+
+    // Rate Limits
+    aiActionsPerMinute: 20,
+    heavyJobsPerMinute: 2,
+
+    // Support
+    supportLevel: 'community',
+
+    // Billing
+    price: 19, // £19/month
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 7,
+    annualPrice: 190, // £190/year (save £38)
+
+    // Display name
+    displayName: 'Solo',
+  },
   team: {
     // Projects & Stories
     maxProjects: Infinity,
@@ -135,14 +187,66 @@ export const SUBSCRIPTION_LIMITS = {
     supportLevel: 'email',
 
     // Billing
-    price: 49, // £49/month for 5 seats
+    price: 29, // £29/month for 5 seats
     currency: 'GBP',
     billingInterval: 'monthly',
-    trialDays: 14,
-    annualPrice: 490, // £490/year (2 months free)
+    trialDays: 7,
+    annualPrice: 290, // £290/year (save £58)
 
     // Display name
     displayName: 'Team',
+  },
+  pro: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxSeats: Infinity,
+    includedSeats: 20,
+    seatPrice: 12, // £12/seat/month
+
+    // AI Usage (pooled tokens per workspace)
+    monthlyAITokens: Infinity, // Unlimited pooled tokens/month
+    monthlyAIGenerations: Infinity,
+    maxStoriesPerGeneration: 100,
+
+    // Advanced AI Modules
+    canUseBacklogAutopilot: true,
+    canUseACValidator: true,
+    canUseTestGeneration: true,
+    canUsePlanningForecast: true,
+    canUseEffortScoring: true,
+    canUseKnowledgeSearch: true,
+    canUseInboxParsing: true,
+    canUseRepoAwareness: false, // Enterprise only
+    canUseWorkflowAgents: false, // Enterprise only
+    canUseGovernance: false, // Enterprise only
+    canUseModelControls: false, // Enterprise only
+    canUseAnalytics: true,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: true,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: true,
+    canUseSSO: true,
+
+    // Rate Limits
+    aiActionsPerMinute: 120,
+    heavyJobsPerMinute: 12,
+
+    // Support
+    supportLevel: 'priority',
+
+    // Billing
+    price: 99, // £99/month for 20 seats
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 7,
+    annualPrice: 990, // £990/year (save £198)
+
+    // Display name
+    displayName: 'Pro',
   },
   business: {
     // Projects & Stories
@@ -242,10 +346,11 @@ export const SUBSCRIPTION_LIMITS = {
     supportLevel: 'dedicated',
 
     // Billing
-    price: 0, // Custom pricing
+    price: 299, // £299/month base price
     currency: 'GBP',
-    billingInterval: 'annual', // Annual only
-    trialDays: 30,
+    billingInterval: 'monthly',
+    trialDays: 14,
+    annualPrice: 2990, // £2,990/year (save £598)
 
     // Display name
     displayName: 'Enterprise',
