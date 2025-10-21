@@ -5,7 +5,6 @@ import {
   createAutopilotJob,
   getAutopilotJob,
   listAutopilotJobs,
-  retryAutopilotJob,
 } from '@/lib/services/backlog-autopilot.service'
 
 /**
