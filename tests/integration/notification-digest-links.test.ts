@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { renderToStaticMarkup } from 'react-dom/server'
-import NotificationDigestEmail from '@/emails/notification-digest'
+import NotificationDigestEmail from '@/lib/emails/notification-digest'
 
 test('notification digest links point to canonical story URLs', () => {
   const originalBase = process.env.NEXT_PUBLIC_APP_URL

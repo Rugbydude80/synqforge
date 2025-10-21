@@ -67,8 +67,8 @@ export async function generateTestArtefact(
     }
 
     // Check rate limit
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    const rateLimitCheck = await checkAIRateLimit(organizationId, tier || 'free')
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -109,7 +109,7 @@ export async function generateTestArtefact(
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining. ${tokenCheck.requiresUpgrade ? 'Please upgrade your plan or purchase additional tokens.' : 'Your tokens will reset at the start of the next billing period.'}`
+        `Insufficient AI tokens. ${tokenCheck.reason || 'Please upgrade your plan or purchase additional tokens.'}`
       )
     }
 
@@ -145,10 +145,10 @@ export async function generateTestArtefact(
           eq(testArtefacts.artefactType, artefactType)
         )
       )
-      .orderBy(desc(testArtefacts.version))
+      .orderBy(desc(testArtefacts.createdAt))
       .limit(1)
 
-    const version = existingArtefacts.length > 0 ? (existingArtefacts[0].version || 0) + 1 : 1
+    const version = existingArtefacts.length + 1
 
     // Save artefact
     const artefactId = generateId()
@@ -159,10 +159,9 @@ export async function generateTestArtefact(
       artefactType,
       content,
       fileName,
-      version,
-      tokensUsed,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      linkedAcIds: [],
+      metadata: { version },
+      generatedBy: organizationId, // TODO: Pass actual userId
     })
 
     // Record token usage
@@ -469,28 +468,22 @@ export async function getStoryArtefacts(
   artefactType?: ArtefactType
 ): Promise<GeneratedArtefact[]> {
   try {
-    let query = db
-      .select()
-      .from(testArtefacts)
-      .where(
-        and(
-          eq(testArtefacts.storyId, storyId),
-          eq(testArtefacts.organizationId, organizationId)
-        )
-      )
-      .orderBy(desc(testArtefacts.createdAt))
-
-    if (artefactType) {
-      query = query.where(
-        and(
+    const whereConditions = artefactType
+      ? and(
           eq(testArtefacts.storyId, storyId),
           eq(testArtefacts.organizationId, organizationId),
           eq(testArtefacts.artefactType, artefactType)
         )
-      ) as any
-    }
+      : and(
+          eq(testArtefacts.storyId, storyId),
+          eq(testArtefacts.organizationId, organizationId)
+        )
 
-    const artefacts = await query
+    const artefacts = await db
+      .select()
+      .from(testArtefacts)
+      .where(whereConditions)
+      .orderBy(desc(testArtefacts.createdAt))
 
     return artefacts.map((artefact) => ({
       id: artefact.id,
@@ -498,9 +491,9 @@ export async function getStoryArtefacts(
       artefactType: artefact.artefactType as ArtefactType,
       content: artefact.content,
       fileName: artefact.fileName,
-      tokensUsed: artefact.tokensUsed || 0,
-      generatedAt: artefact.createdAt,
-      version: artefact.version || 1,
+      tokensUsed: (artefact.metadata as any)?.tokensUsed || 0,
+      generatedAt: artefact.createdAt || new Date(),
+      version: (artefact.metadata as any)?.version || 1,
     }))
   } catch (error) {
     console.error('Error fetching story artefacts:', error)
@@ -537,9 +530,9 @@ export async function getArtefactById(
       artefactType: artefact.artefactType as ArtefactType,
       content: artefact.content,
       fileName: artefact.fileName,
-      tokensUsed: artefact.tokensUsed || 0,
-      generatedAt: artefact.createdAt,
-      version: artefact.version || 1,
+      tokensUsed: (artefact.metadata as any)?.tokensUsed || 0,
+      generatedAt: artefact.createdAt || new Date(),
+      version: (artefact.metadata as any)?.version || 1,
     }
   } catch (error) {
     console.error('Error fetching artefact:', error)
@@ -621,7 +614,7 @@ export async function getGenerationStats(
     for (const artefact of artefacts) {
       byType[artefact.artefactType as ArtefactType] =
         (byType[artefact.artefactType as ArtefactType] || 0) + 1
-      totalTokensUsed += artefact.tokensUsed || 0
+      totalTokensUsed += (artefact.metadata as any)?.tokensUsed || 0
     }
 
     return {

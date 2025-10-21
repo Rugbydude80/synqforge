@@ -60,12 +60,10 @@ export async function connectRepository(
       id: integrationId,
       organizationId,
       provider,
-      repoUrl,
+      repositoryUrl: repoUrl,
       accessToken, // In production, encrypt this!
       isActive: true,
-      lastSyncedAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdBy: organizationId, // TODO: Use actual userId
     })
 
     return { integrationId }
@@ -82,7 +80,7 @@ async function validateRepoAccess(
 ): Promise<boolean> {
   // In production, make actual API calls to GitHub/GitLab
   // For now, basic validation
-  return accessToken.length > 10 && repoUrl.includes('github.com' || 'gitlab.com')
+  return accessToken.length > 10 && (repoUrl.includes('github.com') || repoUrl.includes('gitlab.com'))
 }
 
 /**
@@ -90,12 +88,15 @@ async function validateRepoAccess(
  */
 export async function generatePRSummary(
   organizationId: string,
+  integrationId: string,
   prData: {
     number: number
     title: string
     description: string
     diff: string
     filesChanged: string[]
+    url?: string
+    status?: string
   }
 ): Promise<PRSummary> {
   try {
@@ -110,7 +111,7 @@ export async function generatePRSummary(
     }
 
     const rateLimitCheck = await checkAIRateLimit(organizationId, organization.subscriptionTier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(`Rate limit exceeded.`)
     }
 
@@ -127,14 +128,17 @@ export async function generatePRSummary(
     await db.insert(prSummaries).values({
       id: summaryId,
       organizationId,
+      gitIntegrationId: integrationId,
       prNumber: prData.number,
       prTitle: prData.title,
+      prUrl: prData.url || '',
       summary: summary.summary,
-      keyChanges: summary.keyChanges,
-      risks: summary.risks,
-      linkedStories: summary.linkedStories,
-      tokensUsed: summary.tokensUsed,
-      createdAt: new Date(),
+      filesChanged: prData.filesChanged.length,
+      linesAdded: 0, // TODO: Calculate from prData.diff
+      linesRemoved: 0, // TODO: Calculate from prData.diff
+      status: prData.status || 'open',
+      linkedStoryIds: summary.linkedStories || [],
+      driftDetected: summary.risks && summary.risks.length > 0,
     })
 
     await recordTokenUsage(organizationId, summary.tokensUsed, 'pr_summary', false)

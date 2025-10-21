@@ -1,6 +1,9 @@
 import React from 'react'
 import { projectUrl, storyUrl } from '@/lib/urls'
 
+// Prevent this component from being server-rendered during build
+export const dynamic = 'force-dynamic'
+
 const resolveBaseUrl = () =>
   (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://synqforge.app').replace(/\/$/, '')
 
