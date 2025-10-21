@@ -28,7 +28,7 @@ const bytea = customType<{ data: Buffer }>({
 // ENUMS - Define before tables
 // ============================================
 
-export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'team', 'business', 'enterprise'])
+export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'solo', 'team', 'pro', 'business', 'enterprise'])
 export const roleEnum = pgEnum('role', ['owner', 'admin', 'member', 'viewer'])
 export const projectStatusEnum = pgEnum('project_status', ['planning', 'active', 'on_hold', 'completed', 'archived'])
 export const epicStatusEnum = pgEnum('epic_status', ['draft', 'published', 'planned', 'in_progress', 'completed', 'archived'])
@@ -131,6 +131,7 @@ export const organizations = pgTable(
     stripePriceId: text('stripe_price_id'),
     subscriptionStatus: text('subscription_status').notNull().default('inactive'),
     subscriptionRenewalAt: timestamp('subscription_renewal_at'),
+    trialEndsAt: timestamp('trial_ends_at'),
   },
   (table) => ({
     slugIdx: uniqueIndex('idx_org_slug').on(table.slug),

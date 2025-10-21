@@ -10,7 +10,7 @@ const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  plan: z.enum(['free', 'team', 'business', 'enterprise']).default('free'),
+  plan: z.enum(['free', 'solo', 'team', 'pro', 'enterprise']).default('free'),
 })
 
 export async function POST(req: NextRequest) {
@@ -65,6 +65,11 @@ export async function POST(req: NextRequest) {
     const baseSlug = validatedData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
     const slug = `${baseSlug}-${timestamp}`
 
+    // For free plan, set trial end date to 7 days from now
+    const trialEndDate = validatedData.plan === 'free'
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      : null
+
     await db.transaction(async (tx) => {
       // Create organization with selected plan
       await tx.insert(organizations).values({
@@ -72,6 +77,7 @@ export async function POST(req: NextRequest) {
         name: `${validatedData.name}'s Organization`,
         slug: slug,
         subscriptionTier: validatedData.plan,
+        trialEndsAt: trialEndDate,
       })
 
       // Create user
@@ -91,11 +97,13 @@ export async function POST(req: NextRequest) {
     if (validatedData.plan !== 'free') {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
-        const priceId = validatedData.plan === 'team'
-          ? process.env.STRIPE_TEAM_PRICE_ID
-          : validatedData.plan === 'business'
-          ? process.env.STRIPE_BUSINESS_PRICE_ID
-          : process.env.STRIPE_ENTERPRISE_PRICE_ID
+        const priceId = validatedData.plan === 'solo'
+          ? process.env.BILLING_PRICE_SOLO_GBP
+          : validatedData.plan === 'team'
+          ? process.env.BILLING_PRICE_TEAM_GBP
+          : validatedData.plan === 'pro'
+          ? process.env.BILLING_PRICE_PRO_GBP
+          : process.env.BILLING_PRICE_ENTERPRISE_GBP
 
         const session = await stripe.checkout.sessions.create({
           customer_email: validatedData.email,

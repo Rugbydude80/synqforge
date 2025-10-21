@@ -14,61 +14,102 @@ const plans = [
   {
     name: 'Free',
     price: 0,
-    description: 'Perfect for trying out SynqForge',
+    description: '7-day trial then £19/mo',
     icon: Sparkles,
     priceId: null,
     tier: 'free',
+    trialDays: 7,
+    convertsTo: 'solo',
     features: [
+      '7-day free trial',
       '1 project',
       '1 user',
-      'Up to 50 stories/project',
-      '10,000 AI tokens/month',
+      '200 stories/month',
+      '5K AI tokens/month',
       'Basic AI',
       'Email notifications',
     ],
     limitations: [
-      'No export functionality',
-      'No templates',
-      'No SSO',
+      'Auto-converts to Solo after trial',
     ],
   },
   {
-    name: 'Pro',
+    name: 'Solo',
+    price: 19,
+    description: 'For solo developers',
+    icon: Sparkles,
+    priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_SOLO_GBP,
+    tier: 'solo',
+    features: [
+      '1 seat',
+      '3 projects',
+      'Unlimited stories',
+      '50K AI tokens/month',
+      'Basic AI',
+      'Export data',
+      'Custom templates',
+      'Community support',
+    ],
+  },
+  {
+    name: 'Team',
     price: 29,
-    description: 'Advanced AI for growing teams',
+    description: 'For small teams',
     icon: Zap,
-    priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_PRO_GBP,
-    tier: 'pro',
+    priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_TEAM_GBP,
+    tier: 'team',
     popular: true,
     features: [
-      'Unlimited projects',
-      '10 users',
+      '5 seats',
+      '10 projects',
       'Unlimited stories',
-      '500,000 AI tokens/month',
+      '200K AI tokens/month',
       'Advanced AI',
-      'Export to Excel/Word/PDF',
+      'Export data',
       'Custom templates',
       'Priority support',
     ],
   },
   {
-    name: 'Enterprise',
+    name: 'Pro',
     price: 99,
+    description: 'For growing organizations',
+    icon: Zap,
+    priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_PRO_GBP,
+    tier: 'pro',
+    features: [
+      '20 seats',
+      'Unlimited projects',
+      'Unlimited stories',
+      'Unlimited AI tokens',
+      'Advanced AI',
+      'Export data',
+      'Custom templates',
+      'SSO/SAML',
+      'Priority support',
+      'Advanced RBAC',
+    ],
+  },
+  {
+    name: 'Enterprise',
+    price: 299,
     description: 'Enterprise-grade AI & governance',
     icon: Building2,
     priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_ENTERPRISE_GBP,
     tier: 'enterprise',
     features: [
+      'Unlimited seats',
       'Unlimited projects',
-      'Unlimited users',
       'Unlimited stories',
       'Unlimited AI tokens',
       'Advanced AI',
-      'Export to Excel/Word/PDF',
+      'Export data',
       'Custom templates',
       'SSO/SAML',
       'Dedicated support',
       'SLA guarantee',
+      'Enterprise RBAC',
+      'Audit logs',
     ],
   },
 ]
@@ -170,7 +211,7 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
           {plans.map((plan) => {
             const Icon = plan.icon
             return (
@@ -236,9 +277,13 @@ export default function PricingPage() {
                         Processing...
                       </>
                     ) : plan.tier === 'free' ? (
-                      'Start free'
+                      'Start 7-day trial'
+                    ) : plan.tier === 'solo' ? (
+                      'Get Solo'
+                    ) : plan.tier === 'team' ? (
+                      'Get Team'
                     ) : plan.tier === 'pro' ? (
-                      'Upgrade to Pro'
+                      'Get Pro'
                     ) : (
                       'Contact sales'
                     )}
