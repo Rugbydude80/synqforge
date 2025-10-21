@@ -105,7 +105,7 @@ Output (exact order):
 User request: ${context.userRequest}`
 }
 
-interface DecomposerContext extends PromptContext {
+export interface DecomposerContext extends PromptContext {
   docTitle: string
   docSize: number
   priorities?: string
@@ -171,7 +171,7 @@ UK English backlog. Decompose now.
 User request: ${context.userRequest}`
 }
 
-interface VelocityContext extends PromptContext {
+export interface VelocityContext extends PromptContext {
   pastSprints: Array<{
     name: string
     start: string

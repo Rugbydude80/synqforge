@@ -139,6 +139,14 @@ export async function getOrCreateUsageMetering(organizationId: string): Promise<
 }
 
 /**
+ * Convenience helper to fetch usage metering details.
+ * Alias kept for compatibility with older call sites.
+ */
+export async function getUsageMetering(organizationId: string): Promise<UsageInfo | null> {
+  return getOrCreateUsageMetering(organizationId)
+}
+
+/**
  * Check if organization can use tokens for an AI action
  */
 export async function checkTokenAvailability(

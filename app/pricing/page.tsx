@@ -119,7 +119,7 @@ export default function PricingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 
-  const handleSubscribe = async (priceId: string | null, tier: string) => {
+  const handleSubscribe = async (priceId: string | null | undefined, tier: string) => {
     if (!session) {
       router.push('/auth/signin?callbackUrl=/pricing')
       return
