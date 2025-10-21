@@ -160,21 +160,21 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     stripeSubscriptionId: subscriptionId,
     stripePriceId: priceId,
     status: status as any,
-    currentPeriodStart: subscription.current_period_start
-      ? new Date(subscription.current_period_start * 1000)
+    currentPeriodStart: (subscription as any).current_period_start
+      ? new Date((subscription as any).current_period_start * 1000)
       : null,
-    currentPeriodEnd: subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000)
+    currentPeriodEnd: (subscription as any).current_period_end
+      ? new Date((subscription as any).current_period_end * 1000)
       : null,
-    cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
-    canceledAt: subscription.canceled_at
-      ? new Date(subscription.canceled_at * 1000)
+    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
+    canceledAt: (subscription as any).canceled_at
+      ? new Date((subscription as any).canceled_at * 1000)
       : null,
-    trialStart: subscription.trial_start
-      ? new Date(subscription.trial_start * 1000)
+    trialStart: (subscription as any).trial_start
+      ? new Date((subscription as any).trial_start * 1000)
       : null,
-    trialEnd: subscription.trial_end
-      ? new Date(subscription.trial_end * 1000)
+    trialEnd: (subscription as any).trial_end
+      ? new Date((subscription as any).trial_end * 1000)
       : null,
     billingInterval,
     includedSeats,
@@ -219,8 +219,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
       subscriptionStatus: status,
-      subscriptionRenewalAt: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000)
+      subscriptionRenewalAt: (subscription as any).current_period_end
+        ? new Date((subscription as any).current_period_end * 1000)
         : null,
 
       updatedAt: new Date(),
