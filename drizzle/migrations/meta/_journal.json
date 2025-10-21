@@ -57,6 +57,13 @@
       "when": 1760599239103,
       "tag": "0007_vengeful_carlie_cooper",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761049720590,
+      "tag": "0008_parallel_black_cat",
+      "breakpoints": true
     }
   ]
 }
