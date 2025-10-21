@@ -6,7 +6,7 @@ import {
   organizations,
   users,
 } from '@/lib/db/schema'
-import { eq, and, sql, desc, gte, lte } from 'drizzle-orm'
+import { eq, and, sql, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
-import { EpicsRepository } from '@/lib/repositories/epics'
 import { epicProgressService } from '@/lib/services/epic-progress.service'
 import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
 

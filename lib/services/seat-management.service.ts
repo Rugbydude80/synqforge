@@ -12,7 +12,7 @@ import {
   stripeSubscriptions
 } from '@/lib/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
-import { SUBSCRIPTION_LIMITS, SEAT_PRICING } from '@/lib/constants'
+import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
 export interface SeatInfo {
   includedSeats: number

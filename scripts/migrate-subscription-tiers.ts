@@ -5,8 +5,6 @@
  */
 
 import { db } from '../lib/db'
-import { organizations } from '../lib/db/schema'
-import { eq } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 
 async function migrateSubscriptionTiers() {

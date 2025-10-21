@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
-import { SprintsRepository } from '@/lib/repositories/sprints'
 import { velocityService } from '@/lib/services/velocity.service'
 import { APIResponse } from '@/lib/types'
 

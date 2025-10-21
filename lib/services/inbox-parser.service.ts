@@ -1,5 +1,5 @@
 import { db, generateId } from '@/lib/db'
-import { inboxParsing, stories, organizations } from '@/lib/db/schema'
+import { inboxParsing, organizations } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
