@@ -93,13 +93,13 @@ export async function generateRICEScore(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -134,7 +134,7 @@ export async function generateRICEScore(
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining. ${tokenCheck.requiresUpgrade ? 'Please upgrade your plan or purchase additional tokens.' : 'Your tokens will reset at the start of the next billing period.'}`
+        `Insufficient AI tokens. You have ${tokenCheck.tokensAvailable} tokens remaining. ${tokenCheck.reason || 'Your tokens will reset at the start of the next billing period.'}`
       )
     }
 
@@ -147,15 +147,12 @@ export async function generateRICEScore(
       id: scoreId,
       organizationId,
       storyId,
-      scoringMethod: 'rice',
       reach: riceScore.reach,
       impact: riceScore.impact,
       confidence: riceScore.confidence,
-      riceScore: riceScore.riceScore,
-      explanation: riceScore.explanation as any,
-      tokensUsed: riceScore.tokensUsed,
+      riceScore: String(riceScore.riceScore),
+      reasoning: typeof riceScore.explanation === 'string' ? riceScore.explanation : JSON.stringify(riceScore.explanation),
       createdAt: new Date(),
-      updatedAt: new Date(),
     })
 
     await recordTokenUsage(organizationId, riceScore.tokensUsed, 'rice_scoring', false)
@@ -274,13 +271,13 @@ export async function generateWSJFScore(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
       )
@@ -315,7 +312,7 @@ export async function generateWSJFScore(
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
       throw new Error(
-        `Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} tokens remaining.`
+        `Insufficient AI tokens. You have ${tokenCheck.tokensAvailable} tokens remaining.`
       )
     }
 
@@ -328,15 +325,9 @@ export async function generateWSJFScore(
       id: scoreId,
       organizationId,
       storyId,
-      scoringMethod: 'wsjf',
-      businessValue: wsjfScore.breakdown.businessValue,
-      timeCriticality: wsjfScore.breakdown.timeCriticality,
-      riskReduction: wsjfScore.breakdown.riskReduction,
-      wsjfScore: wsjfScore.wsjfScore,
-      explanation: wsjfScore.explanation as any,
-      tokensUsed: wsjfScore.tokensUsed,
+      wsjfScore: String(wsjfScore.wsjfScore),
+      reasoning: typeof wsjfScore.explanation === 'string' ? wsjfScore.explanation : JSON.stringify(wsjfScore.explanation),
       createdAt: new Date(),
-      updatedAt: new Date(),
     })
 
     await recordTokenUsage(organizationId, wsjfScore.tokensUsed, 'wsjf_scoring', false)
@@ -451,13 +442,13 @@ export async function suggestEffortEstimate(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier
+    const tier = organization.subscriptionTier || 'free'
     if (tier === 'free') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher.')
     }
 
     const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
-    if (!rateLimitCheck.allowed) {
+    if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`
       )
@@ -491,7 +482,7 @@ export async function suggestEffortEstimate(
     // Legacy token check (keep for backward compatibility)
     const tokenCheck = await checkTokenAvailability(organizationId, estimatedTokens)
     if (!tokenCheck.allowed) {
-      throw new Error(`Insufficient AI tokens. You have ${tokenCheck.tokensRemaining} remaining.`)
+      throw new Error(`Insufficient AI tokens. You have ${tokenCheck.tokensAvailable} remaining.`)
     }
 
     // Get similar stories for comparison
@@ -511,18 +502,19 @@ export async function suggestEffortEstimate(
 
     // Save estimate
     const scoreId = generateId()
+    // Convert confidence string to numeric value
+    const confidenceValue = effortEstimate.confidence === 'high' ? 90 : effortEstimate.confidence === 'medium' ? 70 : 50
     await db.insert(effortScores).values({
       id: scoreId,
       organizationId,
       storyId,
-      storyPoints: effortEstimate.storyPoints,
-      confidence: effortEstimate.confidence,
-      complexityFactors: effortEstimate.complexityFactors,
-      similarStories: effortEstimate.similarStories as any,
-      explanation: effortEstimate.explanation,
-      tokensUsed: effortEstimate.tokensUsed,
+      suggestedPoints: Number(effortEstimate.storyPoints),
+      confidence: confidenceValue,
+      reasoning: typeof effortEstimate.explanation === 'string' ? effortEstimate.explanation : JSON.stringify(effortEstimate.explanation),
+      similarStoryIds: Array.isArray(effortEstimate.similarStories) 
+        ? effortEstimate.similarStories.map((s: any) => typeof s === 'string' ? s : s.id)
+        : [],
       createdAt: new Date(),
-      updatedAt: new Date(),
     })
 
     await recordTokenUsage(organizationId, effortEstimate.tokensUsed, 'effort_estimation', false)
@@ -656,7 +648,7 @@ export async function getScoringHistory(
       .orderBy(desc(effortScores.createdAt))
 
     return [...impactHistory, ...effortHistory].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     )
   } catch (error) {
     console.error('Error fetching scoring history:', error)
