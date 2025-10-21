@@ -110,8 +110,15 @@ export function withAuth<T = any>(
         )
       }
 
-      // Resolve params if they exist
-      const params = (segmentData as any)?.params ? await (segmentData as any).params : {}
+      // Resolve params if they exist (Next.js 15 async params)
+      let params = {}
+      if (segmentData && typeof segmentData === 'object' && 'params' in segmentData) {
+        const rawParams = (segmentData as any).params
+        // Await if it's a Promise, otherwise use as-is
+        params = rawParams && typeof rawParams.then === 'function'
+          ? await rawParams
+          : rawParams || {}
+      }
 
       // Call the actual route handler with context
       return await handler(req, { user: userContext, params })
