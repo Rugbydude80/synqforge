@@ -118,7 +118,7 @@ export type StripePlan = keyof typeof STRIPE_PLANS
 /**
  * Validate that a price is in GBP currency
  */
-export function validateGbpPrice(priceId: string): boolean {
+export function validateGbpPrice(_priceId: string): boolean {
   // This would ideally check against Stripe API
   // For now, trust environment configuration
   return true

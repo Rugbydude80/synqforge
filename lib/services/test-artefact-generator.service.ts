@@ -318,7 +318,7 @@ Provide ONLY the valid JSON for the Postman collection, no additional text.`
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       fileName,
     }
-  } catch (error) {
+  } catch (_error) {
     console.error('Failed to parse Postman collection JSON:', jsonString)
     throw new Error('Failed to generate valid Postman collection JSON')
   }

@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    let { priceId, tier, cycle, organizationId, successUrl, cancelUrl } = body
+    const { tier, cycle, organizationId, successUrl, cancelUrl } = body
+    let { priceId } = body
 
     // Support both priceId and tier/cycle
     if (!priceId && tier && cycle) {
