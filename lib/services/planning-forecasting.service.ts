@@ -344,17 +344,19 @@ export async function generateSprintForecast(
     await db.insert(sprintForecasts).values({
       id: forecastId,
       organizationId,
-      sprintId,
-      capacity: capacity as any,
-      suggestedStories: aiResult.suggestedStories as any,
-      totalEstimated: aiResult.totalEstimated,
-      utilizationPercentage: aiResult.utilizationPercentage,
+      projectId,
+      forecastDate: new Date(),
       spilloverProbability: aiResult.spilloverProbability,
-      riskFactors: aiResult.riskFactors,
-      recommendations: aiResult.recommendations,
-      tokensUsed: aiResult.tokensUsed,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      forecastData: {
+        sprintId,
+        capacity,
+        suggestedStories: aiResult.suggestedStories,
+        totalEstimated: aiResult.totalEstimated,
+        utilizationPercentage: aiResult.utilizationPercentage,
+        riskFactors: aiResult.riskFactors,
+        recommendations: aiResult.recommendations,
+        tokensUsed: aiResult.tokensUsed,
+      },
     })
 
     // Record token usage
@@ -516,10 +518,8 @@ export async function getSprintForecast(
     const [forecast] = await db
       .select({
         forecast: sprintForecasts,
-        sprint: sprints,
       })
       .from(sprintForecasts)
-      .leftJoin(sprints, eq(sprintForecasts.sprintId, sprints.id))
       .where(
         and(
           eq(sprintForecasts.id, forecastId),
@@ -532,19 +532,21 @@ export async function getSprintForecast(
       return null
     }
 
+    const forecastData = forecast.forecast.forecastData as any || {}
+
     return {
       id: forecast.forecast.id,
-      sprintId: forecast.forecast.sprintId,
-      sprintName: forecast.sprint?.name || 'Unknown Sprint',
-      capacity: forecast.forecast.capacity as any,
-      suggestedStories: forecast.forecast.suggestedStories as any,
-      totalEstimated: forecast.forecast.totalEstimated || 0,
-      utilizationPercentage: forecast.forecast.utilizationPercentage || 0,
+      sprintId: forecastData.sprintId,
+      sprintName: 'Unknown Sprint',
+      capacity: forecastData.capacity,
+      suggestedStories: forecastData.suggestedStories || [],
+      totalEstimated: forecastData.totalEstimated || 0,
+      utilizationPercentage: forecastData.utilizationPercentage || 0,
       spilloverProbability: forecast.forecast.spilloverProbability || 0,
-      riskFactors: forecast.forecast.riskFactors as any,
-      recommendations: forecast.forecast.recommendations as any,
-      tokensUsed: forecast.forecast.tokensUsed || 0,
-      generatedAt: forecast.forecast.createdAt,
+      riskFactors: forecastData.riskFactors || [],
+      recommendations: forecastData.recommendations || [],
+      tokensUsed: forecastData.tokensUsed || 0,
+      generatedAt: forecast.forecast.createdAt || new Date(),
     }
   } catch (error) {
     console.error('Error fetching sprint forecast:', error)
@@ -593,7 +595,7 @@ export async function generateReleaseForecast(
 
     const remainingEffort = releaseStories
       .filter((story) => story.status !== 'done')
-      .reduce((sum, story) => sum + (story.estimatedEffort || 0), 0)
+      .reduce((sum, story) => sum + (story.storyPoints || 0), 0)
 
     const estimatedSprintsNeeded =
       velocityData.averageVelocity > 0
@@ -665,35 +667,51 @@ export async function getSprintForecastHistory(
   organizationId: string
 ): Promise<SprintForecast[]> {
   try {
+    // Get project for this sprint to filter forecasts
+    const [sprint] = await db
+      .select()
+      .from(sprints)
+      .where(eq(sprints.id, sprintId))
+      .limit(1)
+
+    if (!sprint) {
+      return []
+    }
+
     const forecasts = await db
-      .select({
-        forecast: sprintForecasts,
-        sprint: sprints,
-      })
+      .select()
       .from(sprintForecasts)
-      .leftJoin(sprints, eq(sprintForecasts.sprintId, sprints.id))
       .where(
         and(
-          eq(sprintForecasts.sprintId, sprintId),
+          eq(sprintForecasts.projectId, sprint.projectId),
           eq(sprintForecasts.organizationId, organizationId)
         )
       )
       .orderBy(desc(sprintForecasts.createdAt))
 
-    return forecasts.map((f) => ({
-      id: f.forecast.id,
-      sprintId: f.forecast.sprintId,
-      sprintName: f.sprint?.name || 'Unknown Sprint',
-      capacity: f.forecast.capacity as any,
-      suggestedStories: f.forecast.suggestedStories as any,
-      totalEstimated: f.forecast.totalEstimated || 0,
-      utilizationPercentage: f.forecast.utilizationPercentage || 0,
-      spilloverProbability: f.forecast.spilloverProbability || 0,
-      riskFactors: f.forecast.riskFactors as any,
-      recommendations: f.forecast.recommendations as any,
-      tokensUsed: f.forecast.tokensUsed || 0,
-      generatedAt: f.forecast.createdAt,
-    }))
+    return forecasts
+      .map((f) => {
+        const forecastData = f.forecastData as any || {}
+        // Only return forecasts for this specific sprint
+        if (forecastData.sprintId !== sprintId) {
+          return null
+        }
+        return {
+          id: f.id,
+          sprintId: forecastData.sprintId,
+          sprintName: 'Unknown Sprint',
+          capacity: forecastData.capacity,
+          suggestedStories: forecastData.suggestedStories || [],
+          totalEstimated: forecastData.totalEstimated || 0,
+          utilizationPercentage: forecastData.utilizationPercentage || 0,
+          spilloverProbability: f.spilloverProbability || 0,
+          riskFactors: forecastData.riskFactors || [],
+          recommendations: forecastData.recommendations || [],
+          tokensUsed: forecastData.tokensUsed || 0,
+          generatedAt: f.createdAt || new Date(),
+        }
+      })
+      .filter(Boolean) as SprintForecast[]
   } catch (error) {
     console.error('Error fetching forecast history:', error)
     return []
