@@ -37,7 +37,7 @@ export async function withRLS<T>(
   userContext: UserContext,
   callback: () => Promise<T>
 ): Promise<T> {
-  return await client.begin(async (tx) => {
+  return (await client.begin(async (tx) => {
     // Set RLS context for this transaction
     await tx`
       SELECT
@@ -48,7 +48,7 @@ export async function withRLS<T>(
 
     // Execute the callback with RLS context active
     return await callback()
-  })
+  })) as T
 }
 
 /**
@@ -77,7 +77,7 @@ export async function withAdminBypass<T>(
   client: Sql,
   callback: () => Promise<T>
 ): Promise<T> {
-  return await client.begin(async (tx) => {
+  return (await client.begin(async (tx) => {
     // Disable RLS for this transaction
     await tx`
       SET LOCAL row_security = off
@@ -91,7 +91,7 @@ export async function withAdminBypass<T>(
         SET LOCAL row_security = on
       `
     }
-  })
+  })) as T
 }
 
 /**
