@@ -24,6 +24,7 @@ async function getStory(req: NextRequest, context: { user: any }) {
 
   } catch (error: any) {
     console.error('Error fetching story:', error);
+    console.error('Error stack:', error.stack);
 
     if (error.message.includes('Story not found')) {
       return NextResponse.json(
@@ -32,8 +33,14 @@ async function getStory(req: NextRequest, context: { user: any }) {
       );
     }
 
+    const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
+
     return NextResponse.json(
-      { error: 'Internal server error', message: 'Failed to fetch story' },
+      {
+        error: 'Internal server error',
+        message: isDev ? error.message : 'Failed to fetch story',
+        ...(isDev && { stack: error.stack })
+      },
       { status: 500 }
     );
   }
@@ -88,6 +95,12 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
   } catch (error: any) {
     console.error('Error updating story:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      cause: error.cause
+    });
 
     if (error.message.includes('Story not found')) {
       return NextResponse.json(
@@ -110,8 +123,15 @@ async function updateStory(req: NextRequest, context: { user: any }) {
       );
     }
 
+    // Return the actual error message in development/staging for debugging
+    const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
+
     return NextResponse.json(
-      { error: 'Internal server error', message: 'Failed to update story' },
+      {
+        error: 'Internal server error',
+        message: isDev ? error.message : 'Failed to update story',
+        ...(isDev && { stack: error.stack })
+      },
       { status: 500 }
     );
   }
