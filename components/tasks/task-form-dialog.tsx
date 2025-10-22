@@ -22,7 +22,7 @@ import type { Task } from './task-list'
 interface TaskFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  storyId: string
+  storyId?: string
   projectId: string
   task?: Task
   onSuccess: () => void
@@ -45,8 +45,34 @@ export function TaskFormDialog({
     actualHours: task?.actualHours?.toString() || '',
     assigneeId: task?.assigneeId || '',
     tags: task?.tags || [],
+    storyId: storyId || task?.storyId || '',
   })
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [stories, setStories] = React.useState<Array<{ id: string; title: string }>>([])
+  const [loadingStories, setLoadingStories] = React.useState(false)
+
+  // Fetch stories when projectId changes or dialog opens
+  React.useEffect(() => {
+    if (open && projectId && !storyId) {
+      const fetchStories = async () => {
+        setLoadingStories(true)
+        try {
+          const response = await fetch(`/api/projects/${projectId}/stories`, {
+            credentials: 'include'
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setStories(Array.isArray(data?.data) ? data.data : [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch stories:', error)
+        } finally {
+          setLoadingStories(false)
+        }
+      }
+      fetchStories()
+    }
+  }, [open, projectId, storyId])
 
   React.useEffect(() => {
     if (task) {
@@ -59,6 +85,7 @@ export function TaskFormDialog({
         actualHours: task.actualHours?.toString() || '',
         assigneeId: task.assigneeId || '',
         tags: task.tags || [],
+        storyId: task.storyId,
       })
     } else {
       setFormData({
@@ -70,15 +97,21 @@ export function TaskFormDialog({
         actualHours: '',
         assigneeId: '',
         tags: [],
+        storyId: storyId || '',
       })
     }
-  }, [task, open])
+  }, [task, open, storyId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.title.trim()) {
       toast.error('Please enter a task title')
+      return
+    }
+
+    if (!task && !formData.storyId) {
+      toast.error('Please select a story')
       return
     }
 
@@ -104,7 +137,7 @@ export function TaskFormDialog({
 
       if (!task) {
         // Create new task
-        payload.storyId = storyId
+        payload.storyId = formData.storyId
         payload.projectId = projectId
       }
 
@@ -143,6 +176,35 @@ export function TaskFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Story Selection (only show when creating new task without pre-selected story) */}
+          {!task && !storyId && (
+            <div className="space-y-2">
+              <Label htmlFor="story">
+                Story <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                id="story"
+                value={formData.storyId}
+                onChange={(e) => setFormData({ ...formData, storyId: e.target.value })}
+                disabled={loadingStories}
+                required
+              >
+                <option value="">Select a story...</option>
+                {stories.map(story => (
+                  <option key={story.id} value={story.id}>
+                    {story.title}
+                  </option>
+                ))}
+              </Select>
+              {loadingStories && (
+                <p className="text-sm text-muted-foreground">Loading stories...</p>
+              )}
+              {!loadingStories && stories.length === 0 && (
+                <p className="text-sm text-muted-foreground">No stories found in this project</p>
+              )}
+            </div>
+          )}
+
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">
