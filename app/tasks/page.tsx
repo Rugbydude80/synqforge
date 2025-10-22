@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckSquare, Search, FolderKanban, FileText, Plus, Edit, Trash2, Clock, AlertCircle, Circle, User } from 'lucide-react'
+import { CheckSquare, Search, FolderKanban, FileText, Plus, Trash2, Clock, AlertCircle, Circle, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -77,7 +77,6 @@ function TasksPageContent() {
 
   // Modals
   const [showCreateDialog, setShowCreateDialog] = React.useState(false)
-  const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>('')
   const [selectedStoryId, setSelectedStoryId] = React.useState<string>('')
 

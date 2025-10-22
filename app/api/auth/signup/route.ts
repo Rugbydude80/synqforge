@@ -65,18 +65,22 @@ export async function POST(req: NextRequest) {
     const baseSlug = validatedData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
     const slug = `${baseSlug}-${timestamp}`
 
-    // For free plan, set trial end date to 7 days from now
+    // SECURITY FIX: Always start with free tier until payment is confirmed
+    // Paid plans will be upgraded via Stripe webhook after successful payment
+    // This prevents users from getting paid access without paying
+    const actualTier = validatedData.plan === 'free' ? 'free' : 'free' // Start as free, upgrade via webhook
     const trialEndDate = validatedData.plan === 'free'
       ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
       : null
 
     await db.transaction(async (tx) => {
-      // Create organization with selected plan
+      // Create organization - always starts as free tier
+      // Paid tier will be activated via Stripe webhook upon successful payment
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
         slug: slug,
-        subscriptionTier: validatedData.plan,
+        subscriptionTier: actualTier, // Always free until payment confirmed
         trialEndsAt: trialEndDate,
       })
 
