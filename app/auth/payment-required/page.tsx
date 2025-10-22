@@ -65,7 +65,6 @@ export default function PaymentRequiredPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [checkingStatus, setCheckingStatus] = useState(true)
-  const [orgDetails, setOrgDetails] = useState<any>(null)
 
   // Fetch organization details to see what they signed up for
   useEffect(() => {
@@ -81,7 +80,6 @@ export default function PaymentRequiredPage() {
         const response = await fetch('/api/organizations/me')
         if (response.ok) {
           const data = await response.json()
-          setOrgDetails(data)
           
           // If they already have an active subscription or are on free plan, redirect
           if (data.subscriptionStatus === 'active' || 
@@ -104,7 +102,7 @@ export default function PaymentRequiredPage() {
     }
 
     fetchOrgDetails()
-  }, [status, router, returnUrl])
+  }, [status, router, returnUrl, setSelectedPlan])
 
   const handleContinueWithFree = async () => {
     setIsLoading(true)
