@@ -28,6 +28,7 @@ export const createStorySchema = z.object({
 // Update story validation schema (all fields optional)
 export const updateStorySchema = z.object({
   projectId: z.string().min(1, 'Project ID is required').optional(),
+  epicId: z.string().min(1, 'Epic ID must be valid').optional().nullable(),
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters').optional(),
   description: z.string().max(2000, 'Description must be less than 2000 characters').optional(),
   acceptanceCriteria: z.array(z.string().max(500, 'Each criterion must be less than 500 characters')).max(20, 'Maximum 20 acceptance criteria').optional(),
@@ -39,6 +40,7 @@ export const updateStorySchema = z.object({
     errorMap: () => ({ message: 'Status must be backlog, ready, in_progress, review, done, or blocked' })
   }).optional(),
   tags: z.array(z.string().max(50, 'Each tag must be less than 50 characters')).max(10, 'Maximum 10 tags').optional(),
+  assigneeId: z.string().min(1, 'Assignee ID must be valid').optional().nullable(),
   aiGenerated: z.boolean().optional(),
   aiPrompt: z.string().max(1000, 'AI prompt must be less than 1000 characters').optional(),
   aiModelUsed: z.string().max(100, 'AI model name must be less than 100 characters').optional(),
