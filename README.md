@@ -4,12 +4,12 @@ AI-powered project management and agile workflow platform with comprehensive sto
 
 ## Features
 
-- **Multi-tenant Architecture**: Organization-based access control with role-based permissions
+- **Multi-tenant Architecture**: Organisation-based access control with role-based permissions
 - **Epic & Story Management**: Full agile workflow with epics, stories, and sprints
 - **AI-Powered**: Story generation, validation, and requirements analysis
 - **Sprint Planning**: Complete sprint management with capacity planning and metrics
 - **Activity Tracking**: Comprehensive audit logging and activity feeds
-- **Document Processing**: Upload and analyze requirements documents
+- **Document Processing**: Upload and analyse requirements documents
 - **Credit System**: Usage-based billing with Stripe integration
 
 ## Tech Stack
@@ -17,6 +17,7 @@ AI-powered project management and agile workflow platform with comprehensive sto
 - **Framework**: Next.js 14 with App Router
 - **Database**: MySQL with Drizzle ORM
 - **Authentication**: NextAuth.js
+- **AI**: Qwen 3 Max via OpenRouter
 - **Validation**: Zod
 - **TypeScript**: Full type safety
 
@@ -46,7 +47,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and configure your database and authentication settings.
+Edit `.env` and configure your database, authentication, and AI settings.
 
 4. Generate and run database migrations:
 ```bash
@@ -61,12 +62,66 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000) to see your application.
 
+## Using Qwen 3 Max via OpenRouter
+
+SynqForge uses Qwen 3 Max for AI-powered story generation. The model provides fast, cost-effective generation with support for UK English.
+
+### API Example
+
+```bash
+curl -X POST http://localhost:3000/api/story \
+  -H "Content-Type: application/json" \
+  -d '{
+    "feature": "User authentication system",
+    "role": "registered user",
+    "goal": "log in securely using email and password",
+    "value": "I can access my account safely and manage my data",
+    "context": "Supports OAuth and 2FA"
+  }'
+```
+
+Response:
+```json
+{
+  "story": "---\nUser Story\nAs a registered user...",
+  "model": "qwen/qwen3-max",
+  "usage": {
+    "prompt": 245,
+    "completion": 412,
+    "total": 657
+  },
+  "elapsedMs": 1834
+}
+```
+
+### CLI Example
+
+```bash
+npx tsx scripts/qwen3max.ts \
+  --feature "Dashboard analytics" \
+  --role "product manager" \
+  --goal "view team velocity trends over multiple sprints" \
+  --value "I can make data-driven planning decisions" \
+  --context "Integrate with Jira and GitHub"
+```
+
+Token usage is printed to STDERR; story content to STDOUT.
+
+### Configuration
+
+Set your OpenRouter API key in `.env`:
+```bash
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
+
+Get your API key from [https://openrouter.ai/keys](https://openrouter.ai/keys).
+
 ## Database Schema
 
 The application includes a comprehensive database schema with:
 
-- **Organizations & Users**: Multi-tenant user management
-- **Projects**: Project organization and ownership
+- **Organisations & Users**: Multi-tenant user management
+- **Projects**: Project organisation and ownership
 - **Epics & Stories**: Agile story hierarchy
 - **Sprints**: Sprint planning and story assignment
 - **AI Tracking**: AI generation history and cost tracking
@@ -92,14 +147,17 @@ The application includes a comprehensive database schema with:
 synqforge/
 ├── app/
 │   └── api/                    # API routes
-│       ├── organizations/
+│       ├── organisations/
 │       │   └── [orgId]/
-│       │       └── projects/   # Organization projects endpoints
+│       │       └── projects/   # Organisation projects endpoints
 │       └── projects/
 │           └── [projectId]/    # Project-specific endpoints
 │               ├── archive/    # Archive project
 │               └── stats/      # Project statistics
 ├── lib/
+│   ├── ai/                     # AI services
+│   │   ├── client.ts          # OpenRouter client
+│   │   └── story.ts           # Story generation service
 │   ├── auth/                   # Authentication configuration
 │   │   ├── index.ts           # Auth utility functions
 │   │   └── options.ts         # NextAuth options
@@ -138,9 +196,9 @@ API routes will be protected with the `withAuth` middleware which provides:
 
 - Session validation
 - User context injection
-- Organization access control
+- Organisation access control
 - Project access verification
-- Role-based authorization
+- Role-based authorisation
 
 Example usage:
 ```typescript
@@ -163,8 +221,8 @@ The Projects API is fully implemented and ready to use. See [TESTING.md](./TESTI
 
 **Available Endpoints:**
 
-- `GET /api/organizations/:orgId/projects` - List all projects
-- `POST /api/organizations/:orgId/projects` - Create a project
+- `GET /api/organisations/:orgId/projects` - List all projects
+- `POST /api/organisations/:orgId/projects` - Create a project
 - `GET /api/projects/:projectId` - Get project details
 - `PUT/PATCH /api/projects/:projectId` - Update a project
 - `DELETE /api/projects/:projectId` - Delete a project (empty only)
@@ -177,15 +235,15 @@ The Projects API is fully implemented and ready to use. See [TESTING.md](./TESTI
 - [x] Authentication system (NextAuth)
 - [x] Projects API (CRUD + statistics)
 - [x] API middleware (auth, validation, error handling)
+- [x] AI Integration (Qwen 3 Max via OpenRouter)
 - [ ] Epics API
 - [ ] Stories API
 - [ ] Sprints API
-- [ ] AI Integration (story generation)
 - [ ] Document processing
 - [ ] Frontend UI
 - [ ] Real-time collaboration
 - [ ] Billing & credits system
 
-## License
+## Licence
 
 MIT
