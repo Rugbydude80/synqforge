@@ -35,6 +35,7 @@ export const epicStatusEnum = pgEnum('epic_status', ['draft', 'published', 'plan
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical'])
 export const storyStatusEnum = pgEnum('story_status', ['backlog', 'ready', 'in_progress', 'review', 'done', 'blocked'])
 export const storyTypeEnum = pgEnum('story_type', ['feature', 'bug', 'task', 'spike'])
+export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'done', 'blocked'])
 export const sprintStatusEnum = pgEnum('sprint_status', ['planning', 'active', 'completed', 'cancelled'])
 export const aiGenerationTypeEnum = pgEnum('ai_generation_type', [
   'story_generation',
@@ -315,6 +316,46 @@ export const stories = pgTable(
     sourceDocIdx: index('idx_stories_source_doc').on(table.sourceDocumentId),
     doneAtIdx: index('idx_stories_done_at').on(table.doneAt),
     sprintDoneIdx: index('idx_stories_sprint_done').on(table.organizationId, table.doneAt, table.status),
+  })
+)
+
+// ============================================
+// TASKS - Agile methodology tasks linked to stories
+// ============================================
+
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    description: text('description'),
+    status: taskStatusEnum('status').default('todo'),
+    priority: priorityEnum('priority').default('medium'),
+    estimatedHours: smallint('estimated_hours'),
+    actualHours: smallint('actual_hours'),
+    assigneeId: varchar('assignee_id', { length: 36 }),
+    tags: json('tags').$type<string[]>(),
+
+    // Ordering within a story
+    orderIndex: integer('order_index').default(0),
+
+    // Completion tracking
+    completedAt: timestamp('completed_at'),
+
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_tasks_org').on(table.organizationId),
+    storyIdx: index('idx_tasks_story').on(table.storyId),
+    projectIdx: index('idx_tasks_project').on(table.projectId),
+    statusIdx: index('idx_tasks_status').on(table.storyId, table.status),
+    assigneeIdx: index('idx_tasks_assignee').on(table.assigneeId),
+    orderIdx: index('idx_tasks_order').on(table.storyId, table.orderIndex),
   })
 )
 
@@ -764,7 +805,7 @@ export const epicsRelations = relations(epics, ({ one, many }) => ({
   stories: many(stories),
 }))
 
-export const storiesRelations = relations(stories, ({ one }) => ({
+export const storiesRelations = relations(stories, ({ one, many }) => ({
   epic: one(epics, {
     fields: [stories.epicId],
     references: [epics.id],
@@ -782,6 +823,28 @@ export const storiesRelations = relations(stories, ({ one }) => ({
     fields: [stories.assigneeId],
     references: [users.id],
     relationName: 'storyAssignee'
+  }),
+  tasks: many(tasks),
+}))
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  story: one(stories, {
+    fields: [tasks.storyId],
+    references: [stories.id],
+  }),
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id],
+  }),
+  creator: one(users, {
+    fields: [tasks.createdBy],
+    references: [users.id],
+    relationName: 'taskCreator'
+  }),
+  assignee: one(users, {
+    fields: [tasks.assigneeId],
+    references: [users.id],
+    relationName: 'taskAssignee'
   }),
 }))
 
