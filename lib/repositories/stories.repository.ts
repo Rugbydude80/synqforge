@@ -199,73 +199,85 @@ export class StoriesRepository {
    * Get story by ID with all relations
    */
   async getById(storyId: string): Promise<StoryWithRelations> {
-    const story = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId),
-      with: {
-        project: {
-          columns: {
-            id: true,
-            name: true,
-            key: true
-          }
-        },
-        epic: {
-          columns: {
-            id: true,
-            title: true,
-            color: true
-          }
-        },
-        assignee: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true
-          }
-        },
-        creator: {
-          columns: {
-            id: true,
-            name: true,
-            email: true
+    try {
+      const story = await db.query.stories.findFirst({
+        where: eq(stories.id, storyId),
+        with: {
+          project: {
+            columns: {
+              id: true,
+              name: true,
+              key: true
+            }
+          },
+          epic: {
+            columns: {
+              id: true,
+              title: true,
+              color: true
+            }
+          },
+          assignee: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true
+            }
+          },
+          creator: {
+            columns: {
+              id: true,
+              name: true,
+              email: true
+            }
           }
         }
+      });
+
+      if (!story) {
+        throw new Error('Story not found');
       }
-    });
 
-    if (!story) {
-      throw new Error('Story not found');
+      // Get current sprint if any
+      let currentSprintRelation;
+      try {
+        currentSprintRelation = await db.query.sprintStories.findFirst({
+          where: eq(sprintStories.storyId, storyId),
+          with: {
+            sprint: {
+              columns: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+                status: true
+              }
+            }
+          },
+          orderBy: [desc(sprintStories.addedAt)]
+        });
+      } catch (sprintError) {
+        console.error('Error fetching sprint relation for story:', storyId, sprintError);
+        // Continue without sprint data
+        currentSprintRelation = null;
+      }
+
+      return {
+        ...story,
+        currentSprint: currentSprintRelation?.sprint?.status === 'active'
+          ? {
+              id: currentSprintRelation.sprint.id,
+              name: currentSprintRelation.sprint.name,
+              startDate: new Date(currentSprintRelation.sprint.startDate),
+              endDate: new Date(currentSprintRelation.sprint.endDate)
+            }
+          : null
+      };
+    } catch (error) {
+      console.error('Error in getById for story:', storyId, error);
+      throw error;
     }
-
-    // Get current sprint if any
-    const currentSprintRelation = await db.query.sprintStories.findFirst({
-      where: eq(sprintStories.storyId, storyId),
-      with: {
-        sprint: {
-          columns: {
-            id: true,
-            name: true,
-            startDate: true,
-            endDate: true,
-            status: true
-          }
-        }
-      },
-      orderBy: [desc(sprintStories.addedAt)]
-    });
-
-    return {
-      ...story,
-      currentSprint: currentSprintRelation?.sprint.status === 'active'
-        ? {
-            id: currentSprintRelation.sprint.id,
-            name: currentSprintRelation.sprint.name,
-            startDate: new Date(currentSprintRelation.sprint.startDate),
-            endDate: new Date(currentSprintRelation.sprint.endDate)
-          }
-        : null
-    };
   }
 
   /**
