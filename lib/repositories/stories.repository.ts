@@ -288,30 +288,38 @@ export class StoriesRepository {
     input: UpdateStoryInput,
     userId: string
   ): Promise<StoryWithRelations> {
-    // Verify story exists
-    const existingStory = await db.query.stories.findFirst({
-      where: eq(stories.id, storyId)
-    });
+    try {
+      console.log('Updating story:', storyId, 'with input:', JSON.stringify(input));
 
-    if (!existingStory) {
-      throw new Error('Story not found');
-    }
+      // Verify story exists
+      const existingStory = await db.query.stories.findFirst({
+        where: eq(stories.id, storyId)
+      });
 
-    // Verify epic if provided
-    if (input.epicId !== undefined) {
-      if (input.epicId) {
-        const epic = await db.query.epics.findFirst({
-          where: and(
-            eq(epics.id, input.epicId),
-            eq(epics.projectId, existingStory.projectId)
-          )
-        });
+      if (!existingStory) {
+        throw new Error('Story not found');
+      }
 
-        if (!epic) {
-          throw new Error('Epic not found or does not belong to this project');
+      console.log('Existing story found:', existingStory.id);
+
+      // Verify epic if provided
+      if (input.epicId !== undefined) {
+        if (input.epicId) {
+          console.log('Verifying epic:', input.epicId, 'for project:', existingStory.projectId);
+          const epic = await db.query.epics.findFirst({
+            where: and(
+              eq(epics.id, input.epicId),
+              eq(epics.projectId, existingStory.projectId)
+            )
+          });
+
+          if (!epic) {
+            console.error('Epic not found or wrong project. Epic ID:', input.epicId, 'Project ID:', existingStory.projectId);
+            throw new Error('Epic not found or does not belong to this project');
+          }
+          console.log('Epic verified:', epic.id);
         }
       }
-    }
 
     // Verify assignee if provided
     if (input.assigneeId !== undefined) {
@@ -374,7 +382,14 @@ export class StoriesRepository {
       }
     }
 
-    return this.getById(storyId);
+      console.log('Story updated successfully, fetching updated story...');
+      const updatedStory = await this.getById(storyId);
+      console.log('Updated story fetched successfully');
+      return updatedStory;
+    } catch (error) {
+      console.error('Error in update method for story:', storyId, error);
+      throw error;
+    }
   }
 
   /**
