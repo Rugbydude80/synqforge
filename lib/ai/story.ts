@@ -1,7 +1,7 @@
 // lib/ai/story.ts
 import { openai, MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from "./client";
 
-const SYSTEM_PROMPT = `You are an expert Agile Business Analyst. Write concise, testable user stories and Gherkin-style acceptance criteria in UK English. Use plain language. Do not add commentary or markdown beyond the required structure. Keep total output under 900 tokens.`;
+const SYSTEM_PROMPT = `You are an expert Agile Business Analyst. Write concise, testable user stories and Gherkin acceptance criteria in UK English. No commentary or markdown beyond the required structure. Keep total output under 900 tokens.`;
 
 interface GenerateUserStoryInput {
   feature: string;
@@ -25,19 +25,23 @@ export async function generateUserStory(
 ): Promise<GenerateUserStoryOutput> {
   const { feature, role, goal, value, context = "" } = input;
 
-  const userPrompt = `Generate a complete user story using the inputs below, then produce 8 atomic Acceptance Criteria that are measurable and implementation-ready.
+  const userPrompt = `Generate a complete user story using the inputs, then produce exactly 8 atomic Acceptance Criteria that are measurable and implementation-ready.
+If any detail is missing, make a reasonable assumption and state it under Additional Notes.
+Before you answer, quietly check that every required scenario below is included; do not print your checklist.
 
 Inputs
 
-* Feature / Epic: ${feature}
-* User role: ${role}
-* Goal: ${goal}
-* Value: ${value}
-* Context: ${context} (include domain scale, key constraints)
+Feature / Epic: ${feature}
+
+User role: ${role}
+
+Goal: ${goal}
+
+Value: ${value}
+
+Context: ${context} (include dataset size, devices, constraints)
 
 Output exactly this structure:
-
----
 
 User Story
 As a ${role},
@@ -45,48 +49,41 @@ I want to ${goal},
 so that ${value}.
 
 Acceptance Criteria (Gherkin format)
+1. Given I am on the {listing page}
+   When I select a category filter
+   Then only products in that category are displayed within 2 seconds (P95)
 
-1. Given {page/context}
-   When {primary action}
-   Then {single observable outcome} within {target} (P95)
+2. Given a filter is applied
+   When results are shown
+   Then the total number of matching products is displayed
 
-2. Given {precondition}
-   When {action}
-   Then {result count or state displayed}
+3. Given min and max values are valid
+   When I set a price range
+   Then only products within that range are displayed within 2 seconds (P95)
 
-3. Given {validation passes / range set}
-   When {numeric or range input}
-   Then {filtered result} within {target} (P95)
+4. Given products have 1–5 star ratings
+   When I choose a minimum rating (e.g., ≥4)
+   Then only products meeting or exceeding that rating are shown within 2 seconds (P95)
 
-4. Given {rating/qualifier rule}
-   When {threshold chosen}
-   Then {only qualifying items shown} within {target} (P95)
+5. Given multiple filters are active
+   When I view the results
+   Then AND-logic applies and only products meeting all active criteria are shown
 
-5. Given {multiple filters active}
-   When {view results}
-   Then {AND-logic applies to all active criteria}
+6. Given multiple filters are active
+   When I select Clear all filters
+   Then defaults are restored and the full catalogue is shown within 2 seconds (P95)
 
-6. Given {clear action}
-   When {Clear all filters}
-   Then {defaults restored and full listing shown} within {target} (P95)
+7. Given no products match the current filters or search
+   When results load
+   Then a clear message "No products match your filters" is shown with an option to reset
 
-7. Given {no matches for criteria/search}
-   When {results load}
-   Then {clear "No results" message shown with option to reset}
-
-8. Given {device or session context}
-   When {open filters / refresh / return}
-   Then {mobile pattern = slide-out panel, WCAG 2.1 AA controls, 44px targets, labelled inputs; filters persist within session and across pagination}
+8. Given I am on a mobile device (viewport <768 px) or I return/refresh within the same session
+   When I open filters or revisit the listing
+   Then filters open in a slide-out panel meeting WCAG 2.1 AA (focus trap, labelled controls, 44 px targets), and my selected filters persist across pagination and on refresh
 
 Additional Notes
-
-* Dataset size: {max_items} (e.g., 20,000).
-* Performance baseline: targets apply on standard broadband or 4G; server P95 ≤ 500 ms.
-* Pagination/infinite scroll: filters persist across pages.
-* Accessibility: WCAG 2.1 AA for controls, focus management, aria-labels.
-* Indexing/constraints: relevant fields indexed; input validation defined (min/max, types).
-
----`;
+- Dataset size: {max_items} (e.g., 20,000). Relevant fields are indexed.
+- Performance baseline: targets apply on standard broadband or 4G; server P95 ≤ 500 ms.`;
 
   const response = await openai.chat.completions.create({
     model: MODEL,
