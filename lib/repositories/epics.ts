@@ -218,12 +218,6 @@ export class EpicsRepository {
       throw new ForbiddenError(`Cannot publish epic with status "${epic.status}". Only draft epics can be published.`)
     }
 
-    // Check if epic has at least one story
-    const hasStories = await this.checkEpicHasStories(epicId)
-    if (!hasStories) {
-      throw new ForbiddenError('Cannot publish epic without stories. Add at least one story first.')
-    }
-
     // Update epic status to published
     await db
       .update(epics)
@@ -233,19 +227,22 @@ export class EpicsRepository {
       })
       .where(eq(epics.id, epicId))
 
-    // Update linked stories to 'ready' status if they're in 'backlog'
-    await db
-      .update(stories)
-      .set({
-        status: 'ready',
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(stories.epicId, epicId),
-          eq(stories.status, 'backlog')
+    // Update linked stories to 'ready' status if they're in 'backlog' (if any exist)
+    const hasStories = await this.checkEpicHasStories(epicId)
+    if (hasStories) {
+      await db
+        .update(stories)
+        .set({
+          status: 'ready',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(stories.epicId, epicId),
+            eq(stories.status, 'backlog')
+          )
         )
-      )
+    }
 
     // Get updated epic
     const updatedEpic = await this.getEpicById(epicId)

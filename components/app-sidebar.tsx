@@ -15,6 +15,7 @@ import {
   Layers,
   Menu,
   X,
+  CheckSquare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { id: 'projects', icon: FolderKanban, label: 'Projects', href: '/projects' },
   { id: 'epics', icon: Layers, label: 'Epics', href: '/epics' },
   { id: 'stories', icon: FileText, label: 'Stories', href: '/stories' },
+  { id: 'tasks', icon: CheckSquare, label: 'Tasks', href: '/tasks' },
   { id: 'ai', icon: Sparkles, label: 'AI Tools', href: '/ai-generate' },
   { id: 'team', icon: Users, label: 'Team', href: '/team' },
 ]
@@ -62,6 +64,7 @@ export function AppSidebar() {
     if (pathname.startsWith('/projects')) return 'projects'
     if (pathname.startsWith('/epics')) return 'epics'
     if (pathname.startsWith('/stories')) return 'stories'
+    if (pathname.startsWith('/tasks')) return 'tasks'
     if (pathname.startsWith('/ai-generate')) return 'ai'
     if (pathname.startsWith('/team')) return 'team'
     return 'dashboard'

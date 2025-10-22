@@ -12,6 +12,8 @@ import { CommentThread } from '@/components/comments/comment-thread'
 import { AcceptanceCriteriaSection } from '@/components/acceptance-criteria-section'
 import { UserSelect } from '@/components/user-select'
 import { TagsInput } from '@/components/tags-input'
+import { TaskList } from '@/components/tasks/task-list'
+import type { Task, TaskStats } from '@/components/tasks/task-list'
 import Link from 'next/link'
 import {
   Calendar,
@@ -49,6 +51,16 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
   const [saving, setSaving] = React.useState(false)
   const [copySuccess, setCopySuccess] = React.useState(false)
   const [epics, setEpics] = React.useState<any[]>([])
+  const [tasks, setTasks] = React.useState<Task[]>([])
+  const [taskStats, setTaskStats] = React.useState<TaskStats>({
+    total: 0,
+    todo: 0,
+    inProgress: 0,
+    done: 0,
+    blocked: 0,
+    totalEstimatedHours: 0,
+    totalActualHours: 0,
+  })
 
   // Load epics for the project
   React.useEffect(() => {
@@ -57,12 +69,38 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     }
   }, [story.projectId])
 
+  // Load tasks for the story
+  React.useEffect(() => {
+    fetchTasks()
+  }, [story.id])
+
   const fetchEpics = async () => {
     try {
       const response = await api.epics.list({ projectId: story.projectId })
       setEpics(response.data || [])
     } catch (error) {
       console.error('Failed to load epics:', error)
+    }
+  }
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`/api/stories/${story.id}/tasks`)
+      if (response.ok) {
+        const data = await response.json()
+        setTasks(data.data || [])
+        setTaskStats(data.stats || {
+          total: 0,
+          todo: 0,
+          inProgress: 0,
+          done: 0,
+          blocked: 0,
+          totalEstimatedHours: 0,
+          totalActualHours: 0,
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load tasks:', error)
     }
   }
 
@@ -294,6 +332,15 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
         storyId={story.id}
         acceptanceCriteria={story.acceptanceCriteria || []}
         onUpdate={(criteria) => setStory({ ...story, acceptanceCriteria: criteria })}
+      />
+
+      {/* Tasks */}
+      <TaskList
+        storyId={story.id}
+        projectId={story.projectId}
+        tasks={tasks}
+        stats={taskStats}
+        onTasksChange={fetchTasks}
       />
 
       {/* Details Grid */}
