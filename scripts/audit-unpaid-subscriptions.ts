@@ -56,7 +56,7 @@ async function auditUnpaidSubscriptions() {
         const [subscription] = await db
           .select()
           .from(stripeSubscriptions)
-          .where(eq(stripeSubscriptions.stripeSubscriptionId, org.stripeSubscriptionId))
+          .where(eq(stripeSubscriptions.stripeSubscriptionId, org.stripeSubscriptionId!))
           .limit(1)
 
         if (!subscription) {
