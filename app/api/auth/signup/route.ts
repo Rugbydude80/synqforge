@@ -69,18 +69,26 @@ export async function POST(req: NextRequest) {
     // Paid plans will be upgraded via Stripe webhook after successful payment
     // This prevents users from getting paid access without paying
     const actualTier = validatedData.plan === 'free' ? 'free' : 'free' // Start as free, upgrade via webhook
+    
+    // Store the intended plan for later use (if user didn't complete payment)
+    const intendedPlan = validatedData.plan
+    
+    // For free plan, give 7 day trial. For paid plans, no trial until they pay
     const trialEndDate = validatedData.plan === 'free'
-      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days for free
       : null
 
     await db.transaction(async (tx) => {
       // Create organization - always starts as free tier
       // Paid tier will be activated via Stripe webhook upon successful payment
+      // Store intended plan so we can direct them to payment if they haven't paid
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
         slug: slug,
         subscriptionTier: actualTier, // Always free until payment confirmed
+        plan: intendedPlan, // Store what they signed up for
+        subscriptionStatus: intendedPlan === 'free' ? 'active' : 'inactive', // Inactive until they pay
         trialEndsAt: trialEndDate,
       })
 
