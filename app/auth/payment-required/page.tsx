@@ -57,7 +57,7 @@ const plans = [
 export default function PaymentRequiredPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const returnUrl = searchParams.get('returnUrl') || '/dashboard'
 
   const [selectedPlan, setSelectedPlan] = useState('team')
