@@ -32,13 +32,21 @@ const priorityColors = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
+interface Project {
+  id: string
+  name: string
+  key: string
+}
+
 export default function EpicsPage() {
   const [epics, setEpics] = React.useState<Epic[]>([])
+  const [projects, setProjects] = React.useState<Project[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
   const [priorityFilter, setPriorityFilter] = React.useState<string>('all')
+  const [projectFilter, setProjectFilter] = React.useState<string>('all')
 
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [showEditModal, setShowEditModal] = React.useState(false)
@@ -51,7 +59,17 @@ export default function EpicsPage() {
 
   React.useEffect(() => {
     fetchEpics()
+    fetchProjects()
   }, [])
+
+  const fetchProjects = async () => {
+    try {
+      const response = await api.projects.list()
+      setProjects(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load projects:', err)
+    }
+  }
 
   const fetchEpics = async () => {
     try {
@@ -73,13 +91,14 @@ export default function EpicsPage() {
                          epic.description?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || epic.status === statusFilter
     const matchesPriority = priorityFilter === 'all' || epic.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
+    const matchesProject = projectFilter === 'all' || epic.projectId === projectFilter
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject
   })
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, priorityFilter])
+  }, [searchQuery, statusFilter, priorityFilter, projectFilter])
 
   // Paginate filtered epics
   const totalEpics = filteredEpics.length
@@ -139,8 +158,8 @@ export default function EpicsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-4 mt-6">
-              <div className="relative flex-1 max-w-md">
+            <div className="flex items-center gap-4 mt-6 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search epics..."
@@ -149,6 +168,18 @@ export default function EpicsPage() {
                   className="pl-10"
                 />
               </div>
+
+              <Select
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+              >
+                <option value="all">All Projects</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </Select>
 
               <Select
                 value={statusFilter}
@@ -201,11 +232,11 @@ export default function EpicsPage() {
               <Layers className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No epics found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
+                {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || projectFilter !== 'all'
                   ? 'Try adjusting your filters'
                   : 'Get started by creating your first epic'}
               </p>
-              {!searchQuery && statusFilter === 'all' && priorityFilter === 'all' && (
+              {!searchQuery && statusFilter === 'all' && priorityFilter === 'all' && projectFilter === 'all' && (
                 <Button onClick={() => setShowCreateModal(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Epic
