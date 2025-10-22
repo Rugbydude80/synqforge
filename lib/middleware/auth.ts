@@ -72,10 +72,21 @@ export function withAuth<T = any>(
 
       // Check organization access if required
       if (options.requireOrg) {
+        // Check if orgId is in the URL path (for /api/organizations/[orgId]/... routes)
         const orgId = extractOrgId(req)
-        if (!orgId || userContext.organizationId !== orgId) {
+        
+        // If orgId exists in URL, verify it matches user's org
+        if (orgId && userContext.organizationId !== orgId) {
           return NextResponse.json(
             { error: 'Forbidden', message: 'Access denied to this organization' },
+            { status: 403 }
+          )
+        }
+        
+        // Otherwise, just ensure user has an organization
+        if (!userContext.organizationId) {
+          return NextResponse.json(
+            { error: 'Forbidden', message: 'No organization associated with your account' },
             { status: 403 }
           )
         }
