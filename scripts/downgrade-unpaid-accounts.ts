@@ -32,8 +32,8 @@ const db = drizzle(client)
 
 // Free tier entitlements
 const FREE_TIER_ENTITLEMENTS = {
-  subscriptionTier: 'free',
-  subscriptionStatus: 'inactive',
+  subscriptionTier: 'free' as const,
+  subscriptionStatus: 'inactive' as const,
   stripeSubscriptionId: null,
   stripePriceId: null,
   stripeCustomerId: null,
@@ -78,7 +78,7 @@ async function downgradeUnpaidAccounts() {
         const [subscription] = await db
           .select()
           .from(stripeSubscriptions)
-          .where(eq(stripeSubscriptions.stripeSubscriptionId, org.stripeSubscriptionId))
+          .where(eq(stripeSubscriptions.stripeSubscriptionId, org.stripeSubscriptionId!))
           .limit(1)
 
         if (!subscription) {
@@ -124,7 +124,7 @@ async function downgradeUnpaidAccounts() {
 
           console.log(`✅ Downgraded: ${org.name} (${reason})`)
         } catch (error) {
-          console.error(`❌ Failed to downgrade ${org.name}:`, error.message)
+          console.error(`❌ Failed to downgrade ${org.name}:`, error instanceof Error ? error.message : String(error))
         }
       }
 

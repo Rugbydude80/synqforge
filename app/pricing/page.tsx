@@ -12,9 +12,9 @@ import { cn } from '@/lib/utils'
 
 const plans = [
   {
-    name: 'Free',
+    name: 'Free Trial',
     price: 0,
-    description: '7-day trial then £19/mo',
+    description: 'Try before you buy',
     icon: Sparkles,
     priceId: null,
     tier: 'free',
@@ -22,32 +22,34 @@ const plans = [
     convertsTo: 'solo',
     features: [
       '7-day free trial',
+      '1 seat',
       '1 project',
-      '1 user',
-      '200 stories/month',
+      '50 stories/month',
       '5K AI tokens/month',
-      'Basic AI',
-      'Email notifications',
+      '2 docs/month',
+      'Basic AI features',
+      'Community support',
     ],
     limitations: [
-      'Auto-converts to Solo after trial',
+      'Automatically converts to Solo (£19/mo) after 7 days',
     ],
   },
   {
     name: 'Solo',
     price: 19,
-    description: 'For solo developers',
+    description: 'For individual developers',
     icon: Sparkles,
     priceId: process.env.NEXT_PUBLIC_BILLING_PRICE_SOLO_GBP,
     tier: 'solo',
     features: [
       '1 seat',
       '3 projects',
-      'Unlimited stories',
+      '200 stories/month',
       '50K AI tokens/month',
-      'Basic AI',
+      '10 docs/month',
+      'Bulk uploads (25 stories)',
+      'Basic AI features',
       'Export data',
-      'Custom templates',
       'Community support',
     ],
   },
@@ -62,9 +64,11 @@ const plans = [
     features: [
       '5 seats',
       '10 projects',
-      'Unlimited stories',
+      '500 stories/month',
       '200K AI tokens/month',
-      'Advanced AI',
+      '25 docs/month',
+      'Bulk uploads (50 stories)',
+      'Advanced AI features',
       'Export data',
       'Custom templates',
       'Priority support',
@@ -80,9 +84,11 @@ const plans = [
     features: [
       '20 seats',
       'Unlimited projects',
-      'Unlimited stories',
-      'Unlimited AI tokens',
-      'Advanced AI',
+      '2,000 stories/month',
+      '1M AI tokens/month',
+      '100 docs/month',
+      'Bulk uploads (100 stories)',
+      'Advanced AI features',
       'Export data',
       'Custom templates',
       'SSO/SAML',
@@ -102,7 +108,9 @@ const plans = [
       'Unlimited projects',
       'Unlimited stories',
       'Unlimited AI tokens',
-      'Advanced AI',
+      'Unlimited docs',
+      'Unlimited bulk uploads',
+      'Advanced AI features',
       'Export data',
       'Custom templates',
       'SSO/SAML',
@@ -297,7 +305,7 @@ export default function PricingPage() {
         {/* FAQ or Additional Info */}
         <div className="mt-16 text-center">
           <p className="text-muted-foreground">
-            All paid plans include a 14-day free trial. No credit card required for Free tier.
+            Start with a 7-day free trial. After the trial, your account automatically converts to the Solo plan (£19/month).
           </p>
           <p className="text-muted-foreground mt-2">
             All prices in GBP (£). Need a custom plan?{' '}
