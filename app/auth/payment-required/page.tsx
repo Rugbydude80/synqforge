@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
+// Payment required page for users who haven't completed payment
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
