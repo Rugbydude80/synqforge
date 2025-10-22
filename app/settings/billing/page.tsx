@@ -7,7 +7,6 @@ import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink, Users, Spark
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { UsageBadge } from '@/components/ui/usage-badge'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import { UsageWarningBanner } from '@/components/billing/UsageWarningBanner'
