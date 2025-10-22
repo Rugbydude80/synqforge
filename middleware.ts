@@ -86,10 +86,21 @@ export async function middleware(request: NextRequest) {
           const hasActiveSubscription = org.subscriptionStatus === 'active' || 
                                         org.subscriptionStatus === 'trialing'
           
+          // Debug logging
+          console.log('Middleware subscription check:', {
+            subscriptionStatus: org.subscriptionStatus,
+            plan: org.plan,
+            trialEndsAt: org.trialEndsAt,
+            trialExpired,
+            hasActiveSubscription,
+            shouldBlock: !hasActiveSubscription || trialExpired
+          })
+          
           // Block access if:
           // 1. No active subscription (includes free plan with inactive status)
           // 2. OR trial has expired (for any plan including free)
           if (!hasActiveSubscription || trialExpired) {
+            console.log('🚫 Blocking access - redirecting to payment required')
             const paymentUrl = new URL('/auth/payment-required', request.url)
             paymentUrl.searchParams.set('returnUrl', pathname)
             return NextResponse.redirect(paymentUrl)
