@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { db } from '@/lib/db'
+import { organizations } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -10,11 +13,20 @@ const publicRoutes = [
   '/auth/error',
   '/auth/forgot-password',
   '/auth/reset-password',
+  '/auth/payment-required',
+  '/pricing',
 ]
 
 // API routes that don't require authentication
 const publicApiRoutes = [
   '/api/auth',
+  '/api/webhooks', // Stripe webhooks need to be public
+]
+
+// Routes that don't require subscription check (authenticated but no payment needed)
+const noSubscriptionCheckRoutes = [
+  '/settings/billing',
+  '/auth/payment-required',
 ]
 
 export async function middleware(request: NextRequest) {
@@ -48,7 +60,47 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl)
     }
 
-    // Token is valid, allow the request
+    // Check if this route requires subscription validation
+    const needsSubscriptionCheck = !noSubscriptionCheckRoutes.some(route =>
+      pathname === route || pathname.startsWith(route)
+    )
+
+    // For authenticated users, check subscription status
+    if (needsSubscriptionCheck && token.organizationId) {
+      try {
+        const [org] = await db
+          .select({
+            subscriptionStatus: organizations.subscriptionStatus,
+            plan: organizations.plan,
+            trialEndsAt: organizations.trialEndsAt,
+          })
+          .from(organizations)
+          .where(eq(organizations.id, token.organizationId as string))
+          .limit(1)
+
+        if (org) {
+          // Check if user needs to complete payment
+          const hasActiveSubscription = org.subscriptionStatus === 'active' || 
+                                        org.subscriptionStatus === 'trialing' ||
+                                        org.plan === 'free'
+          
+          // Check if trial has expired
+          const trialExpired = org.trialEndsAt && new Date(org.trialEndsAt) < new Date()
+          
+          // If no active subscription and not on free plan, or trial expired, redirect to payment
+          if (!hasActiveSubscription || (trialExpired && org.plan !== 'free')) {
+            const paymentUrl = new URL('/auth/payment-required', request.url)
+            paymentUrl.searchParams.set('returnUrl', pathname)
+            return NextResponse.redirect(paymentUrl)
+          }
+        }
+      } catch (dbError) {
+        console.error('Error checking subscription status:', dbError)
+        // Continue to allow access if DB check fails to avoid breaking the app
+      }
+    }
+
+    // Token is valid and subscription is active, allow the request
     return NextResponse.next()
   } catch (error) {
     console.error('Middleware auth error:', error)
