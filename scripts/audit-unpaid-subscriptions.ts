@@ -11,7 +11,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { organizations, stripeSubscriptions } from '../lib/db/schema'
-import { eq, and, isNull, inArray } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 
 // Database connection
 const connectionString = process.env.DATABASE_URL
