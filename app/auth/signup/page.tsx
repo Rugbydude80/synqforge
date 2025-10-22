@@ -16,8 +16,7 @@ const plans = [
     price: 0,
     icon: Sparkles,
     description: 'Perfect for trying out SynqForge',
-    features: ['1 project', 'Up to 50 stories', 'Basic AI generation'],
-    note: '7-day trial, then £19/month',
+    features: ['1 project', 'Up to 50 stories', '5K AI tokens', '7-day trial'],
   },
   {
     id: 'solo',
@@ -25,7 +24,7 @@ const plans = [
     price: 19,
     icon: Sparkles,
     description: 'For individual developers',
-    features: ['3 projects', '200 stories/month', '50K AI tokens'],
+    features: ['3 projects', '200 stories/month', '150K AI tokens'],
   },
   {
     id: 'team',
@@ -33,7 +32,7 @@ const plans = [
     price: 29,
     icon: Zap,
     description: 'For small teams',
-    features: ['10 projects', '500 stories/month', '200K AI tokens'],
+    features: ['10 projects', '500 stories/month', '500K AI tokens'],
     popular: true,
   },
   {
@@ -42,7 +41,7 @@ const plans = [
     price: 99,
     icon: Building2,
     description: 'For growing organizations',
-    features: ['Unlimited projects', '2K stories/month', '1M AI tokens'],
+    features: ['Unlimited projects', '2K stories/month', '2.5M AI tokens'],
   },
   {
     id: 'enterprise',
@@ -213,9 +212,6 @@ export default function SignUpPage() {
                       <span className="text-muted-foreground">/month</span>
                     </div>
                     <CardDescription className="mt-2">{plan.description}</CardDescription>
-                    {plan.note && (
-                      <p className="text-xs text-yellow-400 mt-2">{plan.note}</p>
-                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
