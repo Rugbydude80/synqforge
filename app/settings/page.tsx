@@ -352,8 +352,8 @@ function AppearanceSettings() {
 
 function IntegrationSettings() {
   const integrations = [
-    { name: 'Slack', description: 'Get notifications in Slack', comingSoon: false },
-    { name: 'GitHub', description: 'Link your repositories', comingSoon: false },
+    { name: 'Slack', description: 'Get notifications in Slack', comingSoon: true },
+    { name: 'GitHub', description: 'Link your repositories', comingSoon: true },
     { name: 'Jira', description: 'Sync with Jira projects', comingSoon: true },
     { name: 'Linear', description: 'Import issues from Linear', comingSoon: true },
   ]
