@@ -81,10 +81,16 @@ export default function PaymentRequiredPage() {
         if (response.ok) {
           const data = await response.json()
           
-          // If they already have an active subscription or are on free plan, redirect
-          if (data.subscriptionStatus === 'active' || 
-              data.subscriptionStatus === 'trialing' ||
-              data.plan === 'free') {
+          // Check if trial has expired
+          const trialExpired = data.trialEndsAt ? new Date(data.trialEndsAt) < new Date() : false
+          
+          // Allow access if they have active subscription and trial hasn't expired
+          // OR if they're in Stripe trialing status
+          const hasValidAccess = 
+            (data.subscriptionStatus === 'active' && !trialExpired) ||
+            data.subscriptionStatus === 'trialing'
+          
+          if (hasValidAccess) {
             router.push(returnUrl)
             return
           }

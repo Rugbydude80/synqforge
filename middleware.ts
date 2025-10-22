@@ -79,16 +79,17 @@ export async function middleware(request: NextRequest) {
           .limit(1)
 
         if (org) {
-          // Check if user needs to complete payment
-          const hasActiveSubscription = org.subscriptionStatus === 'active' || 
-                                        org.subscriptionStatus === 'trialing' ||
-                                        org.plan === 'free'
-          
           // Check if trial has expired
           const trialExpired = org.trialEndsAt && new Date(org.trialEndsAt) < new Date()
           
-          // If no active subscription and not on free plan, or trial expired, redirect to payment
-          if (!hasActiveSubscription || (trialExpired && org.plan !== 'free')) {
+          // Check if user needs to complete payment
+          const hasActiveSubscription = org.subscriptionStatus === 'active' || 
+                                        org.subscriptionStatus === 'trialing'
+          
+          // Block access if:
+          // 1. No active subscription (includes free plan with inactive status)
+          // 2. OR trial has expired (for any plan including free)
+          if (!hasActiveSubscription || trialExpired) {
             const paymentUrl = new URL('/auth/payment-required', request.url)
             paymentUrl.searchParams.set('returnUrl', pathname)
             return NextResponse.redirect(paymentUrl)
