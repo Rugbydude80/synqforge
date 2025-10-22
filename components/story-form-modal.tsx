@@ -104,21 +104,39 @@ export function StoryFormModal({
     setError(null)
 
     try {
-      const storyData = {
-        projectId,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        priority: formData.priority,
-        storyPoints: formData.storyPoints || undefined,
-        epicId: formData.epicId || undefined,
-        acceptanceCriteria: formData.acceptanceCriteria.filter(ac => ac.trim()),
-      }
-
       if (story) {
-        await api.stories.update(story.id, storyData)
+        // For updates, don't send projectId and handle epicId properly
+        const updateData: any = {
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          priority: formData.priority,
+          storyPoints: formData.storyPoints || undefined,
+          acceptanceCriteria: formData.acceptanceCriteria.filter(ac => ac.trim()),
+        }
+
+        // Only include epicId if it's actually set (not empty string)
+        if (formData.epicId && formData.epicId.trim()) {
+          updateData.epicId = formData.epicId
+        } else if (formData.epicId === '') {
+          // If explicitly cleared, set to null
+          updateData.epicId = null
+        }
+
+        await api.stories.update(story.id, updateData)
         toast.success('Story updated successfully!')
       } else {
-        await api.stories.create(storyData)
+        // For creates, include projectId
+        const createData = {
+          projectId,
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          priority: formData.priority,
+          storyPoints: formData.storyPoints || undefined,
+          epicId: formData.epicId && formData.epicId.trim() ? formData.epicId : undefined,
+          acceptanceCriteria: formData.acceptanceCriteria.filter(ac => ac.trim()),
+        }
+
+        await api.stories.create(createData)
         toast.success('Story created successfully!')
       }
 
