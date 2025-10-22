@@ -17,23 +17,40 @@ const plans = [
     icon: Sparkles,
     description: 'Perfect for trying out SynqForge',
     features: ['1 project', 'Up to 50 stories', 'Basic AI generation'],
+    note: '7-day trial, then £19/month',
+  },
+  {
+    id: 'solo',
+    name: 'Solo',
+    price: 19,
+    icon: Sparkles,
+    description: 'For individual developers',
+    features: ['3 projects', '200 stories/month', '50K AI tokens'],
+  },
+  {
+    id: 'team',
+    name: 'Team',
+    price: 29,
+    icon: Zap,
+    description: 'For small teams',
+    features: ['10 projects', '500 stories/month', '200K AI tokens'],
+    popular: true,
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 29,
-    icon: Zap,
-    description: 'For teams that need more power',
-    features: ['Unlimited projects', 'Unlimited stories', 'Advanced AI'],
-    popular: true,
+    price: 99,
+    icon: Building2,
+    description: 'For growing organizations',
+    features: ['Unlimited projects', '2K stories/month', '1M AI tokens'],
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 99,
+    price: 299,
     icon: Building2,
-    description: 'For organizations at scale',
-    features: ['Everything in Pro', 'Dedicated support', 'SSO/SAML'],
+    description: 'For large organizations',
+    features: ['Everything unlimited', 'Dedicated support', 'SSO/SAML'],
   },
 ]
 
@@ -153,7 +170,7 @@ export default function SignUpPage() {
   if (step === 'plan') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-4xl space-y-8">
+        <div className="w-full max-w-7xl space-y-8">
           <div className="text-center space-y-4">
             <div className="flex items-center justify-center">
               <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-purple">
@@ -166,7 +183,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {plans.map((plan) => {
               const Icon = plan.icon
               return (
@@ -192,10 +209,13 @@ export default function SignUpPage() {
                       <CardTitle className="text-lg">{plan.name}</CardTitle>
                     </div>
                     <div className="mt-2">
-                      <span className="text-3xl font-bold">${plan.price}</span>
+                      <span className="text-3xl font-bold">£{plan.price}</span>
                       <span className="text-muted-foreground">/month</span>
                     </div>
                     <CardDescription className="mt-2">{plan.description}</CardDescription>
+                    {plan.note && (
+                      <p className="text-xs text-yellow-400 mt-2">{plan.note}</p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
