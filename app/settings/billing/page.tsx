@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink, Users, Sparkles, TrendingUp } from 'lucide-react'
+import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink, Users, Sparkles, TrendingUp, ShoppingCart, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +19,7 @@ function BillingPageContent() {
   const [loading, setLoading] = useState(false)
   const [subscription, setSubscription] = useState<any>(null)
   const [usageData, setUsageData] = useState<any>(null)
+  const [purchasingTokens, setPurchasingTokens] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -114,6 +115,35 @@ function BillingPageContent() {
       }
     } catch (error) {
       console.error('Error fetching usage:', error)
+    }
+  }
+
+  const handlePurchaseTokens = async (packageSize: 'small' | 'medium' | 'large') => {
+    try {
+      setPurchasingTokens(packageSize)
+
+      const response = await fetch('/api/stripe/purchase-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ packageSize }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session')
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error: any) {
+      console.error('Error:', error)
+      toast.error(error.message || 'Failed to purchase tokens')
+    } finally {
+      setPurchasingTokens(null)
     }
   }
 
@@ -300,33 +330,178 @@ function BillingPageContent() {
             </CardContent>
           </Card>
 
+          {/* AI Token Usage - Enhanced */}
+          {usageData?.aiUsage && (
+            <Card className="col-span-full">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-500" />
+                    <CardTitle>AI Token Usage</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="text-sm">
+                    {((usageData.aiUsage.tokensUsed / usageData.aiUsage.tokenPool) * 100).toFixed(1)}% used
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Monitor your AI token consumption and purchase additional tokens as needed
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Progress Bar */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <span className="text-3xl font-bold">
+                        {usageData.aiUsage.tokensUsed.toLocaleString()}
+                      </span>
+                      <span className="text-muted-foreground text-lg ml-2">
+                        / {usageData.aiUsage.tokenPool.toLocaleString()}
+                      </span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {(usageData.aiUsage.tokenPool - usageData.aiUsage.tokensUsed).toLocaleString()} remaining
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="relative h-4 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all rounded-full ${
+                        (usageData.aiUsage.tokensUsed / usageData.aiUsage.tokenPool) * 100 > 90
+                          ? 'bg-red-500'
+                          : (usageData.aiUsage.tokensUsed / usageData.aiUsage.tokenPool) * 100 > 75
+                          ? 'bg-amber-500'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                      }`}
+                      style={{
+                        width: `${Math.min((usageData.aiUsage.tokensUsed / usageData.aiUsage.tokenPool) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Tokens reset monthly on your billing cycle
+                  </p>
+                </div>
+
+                {/* Purchase Token Packages */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">Need More Tokens?</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Small Package */}
+                    <Card className="border-2 hover:border-purple-500/50 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">50K Tokens</span>
+                            <Zap className="h-4 w-4 text-purple-500" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">~50 story generations</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">$5</span>
+                            <span className="text-xs text-muted-foreground">one-time</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-2"
+                            variant="outline"
+                            onClick={() => handlePurchaseTokens('small')}
+                            disabled={purchasingTokens !== null}
+                          >
+                            {purchasingTokens === 'small' ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              'Purchase'
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Medium Package */}
+                    <Card className="border-2 border-purple-500/50 hover:border-purple-500 transition-colors relative">
+                      <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gradient-primary text-xs">
+                        Best Value
+                      </Badge>
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">150K Tokens</span>
+                            <Zap className="h-4 w-4 text-purple-500" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">~150 story generations</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">$12</span>
+                            <span className="text-xs text-emerald-500 font-medium">Save 20%</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-2 bg-gradient-primary"
+                            onClick={() => handlePurchaseTokens('medium')}
+                            disabled={purchasingTokens !== null}
+                          >
+                            {purchasingTokens === 'medium' ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              'Purchase'
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Large Package */}
+                    <Card className="border-2 hover:border-purple-500/50 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">500K Tokens</span>
+                            <Zap className="h-4 w-4 text-purple-500" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">~500 story generations</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">$35</span>
+                            <span className="text-xs text-emerald-500 font-medium">Save 30%</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-2"
+                            variant="outline"
+                            onClick={() => handlePurchaseTokens('large')}
+                            disabled={purchasingTokens !== null}
+                          >
+                            {purchasingTokens === 'large' ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              'Purchase'
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Usage Overview */}
           {usageData && (
-            <div className="grid gap-6 md:grid-cols-3">
-              {/* AI Tokens */}
-              {usageData.aiUsage && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-purple-500" />
-                      <CardTitle className="text-base">AI Tokens</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-1">
-                      {usageData.aiUsage.tokensUsed.toLocaleString()}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      of {usageData.aiUsage.tokenPool.toLocaleString()} used
-                    </p>
-                    <UsageBadge
-                      tokensUsed={usageData.aiUsage.tokensUsed}
-                      tokenPool={usageData.aiUsage.tokenPool}
-                      showProgress
-                    />
-                  </CardContent>
-                </Card>
-              )}
+            <div className="grid gap-6 md:grid-cols-2">
 
               {/* Seats */}
               {usageData.seats && (
