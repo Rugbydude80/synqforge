@@ -10,11 +10,8 @@ import {
   StoryValidationResult,
   INTERACTIVE_VERBS,
   NO_RESULTS_KEYWORDS,
-  ACCEPTANCE_THEMES,
-  AutofixType,
 } from './types';
-import { logger } from '@/lib/observability/logger';
-import { metrics, METRICS } from '@/lib/observability/metrics';
+import { metrics } from '@/lib/observability/metrics';
 
 export class ValidationService {
   private readonly QUALITY_THRESHOLD_MANUAL_REVIEW = 6.9;
