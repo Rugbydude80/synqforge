@@ -384,6 +384,7 @@ export const AI_TOKEN_COSTS = {
   STORY_VALIDATION: 500,
   EPIC_CREATION: 1500,
   DOCUMENT_ANALYSIS: 2000,
+  STORY_SPLIT: 2500, // Average for splitting a story into 2-5 child stories
 } as const
 
 /**

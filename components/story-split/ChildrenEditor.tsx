@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Loader2 } from 'lucide-react';
 import { ChildRowEditor } from './ChildRowEditor';
 import type { ChildStoryInput } from '@/lib/services/story-split-validation.service';
 import { storySplitValidationService } from '@/lib/services/story-split-validation.service';
 import { useTranslation } from '@/lib/i18n';
 import type { StorySplitAnalysis } from '@/lib/services/story-split-analysis.service';
+import { toast } from 'sonner';
 
 interface ChildrenEditorProps {
   childStories: ChildStoryInput[];
@@ -15,6 +16,7 @@ interface ChildrenEditorProps {
   onValidationChange: (valid: boolean) => void;
   disabled?: boolean;
   analysis?: StorySplitAnalysis;
+  storyId: string;
 }
 
 export function ChildrenEditor({
@@ -23,9 +25,11 @@ export function ChildrenEditor({
   onValidationChange,
   disabled,
   analysis,
+  storyId,
 }: ChildrenEditorProps) {
   const { t } = useTranslation();
   const [validationResults, setValidationResults] = useState<any[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   useEffect(() => {
     if (childStories.length === 0) {
@@ -52,104 +56,67 @@ export function ChildrenEditor({
     ]);
   };
 
-  const suggestSplits = () => {
+  const suggestSplits = async () => {
     if (!analysis) return;
 
-    const suggestions: ChildStoryInput[] = [];
+    setIsLoadingAI(true);
 
-    // Generate suggestions based on SPIDR hints
-    if (analysis.spidr.spike) {
-      suggestions.push({
-        title: 'Research spike',
-        personaGoal: 'determine technical approach',
-        description: 'Investigate and document the technical approach for implementation',
-        acceptanceCriteria: ['Research documented', 'Technical recommendations provided'],
-        estimatePoints: 2,
-        providesUserValue: false,
+    try {
+      const response = await fetch(`/api/stories/${storyId}/ai-split-suggestions`, {
+        credentials: 'include',
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        
+        // Check for rate limit or billing errors
+        if (response.status === 429) {
+          toast.error('Too many AI requests', {
+            description: error.retryAfter || 'Please try again later',
+          });
+        } else if (response.status === 402) {
+          toast.error('AI usage limit reached', {
+            description: error.error || 'Please upgrade your plan',
+            action: error.upgradeUrl ? {
+              label: 'Upgrade',
+              onClick: () => window.open(error.upgradeUrl, '_blank'),
+            } : undefined,
+          });
+        } else {
+          toast.error('Failed to generate suggestions', {
+            description: error.error || 'Please try again',
+          });
+        }
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.suggestions) {
+        // Convert AI suggestions to ChildStoryInput format
+        const childSuggestions: ChildStoryInput[] = data.suggestions.map((suggestion: any) => ({
+          title: suggestion.title,
+          personaGoal: suggestion.personaGoal,
+          description: suggestion.description,
+          acceptanceCriteria: suggestion.acceptanceCriteria,
+          estimatePoints: suggestion.estimatePoints,
+          providesUserValue: suggestion.providesUserValue,
+        }));
+
+        onChange(childSuggestions);
+
+        toast.success('AI suggestions generated', {
+          description: `Created ${childSuggestions.length} story suggestions using ${data.splitStrategy}`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to get AI suggestions:', error);
+      toast.error('Failed to generate suggestions', {
+        description: 'Please try again or add stories manually',
+      });
+    } finally {
+      setIsLoadingAI(false);
     }
-
-    if (analysis.spidr.interfaces) {
-      suggestions.push({
-        title: 'Frontend interface',
-        personaGoal: 'interact with the feature',
-        description: 'Implement the user interface components',
-        acceptanceCriteria: ['UI components created', 'User can interact with interface'],
-        estimatePoints: 3,
-        providesUserValue: true,
-      });
-      suggestions.push({
-        title: 'Backend API',
-        personaGoal: 'process requests',
-        description: 'Implement the backend API endpoints',
-        acceptanceCriteria: ['API endpoints created', 'API responds correctly'],
-        estimatePoints: 3,
-        providesUserValue: false,
-      });
-    }
-
-    if (analysis.spidr.data) {
-      suggestions.push({
-        title: 'Data handling',
-        personaGoal: 'manage data',
-        description: 'Implement data processing and storage',
-        acceptanceCriteria: ['Data can be saved', 'Data can be retrieved'],
-        estimatePoints: 3,
-        providesUserValue: false,
-      });
-    }
-
-    if (analysis.spidr.rules) {
-      suggestions.push({
-        title: 'Business rules',
-        personaGoal: 'enforce constraints',
-        description: 'Implement validation and business logic',
-        acceptanceCriteria: ['Rules enforced', 'Invalid data rejected'],
-        estimatePoints: 2,
-        providesUserValue: false,
-      });
-    }
-
-    if (analysis.spidr.paths) {
-      suggestions.push({
-        title: 'Happy path',
-        personaGoal: 'complete the primary flow',
-        description: 'Implement the main success scenario',
-        acceptanceCriteria: ['Primary flow works', 'User can complete main task'],
-        estimatePoints: 3,
-        providesUserValue: true,
-      });
-      suggestions.push({
-        title: 'Edge cases',
-        personaGoal: 'handle exceptions',
-        description: 'Handle error cases and edge scenarios',
-        acceptanceCriteria: ['Errors handled gracefully', 'Edge cases covered'],
-        estimatePoints: 2,
-        providesUserValue: false,
-      });
-    }
-
-    // If no specific splits detected, suggest generic vertical slices
-    if (suggestions.length === 0) {
-      suggestions.push({
-        title: 'Core functionality',
-        personaGoal: 'use basic features',
-        description: 'Implement the minimum viable functionality',
-        acceptanceCriteria: ['Basic feature works', 'User can complete main action'],
-        estimatePoints: 3,
-        providesUserValue: true,
-      });
-      suggestions.push({
-        title: 'Enhancements',
-        personaGoal: 'access additional features',
-        description: 'Add supplementary features and improvements',
-        acceptanceCriteria: ['Additional features added', 'User experience improved'],
-        estimatePoints: 2,
-        providesUserValue: true,
-      });
-    }
-
-    onChange(suggestions);
   };
 
   const updateChild = (index: number, updated: ChildStoryInput) => {
@@ -174,17 +141,26 @@ export function ChildrenEditor({
               variant="default"
               size="sm"
               onClick={suggestSplits}
-              disabled={disabled}
+              disabled={disabled || isLoadingAI}
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Suggest Splits
+              {isLoadingAI ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Suggest Splits
+                </>
+              )}
             </Button>
           )}
           <Button
             variant="outline"
             size="sm"
             onClick={addChild}
-            disabled={disabled}
+            disabled={disabled || isLoadingAI}
           >
             <Plus className="h-4 w-4 mr-2" />
             {t('story.split.add_child')}

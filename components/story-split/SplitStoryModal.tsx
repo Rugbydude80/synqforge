@@ -127,6 +127,7 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
               onValidationChange={setCanSubmit}
               disabled={isBlocked}
               analysis={analysis}
+              storyId={storyId}
             />
           </div>
         </div>
