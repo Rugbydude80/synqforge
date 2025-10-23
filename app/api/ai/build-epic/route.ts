@@ -13,7 +13,6 @@ import { ProjectsRepository } from '@/lib/repositories/projects';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
 import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
 import { logger } from '@/lib/observability/logger';
-import { correlationService } from '@/lib/ai/correlation.service';
 
 async function buildEpicHandler(req: NextRequest, context: AuthContext) {
   try {
@@ -83,24 +82,14 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
 
     // Create epic in database
     const epicsRepo = new EpicsRepository(context.user);
-    const correlationKey = correlationService.generateCorrelationKey({
-      projectId: validatedData.projectId,
-      requestId: response.requestId,
-    });
 
     const createdEpic = await epicsRepo.createEpic({
       projectId: validatedData.projectId,
       title: response.epic.title,
       description: response.epic.description,
-      status: 'planned',
       priority: 'medium',
       aiGenerated: true,
       aiGenerationPrompt: validatedData.epicDescription,
-      // @ts-ignore - Add new fields
-      parentEpicId: response.epic.parentEpicId,
-      siblingEpicIds: response.epic.siblingEpicIds,
-      correlationKey,
-      requestId: response.requestId,
     });
 
     // Create stories in database
@@ -108,36 +97,20 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
     const createdStories = [];
 
     for (const story of response.stories) {
-      const storyCorrelationKey = correlationService.generateCorrelationKey({
-        projectId: validatedData.projectId,
-        requestId: response.requestId,
-        capabilityKey: story.capabilityKey,
-      });
-
       // Convert AC format for database storage
       const acceptanceCriteria = story.acceptanceCriteria.map(ac =>
         `**Given** ${ac.given}\n**When** ${ac.when}\n**Then** ${ac.then}`
-      );
+      ).join('\n\n');
 
-      const createdStory = await storiesRepo.create({
-        projectId: validatedData.projectId,
+      const createdStory = await storiesRepo.createStory({
         epicId: createdEpic.id,
         title: story.title,
+        storyType: 'feature',
         description: story.description,
         acceptanceCriteria,
         storyPoints: story.estimate,
-        priority: 'medium',
-        status: story.validation.ready_for_sprint ? 'ready' : 'backlog',
         aiGenerated: true,
-        aiValidationScore: Math.round(story.validation.quality_score * 10),
-        // @ts-ignore - Add new fields
-        correlationKey: storyCorrelationKey,
-        requestId: response.requestId,
-        capabilityKey: story.capabilityKey,
-        technicalHints: story.technicalHints,
-        manualReviewRequired: story.validation.manual_review_required,
-        readyForSprint: story.validation.ready_for_sprint,
-      }, context.user.id);
+      });
 
       createdStories.push(createdStory);
     }
@@ -145,8 +118,7 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
     // Log usage
     await incrementTokenUsage(
       context.user.organizationId,
-      response.usageMetrics.totalTokens,
-      'epic-build'
+      response.usageMetrics.totalTokens
     );
 
     logger.info('Epic built with stories', {

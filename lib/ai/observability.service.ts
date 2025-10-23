@@ -14,8 +14,8 @@ import {
 export class AIObservabilityService {
   private decompositionMetrics: Partial<DecompositionMetrics> = {};
   private validationMetrics: Partial<ValidationMetrics> = {
-    autofix_applied_counts: {},
-    validation_fail_reasons: {},
+    autofix_applied_counts: {} as Record<string, number>,
+    validation_fail_reasons: {} as Record<string, number>,
     interactive_flag_mismatch_rate: 0,
   };
   private idempotencyMetrics: IdempotencyMetrics = {
