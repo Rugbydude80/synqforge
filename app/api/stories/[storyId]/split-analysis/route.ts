@@ -9,6 +9,7 @@ async function getSplitAnalysis(
   context: AuthContext & { params: { storyId: string } }
 ) {
   try {
+    // Track split story modal opens
     metrics.increment('story_split_opened', 1);
 
     const storiesRepo = new StoriesRepository(context.user);
