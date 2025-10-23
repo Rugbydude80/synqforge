@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { openai, MODEL } from '@/lib/ai/client';
 import { db } from '@/lib/db';
 import { aiGenerations } from '@/lib/db/schema';
 import { generateId } from '@/lib/db';
@@ -118,21 +118,16 @@ export interface StorySplitResponse {
 }
 
 export class AIService {
-  private anthropic: Anthropic;
   private isConfigured: boolean = false;
 
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY || '';
+    const apiKey = process.env.OPENROUTER_API_KEY || '';
 
     if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is required. Please configure it in your environment variables.');
+      throw new Error('OPENROUTER_API_KEY is required. Please configure it in your environment variables.');
     }
 
     this.isConfigured = true;
-
-    this.anthropic = new Anthropic({
-      apiKey,
-    });
   }
 
   /**
@@ -149,7 +144,7 @@ export class AIService {
     requirements: string,
     context?: string,
     count: number = 5,
-    model: string = 'claude-3-5-haiku-20241022'
+    model: string = MODEL
   ): Promise<StoryGenerationResponse> {
     const prompt = this.buildStoryGenerationPrompt(requirements, context, count);
 
@@ -175,7 +170,7 @@ export class AIService {
   async generateEpic(
     requirements: string,
     context?: string,
-    model: string = 'claude-3-5-haiku-20241022'
+    model: string = MODEL
   ): Promise<EpicGenerationResponse> {
     const prompt = this.buildEpicGenerationPrompt(requirements, context);
 
@@ -202,7 +197,7 @@ export class AIService {
     storyTitle: string,
     storyDescription: string,
     acceptanceCriteria: string[],
-    model: string = 'claude-3-5-haiku-20241022'
+    model: string = MODEL
   ): Promise<StoryValidationResponse> {
     const prompt = this.buildStoryValidationPrompt(
       storyTitle,
@@ -232,7 +227,7 @@ export class AIService {
   async analyzeDocument(
     documentText: string,
     analysisType: 'requirements' | 'stories' | 'epics' | 'general' = 'requirements',
-    model: string = 'claude-3-5-haiku-20241022'
+    model: string = MODEL
   ): Promise<DocumentAnalysisResponse> {
     const prompt = this.buildDocumentAnalysisPrompt(documentText, analysisType);
 
@@ -262,7 +257,7 @@ export class AIService {
     storyPoints: number | null,
     investAnalysis: any,
     spidrHints: any,
-    model: string = 'claude-3-5-sonnet-20241022'
+    model: string = MODEL
   ): Promise<StorySplitResponse> {
     const prompt = this.buildStorySplitPrompt(
       storyTitle,
@@ -294,7 +289,7 @@ export class AIService {
    */
   private async generate(request: AIGenerationRequest): Promise<AIGenerationResponse> {
     try {
-      const message = await this.anthropic.messages.create({
+      const completion = await openai.chat.completions.create({
         model: request.model,
         max_tokens: request.maxTokens || 2000,
         temperature: request.temperature || 0.7,
@@ -307,17 +302,17 @@ export class AIService {
       });
 
       // Extract text content from the response
-      const textContent = message.content.find(block => block.type === 'text');
-      if (!textContent || textContent.type !== 'text') {
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
         throw new Error('No text content in AI response');
       }
 
       return {
-        content: textContent.text,
+        content,
         usage: {
-          promptTokens: message.usage.input_tokens,
-          completionTokens: message.usage.output_tokens,
-          totalTokens: message.usage.input_tokens + message.usage.output_tokens,
+          promptTokens: completion.usage?.prompt_tokens || 0,
+          completionTokens: completion.usage?.completion_tokens || 0,
+          totalTokens: completion.usage?.total_tokens || 0,
         },
         model: request.model,
       };
