@@ -8,8 +8,8 @@ import { Toaster } from 'sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SynqForge - AI-Powered Project Management',
-  description: 'Intelligent project management with AI-generated stories and epics',
+  title: 'SynqForge — Turn Ideas into Sprint-Ready User Stories',
+  description: 'AI that turns requirements into sprint-ready user stories with acceptance criteria and estimates. Export to Word, Excel, or PDF.',
 }
 
 export default function RootLayout({
