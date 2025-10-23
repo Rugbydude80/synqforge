@@ -24,10 +24,10 @@ const publicApiRoutes = [
 ]
 
 // Routes that don't require subscription check (authenticated but no payment needed)
-const noSubscriptionCheckRoutes = [
-  '/settings/billing',
-  '/auth/payment-required',
-]
+// const noSubscriptionCheckRoutes = [
+//   '/settings/billing',
+//   '/auth/payment-required',
+// ]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -61,9 +61,9 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check if this route requires subscription validation
-    const needsSubscriptionCheck = !noSubscriptionCheckRoutes.some(route =>
-      pathname === route || pathname.startsWith(route)
-    )
+    // const needsSubscriptionCheck = !noSubscriptionCheckRoutes.some(route =>
+    //   pathname === route || pathname.startsWith(route)
+    // )
 
     // TEMPORARILY DISABLED: Subscription check causes timeouts with Neon in serverless environment
     // TODO: Re-enable with edge-compatible database client (@vercel/postgres or @neondatabase/serverless)
