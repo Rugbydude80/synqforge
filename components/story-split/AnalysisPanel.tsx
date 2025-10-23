@@ -14,13 +14,29 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({ analysis }: AnalysisPanelProps) {
   const { t } = useTranslation();
 
-  if (!analysis) return null;
+  if (!analysis) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <p>Loading analysis...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const investScore = analysis.invest.score;
   const investColor = investScore >= 4 ? 'default' : 'destructive';
 
   return (
-    <div className="overflow-y-auto space-y-4 pr-2">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('story.split.analysis.invest')}</CardTitle>
