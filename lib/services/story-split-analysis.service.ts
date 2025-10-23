@@ -37,7 +37,7 @@ export interface Story {
   id: string;
   title: string;
   description: string | null;
-  acceptanceCriteria: string | null;
+  acceptanceCriteria: string | string[] | null;
   storyPoints: number | null;
   status: string;
   parentId?: string | null;
@@ -155,7 +155,9 @@ export class StorySplitAnalysisService {
   }
 
   private checkTestable(story: Story, notes: string[]): boolean {
-    const ac = story.acceptanceCriteria || '';
+    const ac = Array.isArray(story.acceptanceCriteria) 
+      ? story.acceptanceCriteria.join('\n') 
+      : (story.acceptanceCriteria || '');
     const hasGivenWhenThen = /given|when|then/i.test(ac);
     const hasMultipleCriteria = ac.split('\n').filter(line => line.trim()).length >= 2;
     
