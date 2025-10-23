@@ -254,6 +254,14 @@ export const epics = pgTable(
     startDate: date('start_date'),
     targetDate: date('target_date'),
 
+    // Epic linkage for split epics
+    parentEpicId: varchar('parent_epic_id', { length: 36 }),
+    siblingEpicIds: json('sibling_epic_ids').$type<string[]>(),
+    
+    // Idempotency support
+    correlationKey: varchar('correlation_key', { length: 64 }),
+    requestId: varchar('request_id', { length: 36 }),
+
     // Aggregate fields (maintained by triggers)
     totalStories: integer('total_stories').notNull().default(0),
     completedStories: integer('completed_stories').notNull().default(0),
@@ -271,6 +279,9 @@ export const epics = pgTable(
     assigneeIdx: index('idx_epics_assignee').on(table.assignedTo),
     progressIdx: index('idx_epics_progress').on(table.progressPct),
     orgStatusIdx: index('idx_epics_org_status').on(table.organizationId, table.status),
+    parentEpicIdx: index('idx_epics_parent').on(table.parentEpicId),
+    correlationKeyIdx: uniqueIndex('idx_epics_correlation_key').on(table.correlationKey),
+    requestIdIdx: index('idx_epics_request_id').on(table.requestId),
   })
 )
 
@@ -300,6 +311,16 @@ export const stories = pgTable(
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     assigneeId: varchar('assignee_id', { length: 36 }),
 
+    // Idempotency support
+    correlationKey: varchar('correlation_key', { length: 64 }),
+    requestId: varchar('request_id', { length: 36 }),
+    capabilityKey: varchar('capability_key', { length: 100 }),
+
+    // Enhanced AC tracking
+    technicalHints: json('technical_hints').$type<string[]>(),
+    manualReviewRequired: boolean('manual_review_required').default(false),
+    readyForSprint: boolean('ready_for_sprint').default(false),
+
     // Completion tracking
     doneAt: timestamp('done_at'),
 
@@ -316,6 +337,9 @@ export const stories = pgTable(
     sourceDocIdx: index('idx_stories_source_doc').on(table.sourceDocumentId),
     doneAtIdx: index('idx_stories_done_at').on(table.doneAt),
     sprintDoneIdx: index('idx_stories_sprint_done').on(table.organizationId, table.doneAt, table.status),
+    correlationKeyIdx: uniqueIndex('idx_stories_correlation_key').on(table.correlationKey),
+    requestIdIdx: index('idx_stories_request_id').on(table.requestId),
+    capabilityKeyIdx: index('idx_stories_capability_key').on(table.capabilityKey),
   })
 )
 
