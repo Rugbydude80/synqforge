@@ -95,6 +95,28 @@ export interface DocumentAnalysisResponse {
   model: string;
 }
 
+export interface StorySplitSuggestion {
+  title: string;
+  personaGoal: string;
+  description: string;
+  acceptanceCriteria: string[];
+  estimatePoints: number;
+  providesUserValue: boolean;
+  reasoning: string;
+}
+
+export interface StorySplitResponse {
+  suggestions: StorySplitSuggestion[];
+  splitStrategy: string;
+  reasoning: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+}
+
 export class AIService {
   private anthropic: Anthropic;
   private isConfigured: boolean = false;
@@ -225,6 +247,43 @@ export class AIService {
 
     return {
       analysis,
+      usage: response.usage,
+      model: response.model,
+    };
+  }
+
+  /**
+   * Suggest how to split a large story into smaller ones
+   */
+  async suggestStorySplit(
+    storyTitle: string,
+    storyDescription: string,
+    acceptanceCriteria: string[],
+    storyPoints: number | null,
+    investAnalysis: any,
+    spidrHints: any,
+    model: string = 'claude-3-5-sonnet-20241022'
+  ): Promise<StorySplitResponse> {
+    const prompt = this.buildStorySplitPrompt(
+      storyTitle,
+      storyDescription,
+      acceptanceCriteria,
+      storyPoints,
+      investAnalysis,
+      spidrHints
+    );
+
+    const response = await this.generate({
+      model,
+      prompt,
+      maxTokens: 4000,
+      temperature: 0.7,
+    });
+
+    const splitResult = this.parseStorySplitResponse(response.content);
+
+    return {
+      ...splitResult,
       usage: response.usage,
       model: response.model,
     };
@@ -428,6 +487,72 @@ Format as JSON:
   }
 
   /**
+   * Build story split prompt
+   */
+  private buildStorySplitPrompt(
+    storyTitle: string,
+    storyDescription: string,
+    acceptanceCriteria: string[],
+    storyPoints: number | null,
+    investAnalysis: any,
+    spidrHints: any
+  ): string {
+    const acText = acceptanceCriteria.length > 0 ? acceptanceCriteria.join('\n- ') : 'None provided';
+    const pointsText = storyPoints !== null ? `${storyPoints} points` : 'Not estimated';
+    
+    return `You are an expert agile coach specializing in story splitting using INVEST principles and SPIDR patterns.
+
+**Original Story to Split:**
+Title: ${storyTitle}
+Description: ${storyDescription}
+Story Points: ${pointsText}
+Acceptance Criteria:
+- ${acText}
+
+**INVEST Analysis:**
+${JSON.stringify(investAnalysis, null, 2)}
+
+**SPIDR Opportunities:**
+${JSON.stringify(spidrHints, null, 2)}
+
+**Your Task:**
+Split this story into 2-5 smaller, independently valuable stories. Each child story MUST:
+1. Follow the INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable)
+2. Be deliverable in a single sprint (1-5 story points)
+3. Provide clear user value on its own
+4. Have specific, testable acceptance criteria (minimum 2)
+5. Include a persona-goal statement ("As a [persona], I want [goal] so that [benefit]")
+
+**Splitting Strategy Guidance:**
+- Consider the SPIDR hints provided (Spike, Paths, Interfaces, Data, Rules)
+- Ensure each child story is truly independent and can be delivered separately
+- Avoid creating technical tasks - each story should provide user-visible value
+- Consider vertical slicing (end-to-end features) over horizontal slicing (layers)
+
+**Format your response as JSON:**
+{
+  "splitStrategy": "Brief explanation of the splitting approach used (e.g., 'Split by user paths', 'Progressive interface implementation', etc.)",
+  "reasoning": "Why this split makes sense and how it addresses the INVEST/SPIDR analysis",
+  "suggestions": [
+    {
+      "title": "Concise story title",
+      "personaGoal": "As a [persona], I want [goal] so that [benefit]",
+      "description": "Detailed description of this child story (minimum 50 characters)",
+      "acceptanceCriteria": [
+        "Given... When... Then... (specific, testable criterion)",
+        "Another specific acceptance criterion"
+      ],
+      "estimatePoints": 3,
+      "providesUserValue": true,
+      "reasoning": "Why this is a valuable, independent story"
+    }
+  ]
+}
+
+Generate 2-5 child stories that together cover the scope of the original story.`;
+  }
+
+  /**
    * Parse story generation response
    */
   private parseStoryGenerationResponse(content: string): StoryGenerationResult[] {
@@ -517,6 +642,73 @@ Format as JSON:
     } catch (error) {
       console.error('Failed to parse document analysis response:', error);
       throw new Error('Failed to parse document analysis response');
+    }
+  }
+
+  /**
+   * Parse story split response
+   */
+  private parseStorySplitResponse(content: string): { suggestions: StorySplitSuggestion[]; splitStrategy: string; reasoning: string } {
+    try {
+      // Clean up the content - remove markdown code blocks if present
+      let cleanContent = content.trim();
+      
+      // Remove markdown code fences
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.substring(7);
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.substring(3);
+      }
+      
+      if (cleanContent.endsWith('```')) {
+        cleanContent = cleanContent.substring(0, cleanContent.length - 3);
+      }
+      
+      cleanContent = cleanContent.trim();
+      
+      const parsed = JSON.parse(cleanContent);
+      
+      // Validate the response structure
+      if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
+        console.error('Invalid story split response structure:', parsed);
+        throw new Error('Response does not contain suggestions array');
+      }
+      
+      // Validate each suggestion has required fields
+      const validSuggestions = parsed.suggestions.filter((suggestion: any) => {
+        const isValid = 
+          suggestion.title && 
+          suggestion.personaGoal && 
+          suggestion.description && 
+          Array.isArray(suggestion.acceptanceCriteria) &&
+          suggestion.acceptanceCriteria.length >= 2 &&
+          typeof suggestion.estimatePoints === 'number' &&
+          suggestion.estimatePoints >= 1 &&
+          suggestion.estimatePoints <= 5 &&
+          typeof suggestion.providesUserValue === 'boolean';
+        
+        if (!isValid) {
+          console.warn('Invalid story split suggestion:', suggestion);
+        }
+        
+        return isValid;
+      });
+      
+      if (validSuggestions.length === 0) {
+        console.error('No valid split suggestions found in response');
+        console.error('Raw content:', content);
+        throw new Error('No valid split suggestions in AI response');
+      }
+      
+      return {
+        suggestions: validSuggestions,
+        splitStrategy: parsed.splitStrategy || 'AI-suggested split',
+        reasoning: parsed.reasoning || 'AI-generated split suggestions',
+      };
+    } catch (error) {
+      console.error('Failed to parse story split response:', error);
+      console.error('Raw content:', content);
+      throw new Error('Failed to parse story split response');
     }
   }
 }

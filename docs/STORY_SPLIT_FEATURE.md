@@ -170,13 +170,67 @@ To add translations:
 - Screen reader announcements
 - Visible focus indicators
 
+## AI-Powered Split Suggestions
+
+The feature now includes **AI-powered split suggestions** using Claude Sonnet 3.5. When you click "Suggest Splits":
+
+1. The system analyzes the story using INVEST/SPIDR heuristics
+2. Sends the analysis to Claude AI with context about:
+   - Original story title, description, and acceptance criteria
+   - INVEST compliance scores
+   - Detected SPIDR opportunities
+3. Claude generates 2-5 child story suggestions with:
+   - User-focused titles
+   - Persona-goal statements
+   - Detailed descriptions
+   - Acceptance criteria (minimum 2 per story)
+   - Story point estimates (1-5)
+   - User value assessment
+
+### AI Split API
+
+**Endpoint:** `GET /api/stories/:id/ai-split-suggestions`
+
+**Response:**
+```json
+{
+  "success": true,
+  "suggestions": [
+    {
+      "title": "Story title",
+      "personaGoal": "As a [persona], I want [goal] so that [benefit]",
+      "description": "Detailed description...",
+      "acceptanceCriteria": ["Criterion 1", "Criterion 2"],
+      "estimatePoints": 3,
+      "providesUserValue": true,
+      "reasoning": "Why this is a valuable story"
+    }
+  ],
+  "splitStrategy": "Split by user paths",
+  "reasoning": "Explanation of the splitting approach",
+  "usage": {
+    "promptTokens": 1200,
+    "completionTokens": 800,
+    "totalTokens": 2000
+  }
+}
+```
+
+### Fair Usage
+
+AI split suggestions count against your organization's AI token pool:
+- Estimated cost: ~2,500 tokens per split operation
+- Respects rate limits (10 AI requests per minute)
+- Blocked if organization exceeds monthly AI token limit
+- Shows upgrade prompt for Free tier users
+
 ## Future Enhancements
 
-- AI-powered "Suggest splits" using SPIDR patterns
 - Batch validation UI improvements
 - Undo/rollback functionality
 - Split history visualization
 - Integration with sprint planning
+- Learning from user edits to improve AI suggestions
 
 ## Testing
 
