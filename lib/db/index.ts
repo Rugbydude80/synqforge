@@ -16,9 +16,11 @@ function createClient(): Sql {
   }
 
   return postgres(process.env.DATABASE_URL, {
-    max: 10,
-    idle_timeout: 20,
-    max_lifetime: 60 * 30, // 30 minutes
+    max: 1, // Use 1 connection for Edge/Serverless environments
+    idle_timeout: 0, // Disable idle timeout
+    max_lifetime: 0, // Disable max lifetime
+    connect_timeout: 10, // 10 seconds connection timeout
+    prepare: false, // Disable prepared statements for Neon compatibility
   })
 }
 
