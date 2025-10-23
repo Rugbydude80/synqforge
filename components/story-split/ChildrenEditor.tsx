@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Loader2, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { ChildRowEditor } from './ChildRowEditor';
 import type { ChildStoryInput } from '@/lib/services/story-split-validation.service';
 import { storySplitValidationService } from '@/lib/services/story-split-validation.service';
 import { useTranslation } from '@/lib/i18n';
 import type { StorySplitAnalysis } from '@/lib/services/story-split-analysis.service';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 interface ChildrenEditorProps {
   childStories: ChildStoryInput[];
@@ -17,6 +19,7 @@ interface ChildrenEditorProps {
   disabled?: boolean;
   analysis?: StorySplitAnalysis;
   storyId: string;
+  parentAcceptanceCriteria?: string[];
 }
 
 export function ChildrenEditor({
@@ -26,21 +29,31 @@ export function ChildrenEditor({
   disabled,
   analysis,
   storyId,
+  parentAcceptanceCriteria,
 }: ChildrenEditorProps) {
   const { t } = useTranslation();
   const [validationResults, setValidationResults] = useState<any[]>([]);
+  const [coverageAnalysis, setCoverageAnalysis] = useState<any>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   useEffect(() => {
     if (childStories.length === 0) {
       onValidationChange(false);
+      setCoverageAnalysis(null);
       return;
     }
 
-    const validation = storySplitValidationService.validateAllChildren(childStories);
+    const validation = storySplitValidationService.validateAllChildren(
+      childStories,
+      parentAcceptanceCriteria
+    );
     setValidationResults(validation.results);
-    onValidationChange(validation.allValid);
-  }, [childStories, onValidationChange]);
+    setCoverageAnalysis(validation.coverage);
+    
+    // Consider coverage in validation - must have 100% coverage to proceed
+    const hasCoverage = validation.coverage.coveragePercentage === 100;
+    onValidationChange(validation.allValid && hasCoverage);
+  }, [childStories, parentAcceptanceCriteria, onValidationChange]);
 
   const addChild = () => {
     onChange([
@@ -131,6 +144,39 @@ export function ChildrenEditor({
 
   return (
     <div className="space-y-4">
+      {/* Coverage Analysis Banner */}
+      {coverageAnalysis && parentAcceptanceCriteria && parentAcceptanceCriteria.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            {coverageAnalysis.coveragePercentage === 100 && coverageAnalysis.duplicatedFunctionality.length === 0 ? (
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            ) : coverageAnalysis.coveragePercentage < 100 ? (
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+            ) : (
+              <Info className="h-5 w-5 text-blue-500" />
+            )}
+            <span className="text-sm font-medium">
+              Coverage: {coverageAnalysis.coveragePercentage}%
+            </span>
+            <Progress value={coverageAnalysis.coveragePercentage} className="flex-1 h-2" />
+          </div>
+          
+          {coverageAnalysis.recommendations.length > 0 && (
+            <Alert variant={coverageAnalysis.coveragePercentage === 100 ? "default" : "destructive"}>
+              <AlertDescription>
+                <div className="space-y-1">
+                  {coverageAnalysis.recommendations.map((rec, idx) => (
+                    <div key={idx} className="text-sm">
+                      {rec}
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between sticky top-0 bg-background pb-4 z-10">
         <h3 className="font-semibold">
           {t('story.split.children.title')} ({childStories.length})

@@ -70,7 +70,10 @@ async function getSplitAnalysis(
     });
 
     console.log(`[split-analysis] Returning success response`);
-    return NextResponse.json({ analysis });
+    return NextResponse.json({ 
+      analysis,
+      parentAcceptanceCriteria: storyForAnalysis.acceptanceCriteria || []
+    });
   } catch (error) {
     console.error(`[split-analysis] ===== ERROR CAUGHT =====`);
     console.error(`[split-analysis] Story ID: ${storyId}`);

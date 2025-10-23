@@ -36,6 +36,7 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const analysis = data?.analysis;
+  const parentAcceptanceCriteria = data?.parentAcceptanceCriteria || [];
   const isBlocked = analysis?.blockingReasons && analysis.blockingReasons.length > 0;
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
               disabled={isBlocked}
               analysis={analysis}
               storyId={storyId}
+              parentAcceptanceCriteria={parentAcceptanceCriteria}
             />
           </div>
         </div>

@@ -9,7 +9,10 @@ export interface SplitStoryRequest {
 }
 
 export const storySplitApi = {
-  getAnalysis: async (storyId: string): Promise<{ analysis: StorySplitAnalysis }> => {
+  getAnalysis: async (storyId: string): Promise<{ 
+    analysis: StorySplitAnalysis; 
+    parentAcceptanceCriteria: string[];
+  }> => {
     const response = await fetch(`/api/stories/${storyId}/split-analysis`, {
       credentials: 'include',
     });

@@ -518,11 +518,17 @@ Split this story into 2-5 smaller, independently valuable stories. Each child st
 4. Have specific, testable acceptance criteria (minimum 2)
 5. Include a persona-goal statement ("As a [persona], I want [goal] so that [benefit]")
 
+**CRITICAL REQUIREMENTS:**
+✅ **100% Coverage**: Every acceptance criterion from the parent story MUST be addressed by at least one child story
+✅ **Zero Duplication**: Each piece of functionality should appear in ONLY ONE child story
+✅ **No Gaps**: All functionality from the parent description must be included in the children
+
 **Splitting Strategy Guidance:**
 - Consider the SPIDR hints provided (Spike, Paths, Interfaces, Data, Rules)
 - Ensure each child story is truly independent and can be delivered separately
 - Avoid creating technical tasks - each story should provide user-visible value
 - Consider vertical slicing (end-to-end features) over horizontal slicing (layers)
+- Map each parent AC to exactly ONE child story - no overlap, no missing pieces
 
 **Format your response as JSON:**
 {
