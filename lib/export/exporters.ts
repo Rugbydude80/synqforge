@@ -249,14 +249,32 @@ export function exportProjectsToPdf(projects: ExportProject[]): Promise<Buffer> 
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
+    // Helper function to add watermark to current page
+    const addWatermark = () => {
+      doc.save()
+      doc.rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+      doc.fontSize(60)
+        .fillColor('#a855f7', 0.1) // Brand purple with low opacity
+        .text('SynqForge', 0, doc.page.height / 2 - 30, {
+          align: 'center',
+          width: doc.page.width,
+        })
+      doc.restore()
+      doc.fillColor('#000000') // Reset to black for content
+    }
+
     // Title
+    addWatermark()
     doc.fontSize(24).text('Projects Export', { align: 'center' })
     doc.fontSize(12).text(`Generated on ${new Date().toLocaleDateString()}`, { align: 'center' })
     doc.moveDown(2)
 
     // Projects
     projects.forEach((project, index) => {
-      if (index > 0) doc.addPage()
+      if (index > 0) {
+        doc.addPage()
+        addWatermark()
+      }
 
       doc.fontSize(18).text(project.name, { underline: true })
       doc.moveDown(0.5)
@@ -283,14 +301,32 @@ export function exportStoriesToPdf(stories: ExportStory[]): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
+    // Helper function to add watermark to current page
+    const addWatermark = () => {
+      doc.save()
+      doc.rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+      doc.fontSize(60)
+        .fillColor('#a855f7', 0.1) // Brand purple with low opacity
+        .text('SynqForge', 0, doc.page.height / 2 - 30, {
+          align: 'center',
+          width: doc.page.width,
+        })
+      doc.restore()
+      doc.fillColor('#000000') // Reset to black for content
+    }
+
     // Title
+    addWatermark()
     doc.fontSize(24).text('Stories Export', { align: 'center' })
     doc.fontSize(12).text(`Generated on ${new Date().toLocaleDateString()}`, { align: 'center' })
     doc.moveDown(2)
 
     // Stories
     stories.forEach((story, index) => {
-      if (index > 0 && index % 3 === 0) doc.addPage()
+      if (index > 0 && index % 3 === 0) {
+        doc.addPage()
+        addWatermark()
+      }
 
       doc.fontSize(16).text(story.title, { underline: true })
       doc.moveDown(0.5)
