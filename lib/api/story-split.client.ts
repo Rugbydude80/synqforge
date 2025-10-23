@@ -10,7 +10,9 @@ export interface SplitStoryRequest {
 
 export const storySplitApi = {
   getAnalysis: async (storyId: string): Promise<{ analysis: StorySplitAnalysis }> => {
-    const response = await fetch(`/api/stories/${storyId}/split-analysis`);
+    const response = await fetch(`/api/stories/${storyId}/split-analysis`, {
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch analysis');
     return response.json();
   },
@@ -20,6 +22,7 @@ export const storySplitApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
+      credentials: 'include',
     });
     if (!response.ok) {
       const error = await response.json();
