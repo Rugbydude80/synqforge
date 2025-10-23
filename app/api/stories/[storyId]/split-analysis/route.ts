@@ -58,7 +58,9 @@ async function getSplitAnalysis(
       criteriaCount: storyForAnalysis.acceptanceCriteria?.length || 0,
     });
 
+    console.log(`[split-analysis] About to call analyzeStoryForSplit...`);
     const analysis = storySplitAnalysisService.analyzeStoryForSplit(storyForAnalysis);
+    console.log(`[split-analysis] analyzeStoryForSplit returned successfully`);
     
     console.log(`[split-analysis] Analysis completed:`, {
       storyId,
@@ -67,23 +69,29 @@ async function getSplitAnalysis(
       blockingReasonsCount: analysis.blockingReasons.length,
     });
 
+    console.log(`[split-analysis] Returning success response`);
     return NextResponse.json({ analysis });
   } catch (error) {
-    console.error(`[split-analysis] ERROR for story ${storyId}:`, error);
-    console.error(`[split-analysis] Error name:`, error instanceof Error ? error.name : 'Unknown');
-    console.error(`[split-analysis] Error message:`, error instanceof Error ? error.message : String(error));
-    console.error(`[split-analysis] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    console.error(`[split-analysis] ===== ERROR CAUGHT =====`);
+    console.error(`[split-analysis] Story ID: ${storyId}`);
+    console.error(`[split-analysis] Error type: ${typeof error}`);
+    console.error(`[split-analysis] Error instanceof Error: ${error instanceof Error}`);
+    console.error(`[split-analysis] Error:`, error);
+    
+    if (error instanceof Error) {
+      console.error(`[split-analysis] Error.name: ${error.name}`);
+      console.error(`[split-analysis] Error.message: ${error.message}`);
+      console.error(`[split-analysis] Error.stack:`, error.stack);
+    }
     
     // Return detailed error for debugging
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Analysis failed',
-        debug: {
-          errorName: error instanceof Error ? error.name : 'Unknown',
-          errorMessage: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : 'No stack trace',
-          storyId,
-        }
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: typeof error,
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        storyId,
       },
       { status: 500 }
     );
