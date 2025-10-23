@@ -28,15 +28,23 @@ async function getSplitAnalysis(
 
     // Ensure acceptanceCriteria is in the right format (array or null)
     let acceptanceCriteria: string[] | null = null;
-    if (typeof story.acceptanceCriteria === 'string') {
+    const rawCriteria = story.acceptanceCriteria;
+    
+    if (typeof rawCriteria === 'string') {
+      // Try to parse as JSON first
       try {
-        acceptanceCriteria = JSON.parse(story.acceptanceCriteria);
+        const parsed = JSON.parse(rawCriteria);
+        acceptanceCriteria = Array.isArray(parsed) ? parsed : null;
       } catch {
-        // If it's a plain string, split by newlines
-        acceptanceCriteria = story.acceptanceCriteria.split('\n').filter(line => line.trim());
+        // If parsing fails, it's a plain string - split by newlines
+        // Type assertion needed due to TypeScript control flow in catch blocks
+        const criteriaStr = rawCriteria as string;
+        acceptanceCriteria = criteriaStr.split('\n').filter(line => line.trim()).length > 0
+          ? criteriaStr.split('\n').filter(line => line.trim())
+          : null;
       }
-    } else if (Array.isArray(story.acceptanceCriteria)) {
-      acceptanceCriteria = story.acceptanceCriteria;
+    } else if (Array.isArray(rawCriteria)) {
+      acceptanceCriteria = rawCriteria;
     }
 
     const storyForAnalysis = {
