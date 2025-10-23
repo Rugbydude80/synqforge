@@ -4,9 +4,10 @@
  */
 
 export function useFeatureFlag(flagKey: string): boolean {
-  // For now, enable story splitting feature by default in development
+  // For now, enable story splitting feature via environment variable
   if (flagKey === 'stories.split_button.enabled') {
-    return process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_STORY_SPLIT === 'true';
+    // Use only NEXT_PUBLIC_ env var to avoid hydration mismatches
+    return process.env.NEXT_PUBLIC_ENABLE_STORY_SPLIT === 'true';
   }
   
   return false;
