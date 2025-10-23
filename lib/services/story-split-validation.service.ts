@@ -25,6 +25,24 @@ export interface ChildValidationResult {
   warnings: string[];
 }
 
+export interface CoverageAnalysis {
+  coveragePercentage: number;
+  parentCriteria: string[];
+  coveredCriteria: string[];
+  uncoveredCriteria: string[];
+  duplicatedFunctionality: Array<{
+    criterionIndex: number;
+    coveredByStories: number[];
+  }>;
+  recommendations: string[];
+}
+
+export interface AllChildrenValidationResult {
+  allValid: boolean;
+  results: ChildValidationResult[];
+  coverage: CoverageAnalysis;
+}
+
 export class StorySplitValidationService {
   private readonly SMALL_THRESHOLD = 5;
 
@@ -143,14 +161,146 @@ export class StorySplitValidationService {
     return true;
   }
 
-  validateAllChildren(children: ChildStoryInput[]): {
-    allValid: boolean;
-    results: ChildValidationResult[];
-  } {
+  validateAllChildren(
+    children: ChildStoryInput[],
+    parentAcceptanceCriteria?: string[]
+  ): AllChildrenValidationResult {
     const results = children.map(child => this.validateChild(child, children));
     const allValid = results.every(r => r.valid);
 
-    return { allValid, results };
+    const coverage = parentAcceptanceCriteria 
+      ? this.analyzeCoverage(children, parentAcceptanceCriteria)
+      : this.createEmptyCoverage();
+
+    return { allValid, results, coverage };
+  }
+
+  private createEmptyCoverage(): CoverageAnalysis {
+    return {
+      coveragePercentage: 100,
+      parentCriteria: [],
+      coveredCriteria: [],
+      uncoveredCriteria: [],
+      duplicatedFunctionality: [],
+      recommendations: []
+    };
+  }
+
+  /**
+   * Analyze if child stories cover all parent functionality without duplication
+   */
+  private analyzeCoverage(
+    children: ChildStoryInput[],
+    parentCriteria: string[]
+  ): CoverageAnalysis {
+    const recommendations: string[] = [];
+    
+    // Track which parent criteria are covered by which child stories
+    const criteriaMap: Map<number, Set<number>> = new Map();
+    
+    parentCriteria.forEach((parentAC, parentIdx) => {
+      criteriaMap.set(parentIdx, new Set());
+      
+      // Check each child story's ACs against this parent AC
+      children.forEach((child, childIdx) => {
+        child.acceptanceCriteria.forEach(childAC => {
+          if (this.criteriaMatch(parentAC, childAC)) {
+            criteriaMap.get(parentIdx)!.add(childIdx);
+          }
+        });
+      });
+    });
+
+    // Identify covered and uncovered criteria
+    const coveredCriteria: string[] = [];
+    const uncoveredCriteria: string[] = [];
+    const duplicatedFunctionality: Array<{ criterionIndex: number; coveredByStories: number[] }> = [];
+
+    parentCriteria.forEach((criterion, idx) => {
+      const coveringStories = Array.from(criteriaMap.get(idx) || []);
+      
+      if (coveringStories.length === 0) {
+        uncoveredCriteria.push(criterion);
+        recommendations.push(`Missing: "${criterion.substring(0, 50)}..." is not covered by any child story`);
+      } else if (coveringStories.length === 1) {
+        coveredCriteria.push(criterion);
+      } else {
+        // Multiple stories cover the same criterion - potential duplication
+        coveredCriteria.push(criterion);
+        duplicatedFunctionality.push({
+          criterionIndex: idx,
+          coveredByStories: coveringStories
+        });
+        recommendations.push(
+          `Duplication: "${criterion.substring(0, 50)}..." is covered by ${coveringStories.length} stories (${coveringStories.map(i => i + 1).join(', ')})`
+        );
+      }
+    });
+
+    // Calculate coverage percentage
+    const coveragePercentage = parentCriteria.length > 0
+      ? Math.round((coveredCriteria.length / parentCriteria.length) * 100)
+      : 100;
+
+    // Add summary recommendations
+    if (uncoveredCriteria.length > 0) {
+      recommendations.unshift(
+        `⚠️ Coverage: ${coveragePercentage}% - ${uncoveredCriteria.length} criteria not covered`
+      );
+    } else if (duplicatedFunctionality.length > 0) {
+      recommendations.unshift(
+        `⚠️ Found ${duplicatedFunctionality.length} potential duplications across child stories`
+      );
+    } else {
+      recommendations.unshift('✅ 100% coverage with no duplication detected');
+    }
+
+    metrics.increment('story_split.coverage_analysis', 1, {
+      coverage: coveragePercentage.toString(),
+      hasDuplication: (duplicatedFunctionality.length > 0).toString(),
+    });
+
+    return {
+      coveragePercentage,
+      parentCriteria,
+      coveredCriteria,
+      uncoveredCriteria,
+      duplicatedFunctionality,
+      recommendations
+    };
+  }
+
+  /**
+   * Check if a child AC addresses/covers a parent AC
+   * Uses semantic matching (keywords) rather than exact match
+   */
+  private criteriaMatch(parentAC: string, childAC: string): boolean {
+    const normalize = (text: string) => 
+      text.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const parentNorm = normalize(parentAC);
+    const childNorm = normalize(childAC);
+
+    // Extract significant keywords (4+ characters)
+    const getKeywords = (text: string) =>
+      text.split(' ')
+        .filter(word => word.length >= 4)
+        .filter(word => !['given', 'when', 'then', 'should', 'must', 'will', 'that', 'this', 'with', 'from'].includes(word));
+
+    const parentKeywords = getKeywords(parentNorm);
+    const childKeywords = getKeywords(childNorm);
+
+    // Consider it a match if at least 50% of parent keywords appear in child
+    if (parentKeywords.length === 0) return false;
+
+    const matchingKeywords = parentKeywords.filter(kw => 
+      childKeywords.some(ck => ck.includes(kw) || kw.includes(ck))
+    );
+
+    return matchingKeywords.length / parentKeywords.length >= 0.5;
   }
 }
 
