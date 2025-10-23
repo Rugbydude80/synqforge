@@ -1,6 +1,7 @@
 import { db, generateId } from '@/lib/db'
 import { stories, users, epics, projects, activities } from '@/lib/db/schema'
 import { eq, and, desc, sql, count } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import {
   CreateStoryInput,
   UpdateStoryInput,
@@ -35,6 +36,10 @@ export class StoriesRepository {
       }
     }
 
+    // Create aliases for joining users table twice (creator and assignee)
+    const creator = alias(users, 'creator')
+    const assignee = alias(users, 'assignee')
+
     const result = await db
       .select({
         id: stories.id,
@@ -57,15 +62,15 @@ export class StoriesRepository {
         createdAt: stories.createdAt,
         updatedAt: stories.updatedAt,
         // Creator info
-        creatorName: users.name,
-        creatorEmail: users.email,
+        creatorName: creator.name,
+        creatorEmail: creator.email,
         // Assignee info
-        assigneeName: users.name,
-        assigneeEmail: users.email,
+        assigneeName: assignee.name,
+        assigneeEmail: assignee.email,
       })
       .from(stories)
-      .leftJoin(users, eq(stories.createdBy, users.id))
-      .leftJoin(users, eq(stories.assigneeId, users.id))
+      .leftJoin(creator, eq(stories.createdBy, creator.id))
+      .leftJoin(assignee, eq(stories.assigneeId, assignee.id))
       .where(and(...conditions))
       .orderBy(desc(stories.priority))
 
@@ -76,6 +81,10 @@ export class StoriesRepository {
    * Get single story by ID
    */
   async getStoryById(storyId: string) {
+    // Create aliases for joining users table twice (creator and assignee)
+    const creator = alias(users, 'creator')
+    const assignee = alias(users, 'assignee')
+    
     const [story] = await db
       .select({
         id: stories.id,
@@ -98,11 +107,11 @@ export class StoriesRepository {
         createdAt: stories.createdAt,
         updatedAt: stories.updatedAt,
         // Creator info
-        creatorName: users.name,
-        creatorEmail: users.email,
+        creatorName: creator.name,
+        creatorEmail: creator.email,
         // Assignee info
-        assigneeName: users.name,
-        assigneeEmail: users.email,
+        assigneeName: assignee.name,
+        assigneeEmail: assignee.email,
         // Epic info
         epicTitle: epics.title,
         epicStatus: epics.status,
@@ -111,8 +120,8 @@ export class StoriesRepository {
         projectSlug: projects.slug,
       })
       .from(stories)
-      .leftJoin(users, eq(stories.createdBy, users.id))
-      .leftJoin(users, eq(stories.assigneeId, users.id))
+      .leftJoin(creator, eq(stories.createdBy, creator.id))
+      .leftJoin(assignee, eq(stories.assigneeId, assignee.id))
       .leftJoin(epics, eq(stories.epicId, epics.id))
       .leftJoin(projects, eq(stories.projectId, projects.id))
       .where(eq(stories.id, storyId))
