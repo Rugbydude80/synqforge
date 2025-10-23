@@ -100,10 +100,6 @@ export function BillingContent({ organizationId }: BillingContentProps) {
   const [error, setError] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
 
-  useEffect(() => {
-    fetchUsage()
-  }, [organizationId])
-
   const fetchUsage = async () => {
     try {
       setLoading(true)
@@ -122,6 +118,11 @@ export function BillingContent({ organizationId }: BillingContentProps) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchUsage()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId])
 
   const openCustomerPortal = async () => {
     try {

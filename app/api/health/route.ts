@@ -44,7 +44,7 @@ export async function GET() {
   try {
     await db.execute(sql`SELECT 1`)
     health.services.database = 'ok'
-  } catch (_error) {
+  } catch {
     health.services.database = 'error'
     health.status = 'error'
   }
@@ -61,7 +61,7 @@ export async function GET() {
     } else {
       health.services.redis = 'not-configured'
     }
-  } catch (_error) {
+  } catch {
     health.services.redis = 'error'
     health.status = 'degraded'
   }

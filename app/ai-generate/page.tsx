@@ -79,6 +79,7 @@ export default function AIGeneratePage() {
       }
     }
     fetchProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {

@@ -59,8 +59,7 @@ async function decomposeHandler(req: NextRequest, context: AuthContext) {
     // Log usage
     await incrementTokenUsage(
       context.user.organizationId,
-      response.usage.totalTokens,
-      'decomposition'
+      response.usage.totalTokens
     );
 
     logger.info('Decomposition completed', {

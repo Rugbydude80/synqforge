@@ -58,8 +58,7 @@ async function generateFromCapabilityHandler(req: NextRequest, context: AuthCont
     // Log usage
     await incrementTokenUsage(
       context.user.organizationId,
-      response.usage.totalTokens,
-      'story-generation'
+      response.usage.totalTokens
     );
 
     logger.info('Story generated from capability', {

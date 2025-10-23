@@ -5,7 +5,7 @@
 
 import { createHash } from 'crypto';
 import { logger } from '@/lib/observability/logger';
-import { metrics, METRICS } from '@/lib/observability/metrics';
+import { metrics } from '@/lib/observability/metrics';
 import { CorrelationKey } from './types';
 
 export class CorrelationService {
