@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     // Update all expired organizations to inactive status
     const orgIds = expiredOrgs.map(org => org.id)
     
-    const result = await db
+    await db
       .update(organizations)
       .set({
         subscriptionStatus: 'inactive',
