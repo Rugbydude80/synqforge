@@ -58,7 +58,7 @@ export class AIObservabilityService {
     metrics.increment('autofix.applied_counts', 1, { type });
 
     if (!this.validationMetrics.autofix_applied_counts) {
-      this.validationMetrics.autofix_applied_counts = {};
+      this.validationMetrics.autofix_applied_counts = {} as Record<string, number>;
     }
     this.validationMetrics.autofix_applied_counts[type] = 
       (this.validationMetrics.autofix_applied_counts[type] || 0) + 1;
@@ -71,7 +71,7 @@ export class AIObservabilityService {
     metrics.increment('validation.fail_reason', 1, { reason });
 
     if (!this.validationMetrics.validation_fail_reasons) {
-      this.validationMetrics.validation_fail_reasons = {};
+      this.validationMetrics.validation_fail_reasons = {} as Record<string, number>;
     }
     this.validationMetrics.validation_fail_reasons[reason] = 
       (this.validationMetrics.validation_fail_reasons[reason] || 0) + 1;
@@ -123,8 +123,8 @@ export class AIObservabilityService {
   reset(): void {
     this.decompositionMetrics = {};
     this.validationMetrics = {
-      autofix_applied_counts: {},
-      validation_fail_reasons: {},
+      autofix_applied_counts: {} as Record<string, number>,
+      validation_fail_reasons: {} as Record<string, number>,
       interactive_flag_mismatch_rate: 0,
     };
     this.idempotencyMetrics = {
