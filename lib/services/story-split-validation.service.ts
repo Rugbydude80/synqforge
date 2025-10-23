@@ -104,7 +104,6 @@ export class StorySplitValidationService {
 
   private detectCoupling(child1: ChildStoryInput, child2: ChildStoryInput): boolean {
     const desc1 = child1.description.toLowerCase();
-    const desc2 = child2.description.toLowerCase();
     const title2 = child2.title.toLowerCase();
 
     const keywords = title2.split(' ').filter(w => w.length > 4);

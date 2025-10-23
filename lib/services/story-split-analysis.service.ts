@@ -40,7 +40,7 @@ export interface Story {
   acceptanceCriteria: string | null;
   storyPoints: number | null;
   status: string;
-  parentId: string | null;
+  parentId?: string | null;
   isEpic?: boolean;
 }
 
