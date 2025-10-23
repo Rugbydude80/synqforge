@@ -92,10 +92,14 @@ export class StorySplitAnalysisService {
       };
     } catch (error) {
       try {
-        logger.error('Story split analysis failed', {
-          storyId: story.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        logger.error(
+          'Story split analysis failed',
+          error instanceof Error ? error : undefined,
+          {
+            storyId: story.id,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          }
+        );
       } catch {
         console.error('Logger error in catch block');
       }
