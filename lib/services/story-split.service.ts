@@ -51,7 +51,6 @@ export class StorySplitService {
           await tx
             .update(stories)
             .set({
-              // @ts-expect-error - isEpic not in current schema
               isEpic: true,
               status: 'backlog',
               updatedAt: new Date(),
@@ -70,20 +69,20 @@ export class StorySplitService {
             .insert(stories)
             .values({
               id: childId,
+              organizationId: parentStory.organizationId,
               projectId: parentStory.projectId,
               epicId: payload.convertParentToEpic ? parentStoryId : parentStory.epicId,
-              // @ts-expect-error - parentId not in current schema
               parentId: payload.convertParentToEpic ? parentStoryId : null,
-              // @ts-expect-error - splitFromId not in current schema
               splitFromId: parentStoryId,
               title: childInput.title,
               description: `${childInput.personaGoal}\n\n${childInput.description}`,
-              acceptanceCriteria: childInput.acceptanceCriteria.join('\n\n'),
+              acceptanceCriteria: childInput.acceptanceCriteria,
               storyPoints: childInput.estimatePoints,
               status: 'backlog',
               priority: parentStory.priority || 'medium',
               storyType: 'feature',
               aiGenerated: false,
+              createdBy: userId,
               createdAt: new Date(),
               updatedAt: new Date(),
             })
