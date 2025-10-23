@@ -62,15 +62,10 @@ async function getAISplitSuggestions(
     // Get INVEST/SPIDR analysis
     const analysis = storySplitAnalysisService.analyzeStoryForSplit(story);
 
-    // Check if story should be split
+    // Check if story should be split (only warn, don't block)
+    // The user has already passed the split-analysis check in the modal
     if (!analysis.splittingRecommended) {
-      return NextResponse.json(
-        {
-          error: 'AI suggests this story does not need splitting',
-          analysis,
-        },
-        { status: 400 }
-      );
+      console.log('[ai-split-suggestions] Warning: Splitting not recommended but proceeding with AI suggestions');
     }
 
     metrics.increment('ai_story_split_requested', 1);
@@ -82,6 +77,13 @@ async function getAISplitSuggestions(
       ? [story.acceptanceCriteria]
       : [];
 
+    console.log('[ai-split-suggestions] Calling AI service with:', {
+      title: story.title,
+      hasDescription: !!story.description,
+      criteriaCount: acceptanceCriteria.length,
+      storyPoints: story.storyPoints,
+    });
+
     const splitResponse = await aiService.suggestStorySplit(
       story.title,
       story.description || '',
@@ -90,6 +92,11 @@ async function getAISplitSuggestions(
       analysis.invest,
       analysis.spidr
     );
+
+    console.log('[ai-split-suggestions] AI service response:', {
+      suggestionCount: splitResponse.suggestions.length,
+      splitStrategy: splitResponse.splitStrategy,
+    });
 
     // Track usage
     await incrementTokenUsage(
@@ -124,13 +131,26 @@ async function getAISplitSuggestions(
       usage: splitResponse.usage,
     });
   } catch (error) {
-    console.error('AI split suggestions failed:', error);
+    console.error('[ai-split-suggestions] ===== ERROR =====');
+    console.error('[ai-split-suggestions] Error type:', typeof error);
+    console.error('[ai-split-suggestions] Error:', error);
+    
+    if (error instanceof Error) {
+      console.error('[ai-split-suggestions] Error.name:', error.name);
+      console.error('[ai-split-suggestions] Error.message:', error.message);
+      console.error('[ai-split-suggestions] Error.stack:', error.stack);
+    }
     
     metrics.increment('ai_story_split_failed', 1);
 
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate split suggestions';
+    const isAIError = errorMessage.includes('AI') || errorMessage.includes('model') || errorMessage.includes('token');
+    
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to generate split suggestions',
+        error: errorMessage,
+        details: isAIError ? 'The AI service encountered an error. Please try again.' : undefined,
+        errorType: error instanceof Error ? error.name : 'Unknown',
       },
       { status: 500 }
     );

@@ -71,6 +71,12 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{t('story.split.title')}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {t('story.split.description')}
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">{t('story.split.analyzing')}</span>
