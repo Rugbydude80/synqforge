@@ -26,7 +26,7 @@ interface SplitStoryModalProps {
 
 export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps) {
   const { t } = useTranslation();
-  const { data, isLoading } = useSplitAnalysis(storyId);
+  const { data, isLoading, isError, error } = useSplitAnalysis(storyId);
   const splitMutation = useSplitStoryMutation(storyId);
   
   const [convertToEpic, setConvertToEpic] = useState(false);
@@ -112,7 +112,12 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
 
         <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
           <div className="overflow-y-auto">
-            <AnalysisPanel analysis={analysis} storyId={storyId} />
+            <AnalysisPanel 
+              analysis={analysis} 
+              storyId={storyId}
+              isLoading={isLoading}
+              isError={isError}
+            />
           </div>
           
           <div className="overflow-y-auto">
