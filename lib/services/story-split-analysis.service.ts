@@ -51,34 +51,56 @@ export class StorySplitAnalysisService {
   analyzeStoryForSplit(story: Story): StorySplitAnalysis {
     const startTime = Date.now();
     
-    const invest = this.analyzeINVEST(story);
-    const spidr = this.analyzeSPIDR(story);
-    const fitsInSprint = this.checkFitsInSprint(story);
-    
-    const splittingRecommended = this.determineSplittingRecommendation(
-      story,
-      invest,
-      fitsInSprint
-    );
-    
-    const blockingReasons = this.getBlockingReasons(invest, fitsInSprint);
-    
-    metrics.timing('story_split.analysis_duration', Date.now() - startTime);
-    
-    logger.info('Story split analysis completed', {
-      storyId: story.id,
-      splittingRecommended,
-      investScore: invest.score,
-      blockingReasons,
-    });
-    
-    return {
-      fitsInSprint,
-      splittingRecommended,
-      invest,
-      spidr,
-      blockingReasons,
-    };
+    try {
+      const invest = this.analyzeINVEST(story);
+      const spidr = this.analyzeSPIDR(story);
+      const fitsInSprint = this.checkFitsInSprint(story);
+      
+      const splittingRecommended = this.determineSplittingRecommendation(
+        story,
+        invest,
+        fitsInSprint
+      );
+      
+      const blockingReasons = this.getBlockingReasons(invest, fitsInSprint);
+      
+      try {
+        metrics.timing('story_split.analysis_duration', Date.now() - startTime);
+      } catch (metricsError) {
+        // Metrics failure shouldn't crash the analysis
+        console.error('Metrics error:', metricsError);
+      }
+      
+      try {
+        logger.info('Story split analysis completed', {
+          storyId: story.id,
+          splittingRecommended,
+          investScore: invest.score,
+          blockingReasons,
+        });
+      } catch (logError) {
+        // Logger failure shouldn't crash the analysis
+        console.error('Logger error:', logError);
+      }
+      
+      return {
+        fitsInSprint,
+        splittingRecommended,
+        invest,
+        spidr,
+        blockingReasons,
+      };
+    } catch (error) {
+      try {
+        logger.error('Story split analysis failed', {
+          storyId: story.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } catch {
+        console.error('Logger error in catch block');
+      }
+      throw error;
+    }
   }
 
   private analyzeINVEST(story: Story): INVESTAnalysis {
