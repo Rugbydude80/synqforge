@@ -27,14 +27,16 @@ async function getSplitAnalysis(
     }
 
     // Ensure acceptanceCriteria is in the right format (array or null)
-    let acceptanceCriteria = story.acceptanceCriteria;
-    if (typeof acceptanceCriteria === 'string') {
+    let acceptanceCriteria: string[] | null = null;
+    if (typeof story.acceptanceCriteria === 'string') {
       try {
-        acceptanceCriteria = JSON.parse(acceptanceCriteria);
+        acceptanceCriteria = JSON.parse(story.acceptanceCriteria);
       } catch {
         // If it's a plain string, split by newlines
-        acceptanceCriteria = acceptanceCriteria.split('\n').filter(line => line.trim());
+        acceptanceCriteria = story.acceptanceCriteria.split('\n').filter(line => line.trim());
       }
+    } else if (Array.isArray(story.acceptanceCriteria)) {
+      acceptanceCriteria = story.acceptanceCriteria;
     }
 
     const storyForAnalysis = {
