@@ -8,6 +8,8 @@ export function useSplitAnalysis(storyId: string) {
     queryKey: ['story-split-analysis', storyId],
     queryFn: () => storySplitApi.getAnalysis(storyId),
     staleTime: 5 * 60 * 1000,
+    retry: 1, // Only retry once
+    retryDelay: 1000, // Wait 1 second before retry
   });
 }
 

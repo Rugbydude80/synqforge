@@ -9,12 +9,35 @@ import { useTranslation } from '@/lib/i18n';
 interface AnalysisPanelProps {
   analysis: StorySplitAnalysis | undefined;
   storyId: string;
+  isLoading?: boolean;
+  isError?: boolean;
 }
 
-export function AnalysisPanel({ analysis }: AnalysisPanelProps) {
+export function AnalysisPanel({ analysis, isLoading, isError }: AnalysisPanelProps) {
   const { t } = useTranslation();
 
-  if (!analysis) {
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-foreground mb-1">Analysis unavailable</p>
+                <p>You can still manually create child stories using the editor on the right.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading || !analysis) {
     return (
       <div className="space-y-4">
         <Card>
@@ -23,7 +46,7 @@ export function AnalysisPanel({ analysis }: AnalysisPanelProps) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 animate-pulse" />
               <p>Loading analysis...</p>
             </div>
           </CardContent>
