@@ -74,8 +74,17 @@ async function getSplitAnalysis(
     console.error(`[split-analysis] Error message:`, error instanceof Error ? error.message : String(error));
     console.error(`[split-analysis] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
     
+    // Return detailed error for debugging
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Analysis failed' },
+      { 
+        error: error instanceof Error ? error.message : 'Analysis failed',
+        debug: {
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          storyId,
+        }
+      },
       { status: 500 }
     );
   }
