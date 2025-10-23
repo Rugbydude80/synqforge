@@ -39,7 +39,7 @@ export interface Story {
   description: string | null;
   acceptanceCriteria: string | string[] | null;
   storyPoints: number | null;
-  status: string;
+  status: string | null;
   parentId?: string | null;
   isEpic?: boolean;
 }
@@ -114,7 +114,10 @@ export class StorySplitAnalysisService {
 
   private checkValuable(story: Story, notes: string[]): boolean {
     const hasDescription = story.description && story.description.trim().length > 10;
-    const hasAC = story.acceptanceCriteria && story.acceptanceCriteria.length > 0;
+    const ac = Array.isArray(story.acceptanceCriteria) 
+      ? story.acceptanceCriteria.join('\n')
+      : story.acceptanceCriteria;
+    const hasAC = !!ac && ac.length > 0;
     
     if (!hasDescription) {
       notes.push('story.split.analysis.invest.valuable.no_description');
@@ -123,7 +126,7 @@ export class StorySplitAnalysisService {
       notes.push('story.split.analysis.invest.valuable.no_acceptance_criteria');
     }
     
-    return hasDescription && hasAC;
+    return !!hasDescription && hasAC;
   }
 
   private checkIndependent(story: Story, notes: string[]): boolean {
