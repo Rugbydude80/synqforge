@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
       try {
         const { default: Stripe } = await import('stripe')
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-06-30.basil' as any })
+        
+        // Get price ID for the selected plan
         const priceId = validatedData.plan === 'solo'
           ? process.env.BILLING_PRICE_SOLO_GBP
           : validatedData.plan === 'team'
@@ -117,6 +119,19 @@ export async function POST(req: NextRequest) {
           : validatedData.plan === 'pro'
           ? process.env.BILLING_PRICE_PRO_GBP
           : process.env.BILLING_PRICE_ENTERPRISE_GBP
+
+        if (!priceId) {
+          console.error(`Missing price ID for plan: ${validatedData.plan}`)
+          console.error('Expected env var: BILLING_PRICE_' + validatedData.plan.toUpperCase() + '_GBP')
+          throw new Error(`Payment configuration error: Price ID not found for ${validatedData.plan} plan. Please contact support.`)
+        }
+
+        console.log('Creating Stripe checkout session:', {
+          plan: validatedData.plan,
+          priceId,
+          email: validatedData.email,
+          orgId,
+        })
 
         const session = await stripe.checkout.sessions.create({
           customer_email: validatedData.email,
@@ -145,9 +160,20 @@ export async function POST(req: NextRequest) {
         })
 
         checkoutUrl = session.url
+        console.log('✅ Stripe checkout session created successfully:', session.id)
       } catch (stripeError) {
-        console.error('Stripe checkout error:', stripeError)
-        // Continue without checkout URL - user can upgrade later
+        console.error('❌ Stripe checkout error:', stripeError)
+        // For paid plans, this is critical - return the error to the user
+        if (stripeError instanceof Error) {
+          return NextResponse.json(
+            { 
+              error: 'Payment setup failed', 
+              details: stripeError.message,
+              message: 'Unable to create payment session. Please try again or contact support.'
+            },
+            { status: 500 }
+          )
+        }
       }
     }
 
