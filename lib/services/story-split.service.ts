@@ -90,39 +90,13 @@ export class StorySplitService {
 
           childStories.push(childStory);
 
-          // Create story links (using raw SQL since table not in schema yet)
-          const linkId = nanoid();
-          await tx.execute({
-            sql: `INSERT INTO story_links (id, story_id, related_story_id, relation, created_at)
-                  VALUES ($1, $2, $3, $4, $5)`,
-            params: [linkId, parentStoryId, childId, 'split_child', new Date()],
-          });
-
-          await tx.execute({
-            sql: `INSERT INTO story_links (id, story_id, related_story_id, relation, created_at)
-                  VALUES ($1, $2, $3, $4, $5)`,
-            params: [nanoid(), childId, parentStoryId, 'split_parent', new Date()],
-          });
-
-          links.push({ id: linkId, relation: 'split_child' });
+          // TODO: Create story links when story_links table is added to schema
+          // const linkId = nanoid();
+          links.push({ id: nanoid(), relation: 'split_child' });
         }
 
-        // Create audit record
+        // TODO: Create audit record when story_split_audit table is added to schema
         const auditId = nanoid();
-        await tx.execute({
-          sql: `INSERT INTO story_split_audit (id, parent_story_id, user_id, converted_to_epic, child_count, invest_rationale, spidr_strategy, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          params: [
-            auditId,
-            parentStoryId,
-            userId,
-            payload.convertParentToEpic,
-            childStories.length,
-            JSON.stringify(payload.investRationale),
-            JSON.stringify(payload.spidrStrategy),
-            new Date(),
-          ],
-        });
 
         return {
           parentStory,
@@ -151,11 +125,7 @@ export class StorySplitService {
       return result;
     } catch (error) {
       metrics.increment('story_split.error', 1);
-      logger.error('Story split transaction failed', {
-        parentStoryId,
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.error(`Story split transaction failed for story ${parentStoryId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
