@@ -36,10 +36,26 @@ export function UsageDashboard() {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [limits, setLimits] = useState<LimitsData | null>(null);
   const [billingResetDate, setBillingResetDate] = useState<Date | null>(null);
+  const [daysUntilReset, setDaysUntilReset] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchUsageData();
   }, []);
+
+  useEffect(() => {
+    if (billingResetDate && mounted) {
+      const calculateDays = () => {
+        const days = Math.ceil((billingResetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        setDaysUntilReset(days);
+      };
+      calculateDays();
+      // Update every hour
+      const interval = setInterval(calculateDays, 60 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [billingResetDate, mounted]);
 
   const fetchUsageData = async () => {
     try {
@@ -109,9 +125,6 @@ export function UsageDashboard() {
   }
 
   const isUnlimited = limits.monthlyTokens === Infinity;
-  const daysUntilReset = billingResetDate
-    ? Math.ceil((billingResetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : 0;
 
   return (
     <div className="space-y-6">
