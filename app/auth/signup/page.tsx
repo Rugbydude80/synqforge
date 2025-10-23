@@ -133,7 +133,10 @@ export default function SignUpPage() {
         }
       } else {
         const data = await response.json()
-        setError(data.error || 'An error occurred during sign up')
+        // Show detailed error message for debugging
+        const errorMsg = data.message || data.details || data.error || 'An error occurred during sign up'
+        setError(errorMsg)
+        console.error('Signup error:', data)
       }
     } catch (_error) {
       setError('An error occurred during sign up')
