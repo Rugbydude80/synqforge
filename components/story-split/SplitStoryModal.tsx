@@ -110,16 +110,20 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
           </Alert>
         )}
 
-        <div className="flex-1 grid grid-cols-2 gap-4 overflow-hidden">
-          <AnalysisPanel analysis={analysis} storyId={storyId} />
+        <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+          <div className="overflow-y-auto">
+            <AnalysisPanel analysis={analysis} storyId={storyId} />
+          </div>
           
-          <ChildrenEditor
-            childStories={children}
-            onChange={setChildren}
-            onValidationChange={setCanSubmit}
-            disabled={isBlocked}
-            analysis={analysis}
-          />
+          <div className="overflow-y-auto">
+            <ChildrenEditor
+              childStories={children}
+              onChange={setChildren}
+              onValidationChange={setCanSubmit}
+              disabled={isBlocked}
+              analysis={analysis}
+            />
+          </div>
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t">

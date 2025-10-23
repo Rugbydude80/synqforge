@@ -163,8 +163,8 @@ export function ChildrenEditor({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between sticky top-0 bg-background pb-4 z-10">
         <h3 className="font-semibold">
           {t('story.split.children.title')} ({childStories.length})
         </h3>
@@ -192,7 +192,7 @@ export function ChildrenEditor({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+      <div className="space-y-4">
         {childStories.length === 0 ? (
           <div className="flex items-center justify-center h-full text-center text-muted-foreground">
             <div>
