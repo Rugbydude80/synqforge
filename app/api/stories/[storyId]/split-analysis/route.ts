@@ -10,7 +10,11 @@ async function getSplitAnalysis(
 ) {
   try {
     // Track split story modal opens
-    metrics.increment('story_split_opened', 1);
+    try {
+      metrics.increment('story_split_opened', 1);
+    } catch (metricsError) {
+      console.error('Metrics error:', metricsError);
+    }
 
     const storiesRepo = new StoriesRepository(context.user);
     const story = await storiesRepo.getStoryById(context.params.storyId);
@@ -22,10 +26,30 @@ async function getSplitAnalysis(
       );
     }
 
-    const analysis = storySplitAnalysisService.analyzeStoryForSplit(story);
+    // Ensure acceptanceCriteria is in the right format (array or null)
+    let acceptanceCriteria = story.acceptanceCriteria;
+    if (typeof acceptanceCriteria === 'string') {
+      try {
+        acceptanceCriteria = JSON.parse(acceptanceCriteria);
+      } catch {
+        // If it's a plain string, split by newlines
+        acceptanceCriteria = acceptanceCriteria.split('\n').filter(line => line.trim());
+      }
+    }
+
+    const storyForAnalysis = {
+      ...story,
+      acceptanceCriteria,
+    };
+
+    const analysis = storySplitAnalysisService.analyzeStoryForSplit(storyForAnalysis);
 
     return NextResponse.json({ analysis });
   } catch (error) {
+    console.error('Story split analysis error:', error);
+    console.error('Story ID:', context.params.storyId);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Analysis failed' },
       { status: 500 }
