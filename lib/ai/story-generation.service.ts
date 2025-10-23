@@ -4,17 +4,16 @@
  */
 
 import { Anthropic } from '@anthropic-ai/sdk';
+import { nanoid } from 'nanoid';
 import {
   GenerateStoryRequest,
   GenerateStoryResponse,
   AcceptanceCriterion,
-  INTERACTIVE_VERBS,
 } from './types';
 import { validationService } from './validation.service';
-import { correlationService } from './correlation.service';
 import { piiRedactionService } from './pii-redaction.service';
 import { logger } from '@/lib/observability/logger';
-import { metrics, METRICS } from '@/lib/observability/metrics';
+import { metrics } from '@/lib/observability/metrics';
 
 export class StoryGenerationService {
   private anthropic: Anthropic;
@@ -32,7 +31,7 @@ export class StoryGenerationService {
    */
   async generateStory(request: GenerateStoryRequest): Promise<GenerateStoryResponse> {
     // Generate request ID if not provided
-    const requestId = request.requestId || correlationService.generateRequestId();
+    const requestId = request.requestId || nanoid();
 
     logger.info('Starting story generation', {
       requestId,
@@ -59,7 +58,7 @@ export class StoryGenerationService {
     });
 
     const latency = Date.now() - startTime;
-    metrics.timing(METRICS.AI_LATENCY, latency, { operation: 'story-generation' });
+    metrics.timing('ai.latency', latency, { operation: 'story-generation' });
 
     // Extract text
     const textContent = response.content.find(block => block.type === 'text');
@@ -88,7 +87,7 @@ export class StoryGenerationService {
       totalTokens: response.usage.input_tokens + response.usage.output_tokens,
     };
 
-    metrics.increment(METRICS.AI_TOKENS, usage.totalTokens, {
+    metrics.increment('ai.tokens', usage.totalTokens, {
       operation: 'story-generation',
       model: request.model,
     });
