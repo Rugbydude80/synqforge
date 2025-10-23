@@ -26,7 +26,7 @@ interface SplitStoryModalProps {
 
 export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps) {
   const { t } = useTranslation();
-  const { data, isLoading, isError, error } = useSplitAnalysis(storyId);
+  const { data, isLoading, isError } = useSplitAnalysis(storyId);
   const splitMutation = useSplitStoryMutation(storyId);
   
   const [convertToEpic, setConvertToEpic] = useState(false);
