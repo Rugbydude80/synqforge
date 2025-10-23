@@ -26,30 +26,11 @@ async function getSplitAnalysis(
       );
     }
 
-    // Ensure acceptanceCriteria is in the right format (array or null)
-    let acceptanceCriteria: string[] | null = null;
-    const rawCriteria = story.acceptanceCriteria;
-    
-    if (typeof rawCriteria === 'string') {
-      // Try to parse as JSON first
-      try {
-        const parsed = JSON.parse(rawCriteria);
-        acceptanceCriteria = Array.isArray(parsed) ? parsed : null;
-      } catch {
-        // If parsing fails, it's a plain string - split by newlines
-        // Type assertion needed due to TypeScript control flow in catch blocks
-        const criteriaStr = rawCriteria as string;
-        acceptanceCriteria = criteriaStr.split('\n').filter(line => line.trim()).length > 0
-          ? criteriaStr.split('\n').filter(line => line.trim())
-          : null;
-      }
-    } else if (Array.isArray(rawCriteria)) {
-      acceptanceCriteria = rawCriteria;
-    }
-
+    // Drizzle ORM auto-parses JSON columns, so acceptanceCriteria is already string[] | null
+    // Just ensure it's the right type
     const storyForAnalysis = {
       ...story,
-      acceptanceCriteria,
+      acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : null,
     };
 
     const analysis = storySplitAnalysisService.analyzeStoryForSplit(storyForAnalysis);
