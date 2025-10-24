@@ -104,7 +104,7 @@ async function checkUserUsage(userId: string, detailed: boolean = false): Promis
       userName: user.name || user.email || 'Unknown',
       organizationId: org.id,
       organizationName: org.name,
-      tier: org.tier || 'starter',
+      tier: org.subscriptionTier || 'starter',
       
       baseAllowance: allowance.baseAllowance,
       rolloverCredits: allowance.rolloverCredits,

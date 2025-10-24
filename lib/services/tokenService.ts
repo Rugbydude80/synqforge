@@ -236,7 +236,7 @@ export async function refundNoOp(
       }
     }
 
-    const refundAmount = transaction.creditsConsumed
+    const refundAmount = parseFloat(transaction.tokensDeducted)
 
     // Restore credits
     await db
@@ -259,19 +259,14 @@ export async function refundNoOp(
         operationType: 'refund',
         resourceType: transaction.resourceType,
         resourceId: transaction.resourceId,
-        actionCost: -refundAmount,
-        creditsConsumed: -refundAmount,
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: 'system',
-        operationStatus: 'refunded',
+        tokensDeducted: (-refundAmount).toString(),
+        source: 'refund',
+        balanceAfter: allowance.creditsRemaining + refundAmount,
         metadata: {
           originalTransactionId: transactionId,
           reason,
           refundedAt: new Date().toISOString()
         },
-        timestamp: new Date(),
         createdAt: new Date()
       })
 
@@ -354,20 +349,15 @@ export async function applyMonthlyRollover(
         operationType: 'rollover',
         resourceType: 'allowance',
         resourceId: allowance.id,
-        actionCost: 0,
-        creditsConsumed: -rolloverAmount, // Credit
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: 'system',
-        operationStatus: 'completed',
+        tokensDeducted: (-rolloverAmount).toString(),
+        source: 'rollover',
+        balanceAfter: rolloverAmount,
         metadata: {
           type: 'rollover',
           unused,
           rolloverPercent: limits.aiActionsRolloverPercent,
           appliedAt: new Date().toISOString()
         },
-        timestamp: new Date(),
         createdAt: new Date()
       })
 
