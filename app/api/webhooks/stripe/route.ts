@@ -48,6 +48,10 @@ export async function POST(req: NextRequest) {
 
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        // Also handle add-on subscription cancellations
+        const subscription = event.data.object as Stripe.Subscription
+        const { handleSubscriptionCancelled } = await import('@/lib/services/addOnService')
+        await handleSubscriptionCancelled(subscription.id)
         break
 
       case 'invoice.payment_succeeded':
@@ -385,6 +389,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       .where(eq(organizations.id, organizationId))
 
     console.log(`Linked customer ${customerId} to organization ${organizationId}`)
+  }
+
+  // Check if this is an add-on purchase
+  if (metadata?.addOnType) {
+    const { applyAddOnFromCheckout } = await import('@/lib/services/addOnService')
+    
+    try {
+      await applyAddOnFromCheckout(session)
+      console.log(`Applied add-on ${metadata.addOnType} from checkout ${session.id}`)
+    } catch (error) {
+      console.error('Failed to apply add-on from checkout:', error)
+      // Continue processing other checkout types even if add-on fails
+    }
   }
 
   // Check if this is a token purchase
