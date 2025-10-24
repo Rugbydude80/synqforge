@@ -165,7 +165,7 @@ export function ChildrenEditor({
             <Alert variant={coverageAnalysis.coveragePercentage === 100 ? "default" : "destructive"}>
               <AlertDescription>
                 <div className="space-y-1">
-                  {coverageAnalysis.recommendations.map((rec, idx) => (
+                  {coverageAnalysis.recommendations.map((rec: string, idx: number) => (
                     <div key={idx} className="text-sm">
                       {rec}
                     </div>
