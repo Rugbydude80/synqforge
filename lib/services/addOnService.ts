@@ -163,7 +163,7 @@ export async function applyAddOnFromCheckout(
   }
   
   // Create purchase record
-  const purchase = await db.insert(addOnPurchases).values({
+  const _purchase = await db.insert(addOnPurchases).values({
     id: uuidv4(),
     organizationId,
     userId,
