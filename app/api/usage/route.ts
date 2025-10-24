@@ -38,7 +38,7 @@ async function getUsage(req: NextRequest, context: any) {
     const seatInfo = await getOrganizationSeats(organizationId)
 
     // Get rate limit quotas
-    const rateLimitQuota = await getAIQuota(organizationId, tier)
+    const rateLimitQuota = await getAIQuota(organizationId, tier as any)
 
     return NextResponse.json({
       organization: {

@@ -104,7 +104,7 @@ async function checkUserUsage(userId: string, detailed: boolean = false): Promis
       userName: user.name || user.email || 'Unknown',
       organizationId: org.id,
       organizationName: org.name,
-      tier: org.tier || 'starter',
+      tier: org.subscriptionTier || 'starter',
       
       baseAllowance: allowance.baseAllowance,
       rolloverCredits: allowance.rolloverCredits,
@@ -139,15 +139,15 @@ async function checkUserUsage(userId: string, detailed: boolean = false): Promis
         .select()
         .from(tokensLedger)
         .where(eq(tokensLedger.userId, userId))
-        .orderBy(desc(tokensLedger.timestamp))
+        .orderBy(desc(tokensLedger.createdAt))
         .limit(10)
 
       stats.recentTransactions = transactions.map(tx => ({
         id: tx.id,
         operationType: tx.operationType,
-        creditsConsumed: tx.creditsConsumed,
-        status: tx.operationStatus,
-        timestamp: tx.timestamp
+        tokensDeducted: tx.tokensDeducted,
+        source: tx.source,
+        timestamp: tx.createdAt
       }))
     }
 
@@ -212,7 +212,7 @@ async function checkOrgUsage(organizationId: string, detailed: boolean = false):
         userName: user?.name || user?.email || 'Unknown',
         organizationId: org.id,
         organizationName: org.name,
-        tier: org.tier || 'starter',
+        tier: org.subscriptionTier || 'starter',
         
         baseAllowance: allowance.baseAllowance,
         rolloverCredits: allowance.rolloverCredits,
@@ -247,15 +247,15 @@ async function checkOrgUsage(organizationId: string, detailed: boolean = false):
           .select()
           .from(tokensLedger)
           .where(eq(tokensLedger.userId, allowance.userId))
-          .orderBy(desc(tokensLedger.timestamp))
+          .orderBy(desc(tokensLedger.createdAt))
           .limit(5)
 
         userStats.recentTransactions = transactions.map(tx => ({
           id: tx.id,
           operationType: tx.operationType,
-          creditsConsumed: tx.creditsConsumed,
-          status: tx.operationStatus,
-          timestamp: tx.timestamp
+          creditsConsumed: tx.tokensDeducted,
+          status: tx.source,
+          timestamp: tx.createdAt
         }))
       }
 
@@ -318,8 +318,8 @@ function printUsageStats(stats: UsageStats | UsageStats[]) {
       console.log('')
       console.log('Recent Transactions:')
       for (const tx of stat.recentTransactions) {
-        console.log(`  • ${tx.operationType} - ${tx.creditsConsumed} credits (${tx.status})`)
-        console.log(`    ${tx.timestamp.toISOString()}`)
+        console.log(`  • ${tx.operationType} - ${tx.tokensDeducted} credits (${tx.status})`)
+        console.log(`    ${tx.createdAt.toISOString()}`)
       }
     }
     

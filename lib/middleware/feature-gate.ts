@@ -22,7 +22,7 @@ export interface FeatureGateContext {
   organization: {
     id: string
     name: string
-    tier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+    tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
   }
   features: SubscriptionFeatures
 }
@@ -75,7 +75,7 @@ export async function checkFeatureAccess(
     }
 
     const tier = organization.subscriptionTier || 'free'
-    const features = getSubscriptionFeatures(tier)
+    const features = getSubscriptionFeatures(tier as any)
 
     const context: FeatureGateContext = {
       user: {
@@ -259,7 +259,7 @@ export async function getFeatureGateContext(): Promise<FeatureGateContext | null
     }
 
     const tier = organization.subscriptionTier || 'free'
-    const features = getSubscriptionFeatures(tier)
+    const features = getSubscriptionFeatures(tier as any)
 
     return {
       user: {

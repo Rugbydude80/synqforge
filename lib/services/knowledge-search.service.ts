@@ -61,7 +61,7 @@ export async function semanticSearch(
       throw new Error('Knowledge Search requires Business plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    const rateLimitCheck = await checkAIRateLimit(organizationId, tier as any)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`

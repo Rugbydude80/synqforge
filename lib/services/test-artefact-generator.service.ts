@@ -67,7 +67,7 @@ export async function generateTestArtefact(
     }
 
     // Check rate limit
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier || 'free')
+    const rateLimitCheck = await checkAIRateLimit(organizationId, (tier || 'free') as any)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`

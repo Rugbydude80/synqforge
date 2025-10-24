@@ -37,7 +37,7 @@ export async function parseInboxContent(
       throw new Error('Inbox to Backlog requires Team plan or higher.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, organization.subscriptionTier || 'free')
+    const rateLimitCheck = await checkAIRateLimit(organizationId, (organization.subscriptionTier || 'free') as any)
     if (!rateLimitCheck.success) {
       throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)}s.`)
     }
