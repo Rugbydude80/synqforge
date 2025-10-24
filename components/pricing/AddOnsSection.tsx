@@ -9,13 +9,15 @@ interface AddOn {
   id: string
   name: string
   price: number
-  type: 'one_time' | 'recurring'
+  currency?: string
+  type: string
   interval?: string
   description: string
   eligiblePlans: string[]
   features: string[]
   expiry?: number
   stackable?: boolean
+  maxActive?: number
 }
 
 interface AddOnsSectionProps {

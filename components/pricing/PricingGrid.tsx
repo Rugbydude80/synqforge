@@ -6,11 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-interface PlanFeature {
-  text: string
-  included: boolean
-}
-
 export interface Plan {
   id: string
   name: string
