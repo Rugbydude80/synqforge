@@ -11,7 +11,13 @@ import {
   aiGenerations
 } from '@/lib/db/schema'
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
-import { SUBSCRIPTION_LIMITS, AI_OVERAGE } from '@/lib/constants'
+import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
+
+// Legacy overage config (for backward compatibility)
+const AI_OVERAGE = {
+  unitSize: 10000, // 10k tokens per unit
+  pricePerUnit: 2, // $2 per 10k tokens
+}
 
 export interface UsageInfo {
   tokenPool: number

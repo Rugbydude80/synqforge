@@ -75,7 +75,7 @@ export class AIActionsMetering {
         WHERE organization_id = ${organizationId}
       `);
 
-      const seats = memberCount[0]?.count || 1;
+      const seats = Number(memberCount[0]?.count) || 1;
       totalAllowance = limits.monthlyAIActions + (limits.aiActionsPerSeat || 0) * seats;
     } else {
       // Starter/Pro: Per-user allowance
