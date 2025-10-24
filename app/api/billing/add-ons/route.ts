@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth/auth'
+import { authOptions } from '@/lib/auth'
 import { purchaseAddOn, listActiveAddOns } from '@/lib/services/addOnService'
 import { type AddOnType } from '@/lib/config/tiers'
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
     
     const body = await req.json()
-    const { productId, addOnType, quantity = 1 } = body
+    const { addOnType, quantity = 1 } = body
     
     if (!addOnType) {
       return NextResponse.json(

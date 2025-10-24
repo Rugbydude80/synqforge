@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth/auth'
+import { authOptions } from '@/lib/auth'
 import { checkAllowance, deductTokens } from '@/lib/services/tokenService'
 import { validateOperationLimits, getOrganizationContext } from '@/lib/middleware/featureGate'
 import { getQuotaExceededPrompt } from '@/lib/config/tiers'
@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid'
 // POST /api/stories/[storyId]/split-enhanced
 export async function POST(
   req: NextRequest,
-  { params }: { params: { storyId: string } }
+  { params }: { params: Promise<{ storyId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -27,7 +27,7 @@ export async function POST(
       )
     }
     
-    const { storyId } = params
+    const { storyId } = await params
     const body = await req.json()
     const { childrenCount = 2 } = body
     

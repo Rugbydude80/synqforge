@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/lib/db'
-import { addOnPurchases, organizations, users } from '@/lib/db/schema'
+import { addOnPurchases, organizations } from '@/lib/db/schema'
 import { eq, and, gte, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import Stripe from 'stripe'
@@ -18,7 +18,7 @@ import {
 import { applyAddOnCredits } from './tokenService'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-09-30.clover',
 })
 
 // ============================================
