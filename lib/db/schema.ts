@@ -87,6 +87,7 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'unpaid'
 ])
 export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'rejected', 'expired'])
+export const addOnStatusEnum = pgEnum('addon_status', ['active', 'expired', 'cancelled', 'consumed'])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -1135,6 +1136,151 @@ export const aiActionRollover = pgTable(
     orgIdx: index('idx_ai_action_rollover_org').on(table.organizationId),
     userIdx: index('idx_ai_action_rollover_user').on(table.userId),
     appliedPeriodIdx: index('idx_ai_action_rollover_applied_period').on(table.appliedToPeriodStart),
+  })
+)
+
+// ============================================
+// TOKEN ALLOWANCES (Enhanced with Add-ons)
+// ============================================
+
+export const tokenAllowances = pgTable(
+  'token_allowances',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }),
+    billingPeriodStart: timestamp('billing_period_start').notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    
+    // Base allowance from tier
+    baseAllowance: integer('base_allowance').notNull().default(0),
+    
+    // Add-on credits
+    addonCredits: integer('addon_credits').notNull().default(0),
+    aiActionsBonus: integer('ai_actions_bonus').notNull().default(0),
+    
+    // Rollover credits
+    rolloverCredits: integer('rollover_credits').notNull().default(0),
+    
+    // Usage tracking
+    creditsUsed: integer('credits_used').notNull().default(0),
+    creditsRemaining: integer('credits_remaining').notNull().default(0),
+    
+    lastUpdatedAt: timestamp('last_updated_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_token_allowances_org').on(table.organizationId),
+    userIdx: index('idx_token_allowances_user').on(table.userId),
+    periodIdx: index('idx_token_allowances_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    uniqueOrgUserPeriod: uniqueIndex('idx_token_allowances_unique').on(table.organizationId, table.userId, table.billingPeriodStart),
+  })
+)
+
+export const addOnPurchases = pgTable(
+  'addon_purchases',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }),
+    
+    // Product details
+    stripeProductId: varchar('stripe_product_id', { length: 255 }).notNull(),
+    stripePriceId: varchar('stripe_price_id', { length: 255 }),
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+    stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
+    
+    // Add-on metadata
+    addonType: varchar('addon_type', { length: 50 }).notNull(), // 'ai_actions', 'ai_booster', 'priority_support'
+    addonName: varchar('addon_name', { length: 255 }).notNull(),
+    
+    // Credits and expiration
+    creditsGranted: integer('credits_granted').default(0),
+    creditsRemaining: integer('credits_remaining').default(0),
+    creditsUsed: integer('credits_used').default(0),
+    
+    // Lifecycle
+    status: addOnStatusEnum('status').notNull().default('active'),
+    purchasedAt: timestamp('purchased_at').notNull().defaultNow(),
+    expiresAt: timestamp('expires_at'),
+    cancelledAt: timestamp('cancelled_at'),
+    
+    // Pricing
+    priceUsd: decimal('price_usd', { precision: 10, scale: 2 }),
+    recurring: boolean('recurring').notNull().default(false),
+    
+    // Metadata
+    metadata: json('metadata').$type<Record<string, any>>(),
+    
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_addon_purchases_org').on(table.organizationId),
+    userIdx: index('idx_addon_purchases_user').on(table.userId),
+    typeIdx: index('idx_addon_purchases_type').on(table.addonType),
+    statusIdx: index('idx_addon_purchases_status').on(table.status),
+    expiresIdx: index('idx_addon_purchases_expires').on(table.expiresAt),
+    stripePaymentIdx: index('idx_addon_purchases_stripe_payment').on(table.stripePaymentIntentId),
+    stripeSubscriptionIdx: index('idx_addon_purchases_stripe_subscription').on(table.stripeSubscriptionId),
+  })
+)
+
+export const tokensLedger = pgTable(
+  'tokens_ledger',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }),
+    
+    // Idempotency
+    correlationId: varchar('correlation_id', { length: 64 }).notNull(),
+    
+    // Operation details
+    operationType: varchar('operation_type', { length: 50 }).notNull(), // 'split', 'refine', 'update'
+    resourceType: varchar('resource_type', { length: 50 }).notNull(), // 'story', 'epic'
+    resourceId: varchar('resource_id', { length: 36 }).notNull(),
+    
+    // Token tracking
+    tokensDeducted: decimal('tokens_deducted', { precision: 10, scale: 2 }).notNull(),
+    source: varchar('source', { length: 50 }).notNull(), // 'base_allowance', 'rollover', 'addon_pack', 'ai_booster'
+    addonPurchaseId: varchar('addon_purchase_id', { length: 36 }),
+    
+    // Balance
+    balanceAfter: integer('balance_after').notNull(),
+    
+    // Metadata
+    metadata: json('metadata').$type<Record<string, any>>(),
+    
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_tokens_ledger_org').on(table.organizationId),
+    userIdx: index('idx_tokens_ledger_user').on(table.userId),
+    correlationIdx: uniqueIndex('idx_tokens_ledger_correlation').on(table.correlationId),
+    operationIdx: index('idx_tokens_ledger_operation').on(table.operationType),
+    resourceIdx: index('idx_tokens_ledger_resource').on(table.resourceType, table.resourceId),
+    addonPurchaseIdx: index('idx_tokens_ledger_addon').on(table.addonPurchaseId),
+    createdIdx: index('idx_tokens_ledger_created').on(table.createdAt),
+  })
+)
+
+export const featureGates = pgTable(
+  'feature_gates',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    tier: varchar('tier', { length: 50 }).notNull(), // 'starter', 'pro', 'team', 'enterprise'
+    featureName: varchar('feature_name', { length: 100 }).notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    limitValue: integer('limit_value'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tierIdx: index('idx_feature_gates_tier').on(table.tier),
+    featureIdx: index('idx_feature_gates_feature').on(table.featureName),
+    uniqueTierFeature: uniqueIndex('idx_feature_gates_unique').on(table.tier, table.featureName),
   })
 )
 

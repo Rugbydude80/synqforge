@@ -1,0 +1,222 @@
+{
+  "tiers": [
+    {
+      "id": "prod_starter",
+      "name": "Starter",
+      "description": "Free tier for individuals and small teams getting started",
+      "tier": "starter",
+      "prices": [
+        {
+          "id": "price_starter_monthly",
+          "currency": "usd",
+          "unit_amount": 0,
+          "recurring": {
+            "interval": "month"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "starter",
+        "aiActionsBase": "25",
+        "pooling": "false",
+        "rollover": "0",
+        "maxSplitChildren": "2",
+        "updateEnabled": "false",
+        "bulkLimit": "1",
+        "approvalsRequired": "false",
+        "minSeats": "1",
+        "maxSeats": "1",
+        "auditLogRetention": "0",
+        "supportTier": "community"
+      }
+    },
+    {
+      "id": "prod_pro",
+      "name": "Pro",
+      "description": "Enhanced AI capabilities and advanced features for growing teams",
+      "tier": "pro",
+      "prices": [
+        {
+          "id": "price_pro_monthly",
+          "currency": "usd",
+          "unit_amount": 1099,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_pro_yearly",
+          "currency": "usd",
+          "unit_amount": 10500,
+          "recurring": {
+            "interval": "year"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "pro",
+        "aiActionsBase": "400",
+        "pooling": "false",
+        "rollover": "20",
+        "maxRollover": "80",
+        "maxSplitChildren": "3",
+        "updateEnabled": "true",
+        "bulkLimit": "1",
+        "approvalsRequired": "false",
+        "minSeats": "1",
+        "maxSeats": "4",
+        "auditLogRetention": "30",
+        "supportTier": "email_48h",
+        "gherkinTemplates": "advanced"
+      }
+    },
+    {
+      "id": "prod_team",
+      "name": "Team",
+      "description": "Pooled AI actions and collaboration features for scaling teams",
+      "tier": "team",
+      "prices": [
+        {
+          "id": "price_team_monthly",
+          "currency": "usd",
+          "unit_amount": 1699,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_team_yearly",
+          "currency": "usd",
+          "unit_amount": 16200,
+          "recurring": {
+            "interval": "year"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "team",
+        "aiActionsBase": "10000",
+        "aiActionsPerSeat": "1000",
+        "pooling": "true",
+        "rollover": "20",
+        "maxSplitChildren": "7",
+        "updateEnabled": "true",
+        "bulkLimit": "5",
+        "bulkSplitLimit": "5",
+        "approvalsRequired": "true",
+        "minSeats": "5",
+        "discount": "15% vs 5x Pro",
+        "auditLogRetention": "365",
+        "supportTier": "priority_24h",
+        "gherkinTemplates": "team_library",
+        "playbooks": "org_wide"
+      }
+    },
+    {
+      "id": "prod_enterprise",
+      "name": "Enterprise",
+      "description": "Custom solutions with unlimited capabilities and dedicated support",
+      "tier": "enterprise",
+      "prices": [],
+      "metadata": {
+        "tier": "enterprise",
+        "aiActionsBase": "custom",
+        "pooling": "true",
+        "rollover": "policy",
+        "maxSplitChildren": "unlimited",
+        "updateEnabled": "true",
+        "bulkLimit": "unlimited",
+        "approvalsRequired": "configurable",
+        "minSeats": "10",
+        "auditLogRetention": "unlimited",
+        "supportTier": "24_7_dedicated",
+        "sso": "true",
+        "saml": "true",
+        "rbac": "true",
+        "dataResidency": "true",
+        "complianceExports": "true",
+        "gherkinTemplates": "enterprise_library",
+        "contactSales": "true"
+      }
+    }
+  ],
+  "addons": [
+    {
+      "id": "prod_ai_actions_pack",
+      "name": "AI Actions Pack",
+      "description": "1,000 additional AI actions with 90-day expiration",
+      "type": "one_time",
+      "prices": [
+        {
+          "id": "price_ai_actions_pack",
+          "currency": "usd",
+          "unit_amount": 2000
+        }
+      ],
+      "metadata": {
+        "addon": "true",
+        "type": "ai_actions",
+        "credits": "1000",
+        "expiryDays": "90",
+        "availableFor": "pro,team,enterprise",
+        "maxActive": "5",
+        "stackable": "true",
+        "description": "Purchase additional AI actions that expire after 90 days"
+      }
+    },
+    {
+      "id": "prod_ai_booster_starter",
+      "name": "AI Booster (Starter)",
+      "description": "Add 200 AI actions per month to your Starter plan",
+      "type": "recurring",
+      "prices": [
+        {
+          "id": "price_ai_booster_monthly",
+          "currency": "usd",
+          "unit_amount": 500,
+          "recurring": {
+            "interval": "month"
+          }
+        }
+      ],
+      "metadata": {
+        "addon": "true",
+        "type": "ai_booster",
+        "aiActionsBonus": "200",
+        "recurring": "true",
+        "availableFor": "starter",
+        "cancellable": "true",
+        "description": "Monthly boost for Starter users, bridges gap to Pro"
+      }
+    },
+    {
+      "id": "prod_priority_support",
+      "name": "Priority Support Pack",
+      "description": "24-hour priority email and live chat support for Pro users",
+      "type": "recurring",
+      "prices": [
+        {
+          "id": "price_priority_support_monthly",
+          "currency": "usd",
+          "unit_amount": 1500,
+          "recurring": {
+            "interval": "month"
+          }
+        }
+      ],
+      "metadata": {
+        "addon": "true",
+        "type": "priority_support",
+        "supportUpgrade": "24h_priority",
+        "availableFor": "pro",
+        "description": "Upgrade Pro users to Team-level support"
+      }
+    }
+  ],
+  "aiActionCosts": {
+    "split": 0.7,
+    "refine": 0.5,
+    "update": 1.2
+  }
+}
+
