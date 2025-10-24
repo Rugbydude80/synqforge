@@ -12,7 +12,7 @@
 
 import { db } from '@/lib/db'
 import { tokenAllowances, tokensLedger, addOnPurchases } from '@/lib/db/schema'
-import { eq, and, gte, desc } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { SUBSCRIPTION_LIMITS, AI_ACTION_COSTS } from '@/lib/constants'
 
 export type ActionType = keyof typeof AI_ACTION_COSTS
@@ -169,15 +169,10 @@ export async function deductTokens(
         operationType: actionType,
         resourceType: metadata?.resourceType || 'story',
         resourceId: metadata?.resourceId || '',
-        actionCost: cost,
-        creditsConsumed: cost,
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: metadata?.model || 'unknown',
-        operationStatus: 'completed',
+        tokensDeducted: cost.toString(),
+        source: 'base_allowance',
+        balanceAfter: Math.max(0, allowance.creditsRemaining - cost),
         metadata: metadata || {},
-        timestamp: new Date(),
         createdAt: new Date()
       })
 
