@@ -12,7 +12,7 @@
 
 import { db } from '@/lib/db'
 import { tokenAllowances, tokensLedger, addOnPurchases } from '@/lib/db/schema'
-import { eq, and, gte, desc } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { SUBSCRIPTION_LIMITS, AI_ACTION_COSTS } from '@/lib/constants'
 
 export type ActionType = keyof typeof AI_ACTION_COSTS

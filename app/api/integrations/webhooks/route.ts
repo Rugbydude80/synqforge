@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   )
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
