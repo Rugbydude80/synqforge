@@ -11,6 +11,9 @@ export interface Plan {
   name: string
   label: string
   price: number | null
+  priceGBP?: number
+  priceEUR?: number
+  priceUSD?: number
   priceAnnual?: number | null
   priceStarting?: number
   description: string
@@ -23,9 +26,12 @@ export interface Plan {
   discountNote?: string
 }
 
+export type Currency = 'gbp' | 'eur' | 'usd'
+
 interface PricingGridProps {
   plans: Plan[]
   billingInterval: 'monthly' | 'annual'
+  currency: Currency
   onSelectPlan: (planId: string) => void
   loading?: string | null
 }
@@ -46,15 +52,38 @@ const planColors: Record<string, string> = {
   enterprise: 'pink',
 }
 
-export function PricingGrid({ plans, billingInterval, onSelectPlan, loading }: PricingGridProps) {
+export function PricingGrid({ plans, billingInterval, currency, onSelectPlan, loading }: PricingGridProps) {
+  const getCurrencySymbol = (): string => {
+    const symbols: Record<Currency, string> = {
+      gbp: '£',
+      eur: '€',
+      usd: '$',
+    }
+    return symbols[currency]
+  }
+
   const getDisplayPrice = (plan: Plan) => {
     if (plan.price === null) {
-      return plan.priceStarting ? `Starts £${plan.priceStarting}` : 'Custom'
+      return plan.priceStarting ? `Starts ${getCurrencySymbol()}${plan.priceStarting}` : 'Custom'
     }
     if (plan.price === 0) return 'Free'
     
-    const price = billingInterval === 'annual' && plan.priceAnnual ? plan.priceAnnual : plan.price
-    return `£${price.toFixed(2)}`
+    // Get currency-specific price
+    let price = plan.price
+    if (currency === 'gbp' && plan.priceGBP !== undefined) {
+      price = plan.priceGBP
+    } else if (currency === 'eur' && plan.priceEUR !== undefined) {
+      price = plan.priceEUR
+    } else if (currency === 'usd' && plan.priceUSD !== undefined) {
+      price = plan.priceUSD
+    }
+    
+    // Apply annual pricing if selected
+    if (billingInterval === 'annual' && plan.priceAnnual) {
+      price = plan.priceAnnual
+    }
+    
+    return `${getCurrencySymbol()}${price.toFixed(2)}`
   }
 
   const getButtonText = (plan: Plan) => {

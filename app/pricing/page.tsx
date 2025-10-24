@@ -9,7 +9,8 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { PricingGrid, type Plan } from '@/components/pricing/PricingGrid'
+import { PricingGrid, type Plan, type Currency } from '@/components/pricing/PricingGrid'
+import { CurrencySelector } from '@/components/pricing/CurrencySelector'
 import { AddOnsSection } from '@/components/pricing/AddOnsSection'
 import { FAQSection } from '@/components/pricing/FAQSection'
 import plansData from '@/config/plans.json'
@@ -22,6 +23,7 @@ export default function PricingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly')
+  const [currency, setCurrency] = useState<Currency>('gbp')
 
   const handleSelectPlan = async (planId: string) => {
     if (!session) {
@@ -115,27 +117,33 @@ export default function PricingPage() {
             Per-user pricing that scales with your team. Pay only for what you use, with flexible add-ons and no hidden fees.
           </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center gap-4 p-1.5 bg-muted rounded-xl mt-8">
-            <span className={cn(
-              'text-sm px-3 py-1 rounded-lg transition-all',
-              billingInterval === 'monthly' ? 'font-semibold bg-background shadow-sm' : 'text-muted-foreground'
-            )}>
-              Monthly
-            </span>
-            <Switch
-              checked={billingInterval === 'annual'}
-              onCheckedChange={(checked) => setBillingInterval(checked ? 'annual' : 'monthly')}
-            />
-            <span className={cn(
-              'text-sm px-3 py-1 rounded-lg transition-all',
-              billingInterval === 'annual' ? 'font-semibold bg-background shadow-sm' : 'text-muted-foreground'
-            )}>
-              Annual
-              <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-700 border-green-200">
-                Save up to 17%
-              </Badge>
-            </span>
+          {/* Currency & Billing Toggle */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
+            {/* Currency Selector */}
+            <CurrencySelector value={currency} onChange={setCurrency} />
+            
+            {/* Billing Toggle */}
+            <div className="inline-flex items-center gap-4 p-1.5 bg-muted rounded-xl">
+              <span className={cn(
+                'text-sm px-3 py-1 rounded-lg transition-all',
+                billingInterval === 'monthly' ? 'font-semibold bg-background shadow-sm' : 'text-muted-foreground'
+              )}>
+                Monthly
+              </span>
+              <Switch
+                checked={billingInterval === 'annual'}
+                onCheckedChange={(checked) => setBillingInterval(checked ? 'annual' : 'monthly')}
+              />
+              <span className={cn(
+                'text-sm px-3 py-1 rounded-lg transition-all',
+                billingInterval === 'annual' ? 'font-semibold bg-background shadow-sm' : 'text-muted-foreground'
+              )}>
+                Annual
+                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-700 border-green-200">
+                  Save up to 17%
+                </Badge>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -144,6 +152,7 @@ export default function PricingPage() {
           <PricingGrid 
             plans={plans}
             billingInterval={billingInterval}
+            currency={currency}
             onSelectPlan={handleSelectPlan}
             loading={loading}
           />
