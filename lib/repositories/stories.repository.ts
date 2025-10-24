@@ -73,6 +73,8 @@ export interface StoryWithRelations {
   createdBy: string;
   createdAt: Date | null;
   updatedAt: Date | null;
+  lastUpdatedAt: Date | null;
+  updateVersion: number | null;
   project?: {
     id: string;
     name: string;
@@ -346,11 +348,14 @@ export class StoriesRepository {
       changes.assignee = { from: existingStory.assigneeId, to: input.assigneeId };
     }
 
-    // Update story
+    // Update story with version increment
+    const currentVersion = existingStory.updateVersion || 1;
     await db.update(stories)
       .set({
         ...input,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        lastUpdatedAt: new Date(),
+        updateVersion: currentVersion + 1,
       })
       .where(eq(stories.id, storyId));
 
