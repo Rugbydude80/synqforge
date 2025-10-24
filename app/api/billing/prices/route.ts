@@ -2,121 +2,56 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-09-30.clover',
 });
 
 export const dynamic = 'force-dynamic';
 
-interface PriceData {
-  tier: string;
-  currency: string;
-  monthly: {
-    priceId: string;
-    amount: number;
-  } | null;
-  annual: {
-    priceId: string;
-    amount: number;
-  } | null;
-}
-
 /**
  * GET /api/billing/prices
  *
- * Fetches all active Stripe prices for SynqForge products
- * Organized by tier and currency
+ * Fetches all active Stripe prices organized by product and currency
  */
 export async function GET() {
   try {
-    // Fetch all products with their active prices
-    const products = await stripe.products.list({
-      active: true,
-      expand: ['data.default_price'],
-      limit: 100,
-    });
-
-    // Fetch all active prices
+    // Fetch all active prices with product details
     const prices = await stripe.prices.list({
       active: true,
       expand: ['data.product'],
       limit: 100,
     });
 
-    // Organize prices by tier and currency
-    const pricesByTier: Record<string, Record<string, PriceData>> = {};
+    // Organize prices by product name, then currency, then interval
+    const priceMap: Record<string, Record<string, Record<string, any>>> = {};
 
-    // Define tier slugs we're looking for
-    const tiers = ['synqforge_free', 'synqforge_pro', 'synqforge_team'];
+    for (const price of prices.data) {
+      if (price.type !== 'recurring' || !price.recurring) continue;
 
-    for (const product of products.data) {
-      const productId = product.id;
-      const metadata = product.metadata || {};
-      const tier = metadata.tier || metadata.slug || '';
+      const product = price.product as Stripe.Product;
+      const productName = product.name;
+      const currency = price.currency.toUpperCase();
+      const interval = price.recurring.interval; // 'month' or 'year'
 
-      // Skip if not a recognized tier
-      if (!tiers.includes(tier) && !tier.includes('synqforge')) {
-        continue;
+      // Initialize nested structure
+      if (!priceMap[productName]) {
+        priceMap[productName] = {};
+      }
+      if (!priceMap[productName][currency]) {
+        priceMap[productName][currency] = {};
       }
 
-      // Initialize tier object
-      if (!pricesByTier[tier]) {
-        pricesByTier[tier] = {};
-      }
-
-      // Find all prices for this product
-      const productPrices = prices.data.filter(
-        (price) =>
-          typeof price.product === 'string'
-            ? price.product === productId
-            : price.product?.id === productId
-      );
-
-      // Group by currency
-      for (const price of productPrices) {
-        if (!price.currency || price.type !== 'recurring') continue;
-
-        const currency = price.currency.toUpperCase();
-        const interval = price.recurring?.interval || 'month';
-        const amount = price.unit_amount || 0;
-
-        if (!pricesByTier[tier][currency]) {
-          pricesByTier[tier][currency] = {
-            tier,
-            currency,
-            monthly: null,
-            annual: null,
-          };
-        }
-
-        if (interval === 'month') {
-          pricesByTier[tier][currency].monthly = {
-            priceId: price.id,
-            amount: amount / 100, // Convert cents to dollars
-          };
-        } else if (interval === 'year') {
-          pricesByTier[tier][currency].annual = {
-            priceId: price.id,
-            amount: amount / 100, // Convert cents to dollars
-          };
-        }
-      }
+      // Store the price
+      priceMap[productName][currency][interval] = {
+        priceId: price.id,
+        amount: price.unit_amount ? price.unit_amount / 100 : 0,
+        amountCents: price.unit_amount || 0,
+      };
     }
 
     // Format response
     const response = {
-      tiers: Object.keys(pricesByTier).map((tierKey) => {
-        const currencies = pricesByTier[tierKey];
-
-        return {
-          id: tierKey,
-          name: getTierName(tierKey),
-          currencies: Object.keys(currencies).map((curr) => ({
-            currency: curr,
-            monthly: currencies[curr].monthly,
-            annual: currencies[curr].annual,
-          })),
-        };
-      }),
+      prices: priceMap,
+      currencies: ['GBP', 'USD', 'EUR'], // Supported currencies
       lastUpdated: new Date().toISOString(),
     };
 
@@ -136,22 +71,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-/**
- * Helper to get human-readable tier name
- */
-function getTierName(tierSlug: string): string {
-  const names: Record<string, string> = {
-    synqforge_free: 'Free',
-    synqforge_pro: 'Pro',
-    synqforge_team: 'Team',
-    starter: 'Starter',
-    pro_solo: 'Pro Solo',
-    pro_collaborative: 'Pro Collaborative',
-    team: 'Team',
-    enterprise: 'Enterprise',
-  };
-
-  return names[tierSlug] || tierSlug;
 }
