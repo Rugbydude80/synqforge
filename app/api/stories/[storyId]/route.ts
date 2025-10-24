@@ -3,6 +3,15 @@ import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { safeValidateUpdateStory } from '@/lib/validations/story';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
+import {
+  checkStoryUpdateEntitlement,
+  calculateStoryDiff,
+  getUpdateUsageStats,
+} from '@/lib/entitlements/checkStoryUpdate';
+import { db } from '@/lib/db';
+import { storyUpdates, organizations } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
 /**
  * GET /api/stories/[storyId] - Get a single story by ID
@@ -48,6 +57,12 @@ async function getStory(req: NextRequest, context: { user: any }) {
 
 /**
  * PATCH /api/stories/[storyId] - Update a story
+ *
+ * Tier Limits:
+ * - Free/Starter: 5 updates/month
+ * - Pro: 1000 updates/month
+ * - Team: Unlimited (requires approval for Done stories)
+ * - Enterprise: Unlimited
  */
 async function updateStory(req: NextRequest, context: { user: any }) {
   try {
@@ -88,10 +103,89 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
     await assertStoryAccessible(storyId, context.user.organizationId);
 
+    // Get existing story and organization for tier checking
+    const existingStory = await storiesRepository.getById(storyId);
+    const organization = await db.query.organizations.findFirst({
+      where: eq(organizations.id, context.user.organizationId),
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'Not found', message: 'Organization not found' },
+        { status: 404 }
+      );
+    }
+
+    const tier = organization.subscriptionTier || 'free';
+
+    // Check story update entitlement
+    const entitlementCheck = await checkStoryUpdateEntitlement({
+      userId: context.user.id,
+      storyId,
+      organizationId: context.user.organizationId,
+      tier,
+      storyStatus: existingStory.status as any,
+    });
+
+    if (!entitlementCheck.allowed) {
+      // Return detailed error with upgrade information
+      return NextResponse.json(
+        {
+          error: 'Quota exceeded',
+          message: entitlementCheck.reason,
+          limit: entitlementCheck.limit,
+          used: entitlementCheck.used,
+          remaining: entitlementCheck.remaining,
+          upgradeRequired: entitlementCheck.upgradeRequired,
+          upgradeTier: entitlementCheck.upgradeTier,
+          upgradeUrl: entitlementCheck.upgradeUrl,
+          requiresApproval: entitlementCheck.requiresApproval,
+        },
+        { status: entitlementCheck.requiresApproval ? 403 : 429 }
+      );
+    }
+
+    // Calculate diff for audit trail
+    const changesDiff = calculateStoryDiff(existingStory, updateData);
+
     // Update the story
     const updatedStory = await storiesRepository.update(storyId, updateData, context.user.id);
 
-    return NextResponse.json(updatedStory);
+    // Create audit record
+    const auditId = nanoid();
+    const currentVersion = (existingStory.updateVersion || 1) + 1;
+
+    await db.insert(storyUpdates).values({
+      id: auditId,
+      storyId,
+      userId: context.user.id,
+      organizationId: context.user.organizationId,
+      updatedAt: new Date(),
+      changes: changesDiff,
+      tierAtUpdate: tier,
+      version: currentVersion,
+      updateType: 'manual',
+      aiAssisted: false,
+      ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
+      userAgent: req.headers.get('user-agent') || undefined,
+    });
+
+    // Get updated usage stats
+    const usageStats = await getUpdateUsageStats(
+      context.user.organizationId,
+      context.user.id,
+      tier
+    );
+
+    return NextResponse.json({
+      ...updatedStory,
+      audit: {
+        id: auditId,
+        version: currentVersion,
+        updatedAt: new Date(),
+      },
+      usage: usageStats,
+    });
 
   } catch (error: any) {
     console.error('Error updating story:', error);

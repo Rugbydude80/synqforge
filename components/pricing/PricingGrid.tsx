@@ -102,6 +102,7 @@ export function PricingGrid({ plans, billingInterval, currency, onSelectPlan, lo
         return (
           <Card
             key={plan.id}
+            data-tier={plan.id}
             className={cn(
               'relative flex flex-col transition-all duration-200',
               plan.popular && 'border-primary shadow-xl scale-[1.02] z-10 ring-2 ring-primary/20'

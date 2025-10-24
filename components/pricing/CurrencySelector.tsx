@@ -21,7 +21,7 @@ export function CurrencySelector({ value, onChange }: CurrencySelectorProps) {
     <div className="flex items-center gap-3">
       <Globe className="h-4 w-4 text-muted-foreground" />
       <Select value={value} onValueChange={(v) => onChange(v as Currency)}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px]" data-testid="currency-selector">
           <SelectValue>
             {currencies.find(c => c.value === value)?.flag} {currencies.find(c => c.value === value)?.label}
           </SelectValue>
