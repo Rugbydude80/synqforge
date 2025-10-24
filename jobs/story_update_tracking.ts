@@ -269,24 +269,24 @@ async function sendApproachingLimitWarnings(users: UpdateStats[]) {
  * Get update limit for a tier
  * TODO: Move to shared entitlements module
  */
-// function getTierUpdateLimit(tier: string): number {
-//   switch (tier) {
-//     case 'free':
-//     case 'starter':
-//       return 5;
-//     case 'solo':
-//     case 'pro_solo':
-//     case 'pro_collaborative':
-//     case 'pro':
-//       return 1000;
-//     case 'team':
-//     case 'business':
-//     case 'enterprise':
-//       return Infinity;
-//     default:
-//       return 0;
-//   }
-// }
+function getTierUpdateLimit(tier: string): number {
+  switch (tier) {
+    case 'free':
+    case 'starter':
+      return 5;
+    case 'solo':
+    case 'pro_solo':
+    case 'pro_collaborative':
+    case 'pro':
+      return 1000;
+    case 'team':
+    case 'business':
+    case 'enterprise':
+      return Infinity;
+    default:
+      return 0;
+  }
+}
 
 /**
  * Manual trigger for testing (call from API or CLI)
