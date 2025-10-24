@@ -9,7 +9,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { SUBSCRIPTION_LIMITS, COMING_SOON_FEATURES } from '@/lib/constants'
 import { db } from '@/lib/db'
-import { organizationMemberships, organizations, subscriptions } from '@/lib/db/schema'
+import { organizationMemberships, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export interface FeatureGateResult {
@@ -46,14 +46,8 @@ export async function requireFeature(
       }
     }
 
-    // Get active subscription
-    const [subscription] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.organizationId, organizationId))
-      .limit(1)
-
-    const tier = subscription?.tier || 'starter'
+    // Get subscription tier from organization
+    const tier = org.subscriptionTier || 'starter'
     const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
 
     if (!limits) {
@@ -235,14 +229,14 @@ export async function checkRateLimit(
   limitType: 'aiActionsPerMinute' | 'heavyJobsPerMinute'
 ): Promise<{ allowed: boolean; limit: number; remaining: number }> {
   try {
-    // Get subscription tier
-    const [subscription] = await db
+    // Get organization to check subscription tier
+    const [org] = await db
       .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.organizationId, organizationId))
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
       .limit(1)
 
-    const tier = subscription?.tier || 'starter'
+    const tier = org?.subscriptionTier || 'starter'
     const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
 
     if (!limits) {
@@ -261,5 +255,68 @@ export async function checkRateLimit(
   } catch (error) {
     console.error('Error checking rate limit:', error)
     return { allowed: false, limit: 0, remaining: 0 }
+  }
+}
+
+/**
+ * Get organization context including tier and limits
+ */
+export async function getOrganizationContext(organizationId: string) {
+  try {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1)
+
+    if (!org) {
+      return null
+    }
+
+    const tier = org.subscriptionTier || 'starter'
+    const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
+
+    return {
+      organization: org,
+      tier,
+      limits
+    }
+  } catch (error) {
+    console.error('Error getting organization context:', error)
+    return null
+  }
+}
+
+/**
+ * Validate operation limits for a given operation type
+ */
+export async function validateOperationLimits(
+  userId: string,
+  organizationId: string,
+  operationType: 'split' | 'update' | 'generate'
+): Promise<{ allowed: boolean; message?: string }> {
+  try {
+    const context = await getOrganizationContext(organizationId)
+    
+    if (!context) {
+      return {
+        allowed: false,
+        message: 'Organization not found'
+      }
+    }
+
+    // Check if the operation is allowed for this tier
+    const { limits } = context
+    
+    // For now, allow all operations - specific limits handled by token service
+    return {
+      allowed: true
+    }
+  } catch (error) {
+    console.error('Error validating operation limits:', error)
+    return {
+      allowed: false,
+      message: 'Error validating operation limits'
+    }
   }
 }
