@@ -191,8 +191,6 @@ export async function validateCheckout(
   tier: SubscriptionTier,
   seats: number
 ): Promise<{ valid: boolean; error?: string; suggestion?: string }> {
-  const tierConfig = getTierConfig(tier)
-  
   // Pro checkout: reject if seats > 4
   if (tier === 'pro' && seats > 4) {
     return {
