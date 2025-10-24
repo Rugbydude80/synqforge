@@ -28,7 +28,7 @@ const bytea = customType<{ data: Buffer }>({
 // ENUMS - Define before tables
 // ============================================
 
-export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'solo', 'team', 'pro', 'business', 'enterprise'])
+export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'starter', 'solo', 'team', 'pro', 'business', 'enterprise'])
 export const roleEnum = pgEnum('role', ['owner', 'admin', 'member', 'viewer'])
 export const projectStatusEnum = pgEnum('project_status', ['planning', 'active', 'on_hold', 'completed', 'archived'])
 export const epicStatusEnum = pgEnum('epic_status', ['draft', 'published', 'planned', 'in_progress', 'completed', 'archived'])
@@ -1088,6 +1088,53 @@ export const workspaceUsage = pgTable(
     orgIdx: index('idx_workspace_usage_org').on(table.organizationId),
     periodIdx: index('idx_workspace_usage_period').on(table.billingPeriodStart, table.billingPeriodEnd),
     uniqueOrgPeriod: uniqueIndex('unique_org_period').on(table.organizationId, table.billingPeriodStart),
+  })
+)
+
+// ============================================
+// AI ACTIONS TRACKING (2025 Pricing)
+// ============================================
+
+export const aiActionUsage = pgTable(
+  'ai_action_usage',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    billingPeriodStart: timestamp('billing_period_start').notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    actionsUsed: integer('actions_used').notNull().default(0),
+    allowance: integer('allowance').notNull().default(0),
+    actionBreakdown: json('action_breakdown').$type<Record<string, number>>().default({}),
+    lastUpdatedAt: timestamp('last_updated_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_ai_action_usage_org').on(table.organizationId),
+    userIdx: index('idx_ai_action_usage_user').on(table.userId),
+    periodIdx: index('idx_ai_action_usage_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    uniqueOrgUserPeriod: uniqueIndex('idx_ai_action_usage_unique').on(table.organizationId, table.userId, table.billingPeriodStart),
+  })
+)
+
+export const aiActionRollover = pgTable(
+  'ai_action_rollover',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    sourcePeriodStart: timestamp('source_period_start').notNull(),
+    sourcePeriodEnd: timestamp('source_period_end').notNull(),
+    rolloverAmount: integer('rollover_amount').notNull().default(0),
+    rolloverPercentage: integer('rollover_percentage').notNull().default(0),
+    appliedToPeriodStart: timestamp('applied_to_period_start').notNull(),
+    appliedAt: timestamp('applied_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_ai_action_rollover_org').on(table.organizationId),
+    userIdx: index('idx_ai_action_rollover_user').on(table.userId),
+    appliedPeriodIdx: index('idx_ai_action_rollover_applied_period').on(table.appliedToPeriodStart),
   })
 )
 

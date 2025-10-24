@@ -17,8 +17,8 @@ export interface PaywallModalProps {
   isOpen: boolean
   onClose: () => void
   feature: string
-  currentTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
-  requiredTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  currentTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  requiredTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
   customMessage?: string
 }
 
@@ -33,6 +33,18 @@ const tierInfo = {
       '50 stories per project',
       '20k AI tokens/month',
       'Basic features',
+    ],
+  },
+  starter: {
+    name: 'Starter',
+    price: 0,
+    icon: Sparkles,
+    color: 'text-blue-500',
+    features: [
+      '25 AI actions/user/month',
+      'Max 3 children per split',
+      'INVEST gating',
+      'Side-by-side diff',
     ],
   },
   solo: {

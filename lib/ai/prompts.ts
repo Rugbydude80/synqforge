@@ -8,6 +8,7 @@ import { SubscriptionTier } from '@/lib/utils/subscription'
 // Token budgets per tier (max_output_tokens)
 export const TOKEN_BUDGETS: Record<SubscriptionTier, { default: number; max: number }> = {
   free: { default: 400, max: 600 },
+  starter: { default: 400, max: 600 },
   solo: { default: 600, max: 800 },
   team: { default: 1000, max: 1400 },
   pro: { default: 1400, max: 2000 },
@@ -18,6 +19,7 @@ export const TOKEN_BUDGETS: Record<SubscriptionTier, { default: number; max: num
 // Monthly token limits (total tokens = input + output)
 export const MONTHLY_TOKEN_LIMITS: Record<SubscriptionTier, { soft: number; hard: number }> = {
   free: { soft: 20000, hard: 30000 },
+  starter: { soft: 20000, hard: 30000 },
   solo: { soft: 300000, hard: 500000 },
   team: { soft: 2000000, hard: 3000000 },
   pro: { soft: 10000000, hard: 15000000 },

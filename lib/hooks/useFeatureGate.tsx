@@ -14,7 +14,7 @@ export interface UseFeatureGateResult {
   hasFeature: (feature: keyof SubscriptionFeatures) => boolean
   checkFeature: (feature: keyof SubscriptionFeatures, featureName?: string) => boolean
   PaywallModal: React.ReactElement | null
-  currentTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  currentTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
   features: SubscriptionFeatures
 }
 
@@ -23,7 +23,7 @@ export function useFeatureGate(): UseFeatureGateResult {
   const [paywallState, setPaywallState] = useState<{
     isOpen: boolean
     feature: string
-    requiredTier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+    requiredTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
   } | null>(null)
 
   // Get current tier from session or default to free
