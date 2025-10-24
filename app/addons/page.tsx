@@ -20,6 +20,7 @@ export default function AddOnsPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
+  const [currency] = useState<'GBP' | 'EUR' | 'USD'>('GBP')
 
   const handlePurchaseAddOn = async (addonId: string, type: string) => {
     if (!session) {
@@ -72,8 +73,8 @@ export default function AddOnsPage() {
   const getEligibilityText = (plans: string[]) => {
     const planNames: Record<string, string> = {
       starter: 'Starter',
-      pro_solo: 'Pro (Solo)',
-      pro_collaborative: 'Pro (Collaborative)',
+      core: 'Core',
+      pro: 'Pro',
       team: 'Team',
       enterprise: 'Enterprise',
     }
@@ -142,7 +143,10 @@ export default function AddOnsPage() {
                   {/* Price */}
                   <div className="py-4 border-y">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold">£{addon.price}</span>
+                      <span className="text-4xl font-bold">
+                        {currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$'}
+                        {addon.prices[currency]}
+                      </span>
                       <span className="text-muted-foreground">
                         {addon.type === 'recurring' ? '/month' : 'one-off'}
                       </span>
@@ -199,7 +203,7 @@ export default function AddOnsPage() {
                     ) : (
                       <>
                         Add to Account
-                        {addon.type === 'one_time' && ` • £${addon.price}`}
+                        {addon.type === 'one_time' && ` • ${currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$'}${addon.prices[currency]}`}
                       </>
                     )}
                   </Button>

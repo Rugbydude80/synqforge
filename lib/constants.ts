@@ -38,7 +38,7 @@ export const LIMITS = {
 /**
  * Subscription Tier Limits
  * NEW 2025 Per-User Pricing Structure (GBP)
- * Pricing: Starter (£0), Pro Solo (£10.99), Pro Collaborative (£19.99), Team (£16.99), Enterprise (custom)
+ * Pricing: Starter (£0), Core (£10.99), Pro (£19.99), Team (£16.99), Enterprise (custom)
  * Benchmarked against Jira, Linear, ClickUp, Shortcut, Asana
  */
 export const SUBSCRIPTION_LIMITS = {
@@ -260,11 +260,11 @@ export const SUBSCRIPTION_LIMITS = {
     displayName: 'Starter',
     displayPrice: 'Free',
   },
-  pro_solo: {
+  core: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
-    maxSeats: 2,
+    maxSeats: 1,
     includedSeats: 1,
     seatPrice: 10.99, // £10.99/user/month
 
@@ -327,10 +327,10 @@ export const SUBSCRIPTION_LIMITS = {
     perUser: true,
 
     // Display name
-    displayName: 'Pro (Solo)',
+    displayName: 'Core',
     displayPrice: '£10.99',
   },
-  pro_collaborative: {
+  pro: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
@@ -566,59 +566,23 @@ export const SUBSCRIPTION_LIMITS = {
     displayName: 'Enterprise',
     displayPrice: 'Custom',
   },
-  // Legacy compatibility
-  pro: {
-    // Alias for pro_collaborative for backward compatibility
-    maxProjects: Infinity,
-    maxStoriesPerProject: Infinity,
-    maxSeats: 4,
-    includedSeats: 3,
-    seatPrice: 19.99,
-    monthlyAIActions: 800,
-    aiActionsPoolingEnabled: false,
-    aiActionsRolloverPercent: 20,
-    maxChildrenPerSplit: 3,
-    monthlyAITokens: 80000,
-    monthlyAIGenerations: 80,
-    maxStoriesPerGeneration: 15,
-    canUseBacklogAutopilot: false,
-    canUseACValidator: false,
-    canUseTestGeneration: false,
-    canUsePlanningForecast: false,
-    canUseEffortScoring: false,
-    canUseKnowledgeSearch: false,
-    canUseInboxParsing: false,
-    canUseRepoAwareness: false,
-    canUseWorkflowAgents: false,
-    canUseGovernance: false,
-    canUseModelControls: false,
-    canUseAnalytics: false,
-    canUseSingleStorySplit: true,
-    canUseStorySplitINVEST: true,
-    canUseStorySplitSPIDR: true,
-    canUseStoryUpdate: true,
-    canUseStoryUpdateDiff: true,
-    canUseStoryUpdateSectionAccept: true,
-    canUseBulkSplit: true,
-    canUseSplitPreflightEstimates: true,
-    canExport: true,
-    canUseTemplates: true,
-    canUseAPI: false,
-    canUseCustomFields: true,
-    canUseAdvancedAnalytics: false,
-    canUseSSO: false,
-    aiActionsPerMinute: 30,
-    heavyJobsPerMinute: 3,
-    supportLevel: 'email' as const,
-    price: 19.99,
-    currency: 'GBP' as const,
-    billingInterval: 'monthly' as const,
-    trialDays: 14,
-    annualPrice: 199.90,
-    perUser: true,
-    displayName: 'Pro',
-    displayPrice: '£19.99',
+} as const
+
+/**
+ * Feature Gate - Coming Soon Features
+ * Features planned for Q2 2026
+ */
+export const COMING_SOON_FEATURES = {
+  API_INTEGRATIONS: {
+    releaseQuarter: '2026-Q2',
+    message: 'API Integrations will be available from Q2 2026',
+    features: ['REST API', 'Webhooks', 'Jira Sync', 'Linear Sync', 'Slack Integration']
   },
+  ADVANCED_INTEGRATIONS: {
+    releaseQuarter: '2026-Q2',
+    message: 'Advanced integrations coming Q2 2026',
+    features: ['GitHub Integration', 'GitLab Integration', 'Azure DevOps']
+  }
 } as const
 
 /**
@@ -657,7 +621,7 @@ export const AI_ACTION_OVERAGE = {
   actionsPerPack: 1000, // 1,000 actions per pack
   expiryDays: 90, // 90-day expiry
   maxActivePacks: 5, // Max 5 active packs
-  availableFor: ['pro_solo', 'pro_collaborative', 'pro', 'team', 'enterprise'], // Pro, Team, Enterprise can buy
+  availableFor: ['core', 'pro', 'team', 'enterprise'], // Core, Pro, Team, Enterprise can buy
 } as const
 
 /**
@@ -676,7 +640,7 @@ export const AI_BOOSTER_ADDON = {
 export const PRIORITY_SUPPORT_ADDON = {
   price: 15, // £15/month
   supportLevel: 'priority_24h', // Upgrades to 24h priority support
-  availableFor: ['pro_solo', 'pro_collaborative', 'pro'], // Only Pro users
+  availableFor: ['core', 'pro'], // Only Core and Pro users
   recurring: true, // Monthly subscription
 } as const
 
@@ -684,11 +648,10 @@ export const PRIORITY_SUPPORT_ADDON = {
  * Seat Add-on Pricing (2025 GBP per-user pricing)
  */
 export const SEAT_PRICING = {
-  pro_solo: 10.99, // £10.99/user/month
-  pro_collaborative: 19.99, // £19.99/user/month
-  pro: 19.99, // £19.99/user/month (alias)
+  core: 10.99, // £10.99/user/month
+  pro: 19.99, // £19.99/user/month
   team: 16.99, // £16.99/user/month (15% discount for 5+)
-  enterprise: 0, // Custom pricing (starts £25/user)
+  enterprise: 0, // Custom pricing
 } as const
 
 /**

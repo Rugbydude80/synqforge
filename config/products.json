@@ -3,7 +3,7 @@
     {
       "id": "prod_starter",
       "name": "Starter",
-      "description": "Free tier for individuals and small teams getting started",
+      "description": "Free tier for individuals trying SynqForge",
       "tier": "starter",
       "prices": [
         {
@@ -20,8 +20,8 @@
         "aiActionsBase": "25",
         "pooling": "false",
         "rollover": "0",
-        "maxSplitChildren": "2",
-        "updateEnabled": "false",
+        "maxSplitChildren": "3",
+        "updateEnabled": "true",
         "bulkLimit": "1",
         "approvalsRequired": "false",
         "minSeats": "1",
@@ -31,30 +31,46 @@
       }
     },
     {
-      "id": "prod_pro",
-      "name": "Pro",
-      "description": "Enhanced AI capabilities and advanced features for growing teams",
-      "tier": "pro",
+      "id": "prod_core",
+      "name": "Core",
+      "description": "For independent makers and freelancers",
+      "tier": "core",
       "prices": [
         {
-          "id": "price_pro_monthly",
-          "currency": "usd",
+          "id": "price_core_monthly_gbp",
+          "currency": "gbp",
           "unit_amount": 1099,
           "recurring": {
             "interval": "month"
           }
         },
         {
-          "id": "price_pro_yearly",
+          "id": "price_core_yearly_gbp",
+          "currency": "gbp",
+          "unit_amount": 10990,
+          "recurring": {
+            "interval": "year"
+          }
+        },
+        {
+          "id": "price_core_monthly_usd",
           "currency": "usd",
-          "unit_amount": 10500,
+          "unit_amount": 1200,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_core_yearly_usd",
+          "currency": "usd",
+          "unit_amount": 12000,
           "recurring": {
             "interval": "year"
           }
         }
       ],
       "metadata": {
-        "tier": "pro",
+        "tier": "core",
         "aiActionsBase": "400",
         "pooling": "false",
         "rollover": "20",
@@ -64,10 +80,68 @@
         "bulkLimit": "1",
         "approvalsRequired": "false",
         "minSeats": "1",
-        "maxSeats": "4",
+        "maxSeats": "1",
         "auditLogRetention": "30",
         "supportTier": "email_48h",
         "gherkinTemplates": "advanced"
+      }
+    },
+    {
+      "id": "prod_pro",
+      "name": "Pro",
+      "description": "For small teams collaborating on stories",
+      "tier": "pro",
+      "prices": [
+        {
+          "id": "price_pro_monthly_gbp",
+          "currency": "gbp",
+          "unit_amount": 1999,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_pro_yearly_gbp",
+          "currency": "gbp",
+          "unit_amount": 19990,
+          "recurring": {
+            "interval": "year"
+          }
+        },
+        {
+          "id": "price_pro_monthly_usd",
+          "currency": "usd",
+          "unit_amount": 2200,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_pro_yearly_usd",
+          "currency": "usd",
+          "unit_amount": 22000,
+          "recurring": {
+            "interval": "year"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "pro",
+        "aiActionsBase": "800",
+        "pooling": "false",
+        "rollover": "20",
+        "maxRollover": "160",
+        "maxSplitChildren": "3",
+        "updateEnabled": "true",
+        "bulkLimit": "3",
+        "approvalsRequired": "false",
+        "minSeats": "1",
+        "maxSeats": "4",
+        "auditLogRetention": "30",
+        "supportTier": "email_24h",
+        "gherkinTemplates": "advanced",
+        "sharedTemplates": "true",
+        "structuredPatching": "true"
       }
     },
     {
@@ -77,17 +151,33 @@
       "tier": "team",
       "prices": [
         {
-          "id": "price_team_monthly",
-          "currency": "usd",
+          "id": "price_team_monthly_gbp",
+          "currency": "gbp",
           "unit_amount": 1699,
           "recurring": {
             "interval": "month"
           }
         },
         {
-          "id": "price_team_yearly",
+          "id": "price_team_yearly_gbp",
+          "currency": "gbp",
+          "unit_amount": 16990,
+          "recurring": {
+            "interval": "year"
+          }
+        },
+        {
+          "id": "price_team_monthly_usd",
           "currency": "usd",
-          "unit_amount": 16200,
+          "unit_amount": 2000,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_team_yearly_usd",
+          "currency": "usd",
+          "unit_amount": 20000,
           "recurring": {
             "interval": "year"
           }
@@ -148,8 +238,18 @@
       "type": "one_time",
       "prices": [
         {
-          "id": "price_ai_actions_pack",
+          "id": "price_ai_actions_pack_gbp",
+          "currency": "gbp",
+          "unit_amount": 2000
+        },
+        {
+          "id": "price_ai_actions_pack_usd",
           "currency": "usd",
+          "unit_amount": 2000
+        },
+        {
+          "id": "price_ai_actions_pack_eur",
+          "currency": "eur",
           "unit_amount": 2000
         }
       ],
@@ -158,7 +258,7 @@
         "type": "ai_actions",
         "credits": "1000",
         "expiryDays": "90",
-        "availableFor": "pro,team,enterprise",
+        "availableFor": "core,pro,team,enterprise",
         "maxActive": "5",
         "stackable": "true",
         "description": "Purchase additional AI actions that expire after 90 days"
@@ -171,8 +271,24 @@
       "type": "recurring",
       "prices": [
         {
-          "id": "price_ai_booster_monthly",
+          "id": "price_ai_booster_monthly_gbp",
+          "currency": "gbp",
+          "unit_amount": 500,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_ai_booster_monthly_usd",
           "currency": "usd",
+          "unit_amount": 500,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_ai_booster_monthly_eur",
+          "currency": "eur",
           "unit_amount": 500,
           "recurring": {
             "interval": "month"
@@ -186,18 +302,34 @@
         "recurring": "true",
         "availableFor": "starter",
         "cancellable": "true",
-        "description": "Monthly boost for Starter users, bridges gap to Pro"
+        "description": "Monthly boost for Starter users, bridges gap to Core"
       }
     },
     {
       "id": "prod_priority_support",
       "name": "Priority Support Pack",
-      "description": "24-hour priority email and live chat support for Pro users",
+      "description": "24-hour priority email and live chat support",
       "type": "recurring",
       "prices": [
         {
-          "id": "price_priority_support_monthly",
+          "id": "price_priority_support_monthly_gbp",
+          "currency": "gbp",
+          "unit_amount": 1500,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_priority_support_monthly_usd",
           "currency": "usd",
+          "unit_amount": 1500,
+          "recurring": {
+            "interval": "month"
+          }
+        },
+        {
+          "id": "price_priority_support_monthly_eur",
+          "currency": "eur",
           "unit_amount": 1500,
           "recurring": {
             "interval": "month"
@@ -208,8 +340,8 @@
         "addon": "true",
         "type": "priority_support",
         "supportUpgrade": "24h_priority",
-        "availableFor": "pro",
-        "description": "Upgrade Pro users to Team-level support"
+        "availableFor": "core,pro",
+        "description": "Upgrade to Team-level support"
       }
     }
   ],
