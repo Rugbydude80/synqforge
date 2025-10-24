@@ -6,57 +6,60 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Zap, Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Building2, ArrowLeft } from 'lucide-react'
+import { Zap, Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Building2, ArrowLeft, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import plansData from '@/config/plans.json'
 
+// Map plans from plans.json to signup format
 const plans = [
   {
-    id: 'free',
-    name: 'Free',
+    id: 'starter',
+    name: 'Starter',
     price: 0,
     icon: Sparkles,
-    description: 'Perfect for trying out SynqForge',
-    features: ['1 project', 'Up to 50 stories', '5K AI tokens', '7-day trial'],
+    description: plansData.tiers.starter.description,
+    features: plansData.tiers.starter.features.slice(0, 4), // First 4 features for display
   },
   {
-    id: 'solo',
-    name: 'Solo',
-    price: 19,
-    icon: Sparkles,
-    description: 'For individual developers',
-    features: ['3 projects', '200 stories/month', '150K AI tokens'],
+    id: 'pro_solo',
+    name: 'Pro (Solo)',
+    price: 10.99,
+    icon: Zap,
+    description: plansData.tiers.pro_solo.description,
+    features: plansData.tiers.pro_solo.features.slice(0, 4),
+  },
+  {
+    id: 'pro_collaborative',
+    name: 'Pro',
+    price: 19.99,
+    icon: Users,
+    description: plansData.tiers.pro_collaborative.description,
+    features: plansData.tiers.pro_collaborative.features.slice(0, 4),
+    popular: true,
   },
   {
     id: 'team',
     name: 'Team',
-    price: 29,
-    icon: Zap,
-    description: 'For small teams',
-    features: ['10 projects', '500 stories/month', '500K AI tokens'],
-    popular: true,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 99,
-    icon: Building2,
-    description: 'For growing organizations',
-    features: ['Unlimited projects', '2K stories/month', '2.5M AI tokens'],
+    price: 16.99,
+    icon: Users,
+    description: plansData.tiers.team.description,
+    features: plansData.tiers.team.features.slice(0, 4),
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 299,
+    price: null,
+    priceLabel: 'Custom',
     icon: Building2,
-    description: 'For large organizations',
-    features: ['Everything unlimited', 'Dedicated support', 'SSO/SAML'],
+    description: plansData.tiers.enterprise.description,
+    features: plansData.tiers.enterprise.features.slice(0, 4),
   },
 ]
 
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const planFromUrl = searchParams.get('plan') || 'free'
+  const planFromUrl = searchParams.get('plan') || 'starter'
 
   const [step, setStep] = useState<'plan' | 'account'>('plan')
   const [selectedPlan, setSelectedPlan] = useState(planFromUrl)
@@ -121,7 +124,7 @@ export default function SignUpPage() {
         setSuccess(true)
 
         // Step 2: If paid plan, redirect to Stripe checkout
-        if (selectedPlan !== 'free' && data.checkoutUrl) {
+        if (selectedPlan !== 'starter' && selectedPlan !== 'free' && data.checkoutUrl) {
           setTimeout(() => {
             window.location.href = data.checkoutUrl
           }, 1500)
@@ -156,7 +159,7 @@ export default function SignUpPage() {
             <div>
               <h2 className="text-2xl font-bold mb-2">Account created!</h2>
               <p className="text-muted-foreground">
-                {selectedPlan !== 'free'
+                {selectedPlan !== 'starter' && selectedPlan !== 'free'
                   ? 'Redirecting to payment...'
                   : 'Redirecting to sign in...'}
               </p>
@@ -211,8 +214,14 @@ export default function SignUpPage() {
                       <CardTitle className="text-lg">{plan.name}</CardTitle>
                     </div>
                     <div className="mt-2">
-                      <span className="text-3xl font-bold">£{plan.price}</span>
-                      <span className="text-muted-foreground">/month</span>
+                      {plan.price === null ? (
+                        <span className="text-3xl font-bold">{plan.priceLabel || 'Custom'}</span>
+                      ) : (
+                        <>
+                          <span className="text-3xl font-bold">£{plan.price}</span>
+                          {plan.price > 0 && <span className="text-muted-foreground">/month</span>}
+                        </>
+                      )}
                     </div>
                     <CardDescription className="mt-2">{plan.description}</CardDescription>
                   </CardHeader>
@@ -276,7 +285,9 @@ export default function SignUpPage() {
             <div>
               <h1 className="text-3xl font-bold gradient-text">Create account</h1>
               <p className="text-muted-foreground">
-                {plans.find(p => p.id === selectedPlan)?.name} plan • ${plans.find(p => p.id === selectedPlan)?.price}/month
+                {plans.find(p => p.id === selectedPlan)?.name} plan
+                {plans.find(p => p.id === selectedPlan)?.price !== null && 
+                  ` • £${plans.find(p => p.id === selectedPlan)?.price || 0}/month`}
               </p>
             </div>
           </div>
