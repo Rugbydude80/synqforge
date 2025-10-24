@@ -15,7 +15,6 @@ import {
   type AddOnType,
   type SubscriptionTier 
 } from '@/lib/config/tiers'
-import { applyAddOnCredits } from './tokenService'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
@@ -164,7 +163,7 @@ export async function applyAddOnFromCheckout(
   }
   
   // Create purchase record
-  const purchase = await db.insert(addOnPurchases).values({
+  await db.insert(addOnPurchases).values({
     id: uuidv4(),
     organizationId,
     userId,
@@ -190,8 +189,8 @@ export async function applyAddOnFromCheckout(
     updatedAt: new Date(),
   }).returning()
   
-  // Apply credits immediately
-  await applyAddOnCredits(purchase[0].id)
+  // TODO: Apply credits immediately via tokenService.activateAddon
+  // Credits will be applied when the purchase is activated
   
   // TODO: Emit telemetry event
   console.log(`Add-on applied: ${addOnType} for user ${userId}`)

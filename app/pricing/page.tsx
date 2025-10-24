@@ -280,7 +280,11 @@ export default function PricingPage() {
         {/* Add-ons Section */}
         <div className="mb-20" id="addons">
           <AddOnsSection
-            addons={plansData.addons}
+            addons={plansData.addons.map((addon: any) => ({
+              ...addon,
+              price: addon.prices[currency.toUpperCase() as 'GBP' | 'EUR' | 'USD'],
+              currency: currency.toUpperCase()
+            }))}
             onSelectAddOn={handleSelectAddOn}
           />
         </div>

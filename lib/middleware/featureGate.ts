@@ -9,7 +9,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { SUBSCRIPTION_LIMITS, COMING_SOON_FEATURES } from '@/lib/constants'
 import { db } from '@/lib/db'
-import { organizationMemberships, organizations, subscriptions } from '@/lib/db/schema'
+import { organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export interface FeatureGateResult {
@@ -46,14 +46,8 @@ export async function requireFeature(
       }
     }
 
-    // Get active subscription
-    const [subscription] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.organizationId, organizationId))
-      .limit(1)
-
-    const tier = subscription?.tier || 'starter'
+    // Get tier from organization
+    const tier = org.subscriptionTier || 'starter'
     const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
 
     if (!limits) {
@@ -236,13 +230,14 @@ export async function checkRateLimit(
 ): Promise<{ allowed: boolean; limit: number; remaining: number }> {
   try {
     // Get subscription tier
-    const [subscription] = await db
+    // Get organization to check tier
+    const [org] = await db
       .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.organizationId, organizationId))
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
       .limit(1)
-
-    const tier = subscription?.tier || 'starter'
+    
+    const tier = org?.subscriptionTier || 'starter'
     const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
 
     if (!limits) {

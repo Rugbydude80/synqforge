@@ -7,8 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { db } from '@/lib/db'
-import { addOnPurchases, organizations, subscriptions } from '@/lib/db/schema'
-import { eq, and, gte } from 'drizzle-orm'
+import { addOnPurchases, organizations } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { activateAddon, getActiveAddons } from '@/lib/services/tokenService'
 
 /**
@@ -89,14 +89,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get subscription tier to validate eligibility
-    const [subscription] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.organizationId, organizationId))
-      .limit(1)
-
-    const tier = subscription?.tier || 'starter'
+    // Get subscription tier from organization
+    const tier = org.subscriptionTier || 'starter'
 
     // Validate add-on eligibility
     if (addonType === 'ai_booster' && tier !== 'starter') {
