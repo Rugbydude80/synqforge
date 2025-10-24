@@ -1,7 +1,7 @@
 {
-  "version": "3.0",
-  "currency": "GBP",
+  "version": "2025-10-24",
   "lastUpdated": "2025-01-24",
+  "currencies": ["GBP", "EUR", "USD"],
   "tiers": {
     "starter": {
       "id": "starter",
@@ -9,15 +9,25 @@
       "label": "Free",
       "price": 0,
       "priceAnnual": 0,
-      "currency": "GBP",
+      "prices": {
+        "GBP": { "monthly": 0, "annual": 0 },
+        "EUR": { "monthly": 0, "annual": 0 },
+        "USD": { "monthly": 0, "annual": 0 }
+      },
       "description": "For individuals trying SynqForge",
       "minSeats": 1,
       "maxSeats": 1,
+      "trial": 7,
       "actions": 25,
       "rollover": 0,
       "pooling": false,
+      "metadata": {
+        "tier": "starter",
+        "version": "2025-10-24"
+      },
       "features": [
         "25 AI actions per month",
+        "7-day trial",
         "Single story Split with INVEST gating",
         "Story Update with side-by-side diff",
         "SPIDR hints for splitting",
@@ -32,19 +42,28 @@
         "No bulk operations"
       ]
     },
-    "pro_solo": {
-      "id": "pro_solo",
-      "name": "Pro (Solo)",
-      "label": "Solo",
-      "price": 10.99,
-      "priceAnnual": 109.90,
-      "currency": "GBP",
-      "description": "For individual power users",
+    "core": {
+      "id": "core",
+      "name": "Core",
+      "label": "Core",
+      "prices": {
+        "GBP": { "monthly": 10.99, "annual": 109.90 },
+        "EUR": { "monthly": 11.99, "annual": 119.90 },
+        "USD": { "monthly": 12.00, "annual": 120.00 }
+      },
+      "description": "For independent makers and freelancers",
       "minSeats": 1,
-      "maxSeats": 2,
+      "maxSeats": 1,
       "actions": 400,
       "rollover": 20,
       "pooling": false,
+      "metadata": {
+        "tier": "core",
+        "aiActionsPerSeat": "400",
+        "rollover": "20",
+        "maxChildrenPerSplit": "3",
+        "version": "2025-10-24"
+      },
       "features": [
         "400 AI actions per user/month",
         "20% rollover of unused actions",
@@ -59,20 +78,30 @@
       ],
       "limitations": []
     },
-    "pro_collaborative": {
-      "id": "pro_collaborative",
+    "pro": {
+      "id": "pro",
       "name": "Pro (Collaborative)",
       "label": "Pro",
-      "price": 19.99,
-      "priceAnnual": 199.90,
-      "currency": "GBP",
-      "description": "For small teams",
-      "minSeats": 3,
+      "prices": {
+        "GBP": { "monthly": 19.99, "annual": 199.90 },
+        "EUR": { "monthly": 21.99, "annual": 219.90 },
+        "USD": { "monthly": 22.00, "annual": 220.00 }
+      },
+      "description": "For small teams collaborating on stories",
+      "minSeats": 1,
       "maxSeats": 4,
       "actions": 800,
       "rollover": 20,
       "pooling": false,
       "popular": true,
+      "metadata": {
+        "tier": "pro",
+        "aiActionsPerSeat": "800",
+        "rollover": "20",
+        "sharedTemplates": "true",
+        "structuredPatching": "true",
+        "version": "2025-10-24"
+      },
       "features": [
         "800 AI actions per user/month",
         "20% rollover of unused actions",
@@ -83,7 +112,8 @@
         "Advanced Gherkin templates",
         "Priority email support (24h SLA)",
         "Export to Jira, Linear, CSV",
-        "Custom fields"
+        "Custom fields",
+        "Integrations (coming Q2 2026)"
       ],
       "limitations": []
     },
@@ -91,9 +121,11 @@
       "id": "team",
       "name": "Team (5+)",
       "label": "Team",
-      "price": 16.99,
-      "priceAnnual": 169.90,
-      "currency": "GBP",
+      "prices": {
+        "GBP": { "monthly": 16.99, "annual": 169.90 },
+        "EUR": { "monthly": 18.99, "annual": 189.90 },
+        "USD": { "monthly": 20.00, "annual": 200.00 }
+      },
       "description": "For larger teams needing pooled AI actions",
       "minSeats": 5,
       "maxSeats": null,
@@ -103,6 +135,15 @@
       "pooling": true,
       "discount": 15,
       "discountNote": "15% off vs 5× Pro users",
+      "metadata": {
+        "tier": "team",
+        "aiActionsBase": "10000",
+        "aiActionsPerSeat": "1000",
+        "pooling": "true",
+        "min_quantity": "5",
+        "approvalFlows": "true",
+        "version": "2025-10-24"
+      },
       "features": [
         "10,000 base + 1,000 AI actions per seat",
         "Pooled sharing across team",
@@ -114,7 +155,8 @@
         "1-year audit logs with revision links",
         "Advanced AI modules (6 modules)",
         "Priority support (24h SLA)",
-        "SSO/SAML authentication"
+        "SSO/SAML authentication",
+        "API & Integrations (coming Q2 2026)"
       ],
       "limitations": []
     },
@@ -122,10 +164,11 @@
       "id": "enterprise",
       "name": "Enterprise",
       "label": "Enterprise",
-      "price": null,
-      "priceAnnual": null,
-      "priceStarting": 25,
-      "currency": "GBP",
+      "prices": {
+        "GBP": { "monthly": "custom", "annual": "custom" },
+        "EUR": { "monthly": "custom", "annual": "custom" },
+        "USD": { "monthly": "custom", "annual": "custom" }
+      },
       "description": "For orgs needing compliance & SLAs",
       "minSeats": 10,
       "maxSeats": null,
@@ -133,6 +176,14 @@
       "actionsPerSeat": "custom",
       "rollover": "policy",
       "pooling": true,
+      "metadata": {
+        "tier": "enterprise",
+        "sso": "true",
+        "rbac": "true",
+        "budgetAllocations": "true",
+        "unlimitedChildren": "true",
+        "version": "2025-10-24"
+      },
       "features": [
         "Custom AI action pools",
         "Department budget allocations",
@@ -152,13 +203,47 @@
   },
   "addons": [
     {
+      "id": "ai_booster_starter",
+      "name": "AI Booster",
+      "prices": {
+        "GBP": 5,
+        "EUR": 5,
+        "USD": 5
+      },
+      "type": "recurring",
+      "interval": "monthly",
+      "description": "+200 extra AI actions per month",
+      "eligiblePlans": ["starter"],
+      "metadata": {
+        "addon": "true",
+        "availableFor": "starter",
+        "aiActionsBonus": "200",
+        "version": "2025-10-24"
+      },
+      "features": [
+        "200 extra AI actions per month",
+        "Recurring monthly subscription",
+        "Cancel anytime",
+        "Bridges gap to Core tier"
+      ]
+    },
+    {
       "id": "ai_actions_pack",
-      "name": "AI Actions Pack",
-      "price": 20,
-      "currency": "GBP",
+      "name": "AI Actions 1,000 Pack",
+      "prices": {
+        "GBP": 20,
+        "EUR": 20,
+        "USD": 20
+      },
       "type": "one_time",
       "description": "+1,000 AI actions (90-day expiry; stackable)",
-      "eligiblePlans": ["pro_solo", "pro_collaborative", "team", "enterprise"],
+      "eligiblePlans": ["core", "pro", "team", "enterprise"],
+      "metadata": {
+        "addon": "true",
+        "availableFor": "core,pro,team",
+        "feature_key": "overage",
+        "version": "2025-10-24"
+      },
       "features": [
         "1,000 additional AI actions",
         "90-day expiry from purchase",
@@ -170,30 +255,21 @@
       "maxActive": 5
     },
     {
-      "id": "ai_booster_starter",
-      "name": "AI Booster (Starter)",
-      "price": 5,
-      "currency": "GBP",
-      "type": "recurring",
-      "interval": "monthly",
-      "description": "+200 extra AI actions per month",
-      "eligiblePlans": ["starter"],
-      "features": [
-        "200 extra AI actions per month",
-        "Recurring monthly subscription",
-        "Cancel anytime",
-        "Bridges gap to Pro tier"
-      ]
-    },
-    {
       "id": "priority_support",
       "name": "Priority Support Pack",
-      "price": 15,
-      "currency": "GBP",
+      "prices": {
+        "GBP": 15,
+        "EUR": 15,
+        "USD": 15
+      },
       "type": "recurring",
       "interval": "monthly",
       "description": "Upgrades to 24h email + chat support",
-      "eligiblePlans": ["pro_solo", "pro_collaborative"],
+      "eligiblePlans": ["core", "pro"],
+      "metadata": {
+        "addon": "true",
+        "version": "2025-10-24"
+      },
       "features": [
         "24-hour priority email support",
         "Live chat support",
@@ -243,23 +319,22 @@
     {
       "id": 2,
       "question": "Can I buy more AI actions?",
-      "answer": "Yes! Pro and Team users can purchase AI Actions Packs for £20. Each pack includes 1,000 AI actions that expire after 90 days. You can stack up to 5 packs at once. Starter users can add the AI Booster (£5/month) for an extra 200 actions per month."
+      "answer": "Yes! Core and Team users can purchase AI Actions Packs for £20. Each pack includes 1,000 AI actions that expire after 90 days. You can stack up to 5 packs at once. Starter users can add the AI Booster (£5/month) for an extra 200 actions per month."
     },
     {
       "id": 3,
       "question": "What happens when I reach my monthly limit?",
-      "answer": "When you reach your AI action limit, the system will block new AI operations until your monthly allowance resets. You can still manually edit stories, manage projects, and use all non-AI features. Pro users with rollover will also have their banked actions available. Consider purchasing an AI Actions Pack or upgrading your plan to continue using AI features."
+      "answer": "When you reach your AI action limit, the system will block new AI operations until your monthly allowance resets. You can still manually edit stories, manage projects, and use all non-AI features. Core users with rollover will also have their banked actions available. Consider purchasing an AI Actions Pack or upgrading your plan to continue using AI features."
     },
     {
       "id": 4,
       "question": "Can free users get more AI time without upgrading?",
-      "answer": "Yes! Starter users can subscribe to the AI Booster add-on for just £5/month, which adds 200 AI actions to your monthly allowance. This is a great way to test more advanced features before committing to a Pro plan."
+      "answer": "Yes! Starter users can subscribe to the AI Booster add-on for just £5/month, which adds 200 AI actions to your monthly allowance. This is a great way to test more advanced features before committing to a Core plan."
     },
     {
       "id": 5,
       "question": "What's the Team plan discount?",
-      "answer": "The Team plan (£16.99/user) offers 15% savings compared to subscribing 5 users to Pro (Collaborative) at £19.99 each. The discount is applied automatically when you have 5 or more seats. Plus, you get pooled AI actions, approval flows, and advanced features not available in Pro."
+      "answer": "The Team plan (£16.99/user) offers 15% savings compared to subscribing 5 users to Pro at £19.99 each. The discount is applied automatically when you have 5 or more seats. Plus, you get pooled AI actions, approval flows, and advanced features not available in Pro."
     }
   ]
 }
-

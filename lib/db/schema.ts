@@ -28,7 +28,7 @@ const bytea = customType<{ data: Buffer }>({
 // ENUMS - Define before tables
 // ============================================
 
-export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'starter', 'solo', 'team', 'pro', 'business', 'enterprise'])
+export const subscriptionTierEnum = pgEnum('subscription_tier', ['free', 'starter', 'solo', 'core', 'pro', 'team', 'business', 'enterprise'])
 export const roleEnum = pgEnum('role', ['owner', 'admin', 'member', 'viewer'])
 export const projectStatusEnum = pgEnum('project_status', ['planning', 'active', 'on_hold', 'completed', 'archived'])
 export const epicStatusEnum = pgEnum('epic_status', ['draft', 'published', 'planned', 'in_progress', 'completed', 'archived'])

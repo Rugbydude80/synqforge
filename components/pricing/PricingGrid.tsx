@@ -177,12 +177,25 @@ export function PricingGrid({ plans, billingInterval, currency, onSelectPlan, lo
 
               {/* Features */}
               <ul className="space-y-2.5">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2.5">
-                    <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                    <span className="text-sm leading-relaxed">{feature}</span>
-                  </li>
-                ))}
+                {plan.features.map((feature, index) => {
+                  const isComingSoon = feature.toLowerCase().includes('coming') || feature.includes('Q2 2026')
+                  return (
+                    <li key={index} className="flex items-start gap-2.5">
+                      <Check className={cn(
+                        'h-4 w-4 shrink-0 mt-0.5',
+                        isComingSoon ? 'text-blue-500' : 'text-green-600'
+                      )} />
+                      <span className={cn('text-sm leading-relaxed', isComingSoon && 'flex items-center gap-2 flex-wrap')}>
+                        {feature}
+                        {isComingSoon && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-700 border-blue-200">
+                            Coming Soon
+                          </Badge>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
                 {plan.limitations && plan.limitations.map((limitation, index) => (
                   <li key={`limit-${index}`} className="flex items-start gap-2.5 opacity-50">
                     <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />

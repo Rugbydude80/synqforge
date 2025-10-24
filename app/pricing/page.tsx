@@ -20,9 +20,9 @@ const planFeatures = Object.values(plansData.tiers)
 
 // Map local plan IDs to Stripe product names
 const PRODUCT_NAME_MAP: Record<string, string> = {
-  'starter': 'SynqForge Free', // Free plan
-  'pro_solo': 'SynqForge Solo',
-  'pro_collaborative': 'SynqForge Pro',
+  'starter': 'SynqForge Free',
+  'core': 'SynqForge Core',
+  'pro': 'SynqForge Pro',
   'team': 'SynqForge Team',
   'enterprise': 'SynqForge Enterprise',
 }
@@ -67,11 +67,15 @@ export default function PricingPage() {
   // Merge Stripe prices with static features
   const plans: Plan[] = useMemo(() => {
     return planFeatures.map((plan) => {
-      let displayPrice = plan.price
-      let displayPriceAnnual = plan.priceAnnual
+      // Get prices from the plan's prices object or fallback to default
+      const currencyKey = currency.toUpperCase() as 'GBP' | 'EUR' | 'USD'
+      const planPrices = plan.prices?.[currencyKey]
+
+      let displayPrice = typeof planPrices === 'object' ? planPrices.monthly : 0
+      let displayPriceAnnual = typeof planPrices === 'object' ? planPrices.annual : 0
       let stripePriceId = undefined
 
-      // If we have Stripe prices, use them
+      // If we have Stripe prices, use them and get the price ID
       if (stripePrices?.prices) {
         const productName = PRODUCT_NAME_MAP[plan.id]
         const productPrices = stripePrices.prices[productName]

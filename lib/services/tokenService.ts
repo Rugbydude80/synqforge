@@ -1,538 +1,504 @@
 /**
  * Token Service
+ * Manages AI action allowances, deductions, rollover, and add-on stacking
  * 
- * Manages AI action allowances, deductions, and add-on credits
- * with idempotent operations and priority-based deduction
+ * Features:
+ * - Per-user and pooled allowances
+ * - 20% rollover for eligible tiers
+ * - Add-on pack stacking (max 5 active)
+ * - 90-day expiry for add-on packs
+ * - Refund mechanism for failed operations
  */
 
 import { db } from '@/lib/db'
-import { 
-  tokenAllowances, 
-  addOnPurchases, 
-  tokensLedger,
-  organizations 
-} from '@/lib/db/schema'
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
-import { v4 as uuidv4 } from 'uuid'
-import { 
-  getTierConfig, 
-  calculateAIActionCost, 
-  calculatePooledAllowance,
-  type SubscriptionTier,
-  type AIOperationType 
-} from '@/lib/config/tiers'
+import { tokenAllowances, tokensLedger, addOnPurchases } from '@/lib/db/schema'
+import { eq, and, gte, desc } from 'drizzle-orm'
+import { SUBSCRIPTION_LIMITS, AI_ACTION_COSTS } from '@/lib/constants'
 
-// ============================================
-// TYPES
-// ============================================
+export type ActionType = keyof typeof AI_ACTION_COSTS
 
-export interface TokenAllowance {
-  baseAllowance: number
-  addonCredits: number
-  aiActionsBonus: number
-  rolloverCredits: number
-  creditsUsed: number
-  creditsRemaining: number
-}
-
-export interface DeductionResult {
-  success: boolean
-  tokensDeducted: number
-  balanceAfter: number
-  source: 'base_allowance' | 'rollover' | 'addon_pack' | 'ai_booster'
-  error?: string
-  correlationId: string
-}
-
-export interface CheckAllowanceResult {
-  allowed: boolean
-  remaining: number
-  breakdown: TokenAllowance
-  error?: string
-}
-
-// ============================================
-// HELPERS
-// ============================================
-
-function getBillingPeriod(date: Date = new Date()): { start: Date; end: Date } {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1)
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999)
-  return { start, end }
-}
-
-function getPreviousBillingPeriod(date: Date = new Date()): { start: Date; end: Date } {
-  const start = new Date(date.getFullYear(), date.getMonth() - 1, 1)
-  const end = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59, 999)
-  return { start, end }
-}
-
-// ============================================
-// ALLOWANCE MANAGEMENT
-// ============================================
-
-export async function getOrCreateAllowance(
-  organizationId: string,
-  userId?: string
-): Promise<TokenAllowance> {
-  const period = getBillingPeriod()
-  
-  // Get organization tier
-  const org = await db.query.organizations.findFirst({
-    where: eq(organizations.id, organizationId),
-  })
-  
-  if (!org) {
-    throw new Error('Organization not found')
+interface AllowanceCheck {
+  hasAllowance: boolean
+  available: number
+  required: number
+  breakdown: {
+    base: number
+    rollover: number
+    addons: number
   }
-  
-  const tier = org.plan as SubscriptionTier || 'starter'
-  const tierConfig = getTierConfig(tier)
-  
-  // For pooled tiers (Team/Enterprise), userId should be null
-  const isPooled = tierConfig.limits.pooling
-  const lookupUserId = isPooled ? null : userId
-  
-  // Find existing allowance
-  let allowance = await db.query.tokenAllowances.findFirst({
-    where: and(
-      eq(tokenAllowances.organizationId, organizationId),
-      lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-      eq(tokenAllowances.billingPeriodStart, period.start)
-    ),
-  })
-  
-  // Create if doesn't exist
-  if (!allowance) {
-    // Calculate base allowance
-    let baseAllowance = tierConfig.limits.aiActionsBase
-    if (isPooled && tierConfig.limits.aiActionsPerSeat) {
-      const seats = org.seatsIncluded || 5
-      baseAllowance = calculatePooledAllowance(seats)
-    }
-    
-    // Calculate rollover from previous period
-    const prevPeriod = getPreviousBillingPeriod()
-    const prevAllowance = await db.query.tokenAllowances.findFirst({
-      where: and(
-        eq(tokenAllowances.organizationId, organizationId),
-        lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-        eq(tokenAllowances.billingPeriodStart, prevPeriod.start)
-      ),
-    })
-    
-    let rolloverCredits = 0
-    if (prevAllowance && tierConfig.limits.rolloverPercentage > 0) {
-      const unused = Math.max(0, prevAllowance.baseAllowance - prevAllowance.creditsUsed)
-      rolloverCredits = Math.floor(unused * (tierConfig.limits.rolloverPercentage / 100))
-      
-      // Apply max rollover cap if configured
-      if (tierConfig.limits.maxRollover !== null) {
-        rolloverCredits = Math.min(rolloverCredits, tierConfig.limits.maxRollover)
+}
+
+interface DeductionResult {
+  success: boolean
+  transactionId?: string
+  remaining: number
+  error?: string
+}
+
+interface RefundResult {
+  success: boolean
+  refunded: number
+  error?: string
+}
+
+/**
+ * Check if user has sufficient AI action allowance
+ */
+export async function checkAllowance(
+  userId: string,
+  organizationId: string,
+  actionType: ActionType,
+  quantity: number = 1
+): Promise<AllowanceCheck> {
+  const required = AI_ACTION_COSTS[actionType] * quantity
+
+  try {
+    // Get user's current allowance record
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, userId),
+          eq(tokenAllowances.organizationId, organizationId)
+        )
+      )
+      .limit(1)
+
+    if (!allowance) {
+      return {
+        hasAllowance: false,
+        available: 0,
+        required,
+        breakdown: { base: 0, rollover: 0, addons: 0 }
       }
     }
-    
-    // Get active add-on credits
-    const activeAddOns = await getActiveAddOnCredits(organizationId, lookupUserId || undefined)
-    
-    const creditsRemaining = baseAllowance + rolloverCredits + activeAddOns.addonCredits + activeAddOns.aiActionsBonus
-    
-    const [newAllowance] = await db.insert(tokenAllowances).values({
-      id: uuidv4(),
-      organizationId,
-      userId: lookupUserId,
-      billingPeriodStart: period.start,
-      billingPeriodEnd: period.end,
-      baseAllowance,
-      addonCredits: activeAddOns.addonCredits,
-      aiActionsBonus: activeAddOns.aiActionsBonus,
-      rolloverCredits,
-      creditsUsed: 0,
-      creditsRemaining,
-      lastUpdatedAt: new Date(),
-      createdAt: new Date(),
-    }).returning()
-    
-    allowance = newAllowance
-  }
-  
-  return {
-    baseAllowance: allowance.baseAllowance,
-    addonCredits: allowance.addonCredits,
-    aiActionsBonus: allowance.aiActionsBonus,
-    rolloverCredits: allowance.rolloverCredits,
-    creditsUsed: allowance.creditsUsed,
-    creditsRemaining: allowance.creditsRemaining,
-  }
-}
 
-async function getActiveAddOnCredits(
-  organizationId: string,
-  userId?: string
-): Promise<{ addonCredits: number; aiActionsBonus: number }> {
-  const now = new Date()
-  
-  // Get active AI Actions Packs (one-time purchases)
-  const activePacks = await db.query.addOnPurchases.findMany({
-    where: and(
-      eq(addOnPurchases.organizationId, organizationId),
-      userId ? eq(addOnPurchases.userId, userId) : sql`${addOnPurchases.userId} IS NULL`,
-      eq(addOnPurchases.addonType, 'ai_actions'),
-      eq(addOnPurchases.status, 'active'),
-      gte(addOnPurchases.expiresAt, now)
-    ),
-  })
-  
-  const addonCredits = activePacks.reduce((sum, pack) => sum + (pack.creditsRemaining || 0), 0)
-  
-  // Get active AI Booster (recurring)
-  const activeBooster = await db.query.addOnPurchases.findFirst({
-    where: and(
-      eq(addOnPurchases.organizationId, organizationId),
-      userId ? eq(addOnPurchases.userId, userId) : sql`${addOnPurchases.userId} IS NULL`,
-      eq(addOnPurchases.addonType, 'ai_booster'),
-      eq(addOnPurchases.status, 'active'),
-      eq(addOnPurchases.recurring, true)
-    ),
-  })
-  
-  const aiActionsBonus = activeBooster?.creditsGranted || 0
-  
-  return { addonCredits, aiActionsBonus }
-}
+    const baseAvailable = allowance.baseAllowance - allowance.creditsUsed
+    const rolloverAvailable = allowance.rolloverCredits
+    const addonAvailable = allowance.addonCredits + allowance.aiActionsBonus
 
-// ============================================
-// CHECK ALLOWANCE
-// ============================================
+    const totalAvailable = allowance.creditsRemaining
 
-export async function checkAllowance(
-  organizationId: string,
-  operationType: AIOperationType,
-  userId?: string
-): Promise<CheckAllowanceResult> {
-  try {
-    const allowance = await getOrCreateAllowance(organizationId, userId)
-    const cost = calculateAIActionCost(operationType)
-    
-    const allowed = allowance.creditsRemaining >= cost
-    
     return {
-      allowed,
-      remaining: allowance.creditsRemaining,
-      breakdown: allowance,
+      hasAllowance: totalAvailable >= required,
+      available: Math.max(0, totalAvailable),
+      required,
+      breakdown: {
+        base: Math.max(0, baseAvailable),
+        rollover: Math.max(0, rolloverAvailable),
+        addons: Math.max(0, addonAvailable)
+      }
     }
   } catch (error) {
+    console.error('Error checking allowance:', error)
     return {
-      allowed: false,
-      remaining: 0,
-      breakdown: {
-        baseAllowance: 0,
-        addonCredits: 0,
-        aiActionsBonus: 0,
-        rolloverCredits: 0,
-        creditsUsed: 0,
-        creditsRemaining: 0,
-      },
-      error: error instanceof Error ? error.message : 'Failed to check allowance',
+      hasAllowance: false,
+      available: 0,
+      required,
+      breakdown: { base: 0, rollover: 0, addons: 0 }
     }
   }
 }
 
-// ============================================
-// DEDUCT TOKENS (IDEMPOTENT)
-// ============================================
-
+/**
+ * Deduct AI actions from user allowance
+ */
 export async function deductTokens(
+  userId: string,
   organizationId: string,
-  operationType: AIOperationType,
-  resourceType: string,
-  resourceId: string,
-  correlationId: string,
-  userId?: string
+  actionType: ActionType,
+  quantity: number = 1,
+  metadata?: Record<string, any>
 ): Promise<DeductionResult> {
-  // Check for existing ledger entry (idempotency)
-  const existing = await db.query.tokensLedger.findFirst({
-    where: eq(tokensLedger.correlationId, correlationId),
-  })
-  
-  if (existing) {
-    // Return existing result (no-op)
-    return {
-      success: true,
-      tokensDeducted: Number(existing.tokensDeducted),
-      balanceAfter: existing.balanceAfter,
-      source: existing.source as any,
-      correlationId,
-    }
-  }
-  
-  const cost = calculateAIActionCost(operationType)
-  
-  // Get current allowance
-  const allowance = await getOrCreateAllowance(organizationId, userId)
-  
-  if (allowance.creditsRemaining < cost) {
-    return {
-      success: false,
-      tokensDeducted: 0,
-      balanceAfter: allowance.creditsRemaining,
-      source: 'base_allowance',
-      error: 'Insufficient credits',
-      correlationId,
-    }
-  }
-  
-  // Priority order: base → rollover → ai_booster → addon_pack
-  let remaining = cost
-  let source: 'base_allowance' | 'rollover' | 'ai_booster' | 'addon_pack' = 'base_allowance'
-  let addonPurchaseId: string | undefined
-  
-  const period = getBillingPeriod()
-  
-  // Get current allowance record
-  const isPooled = (await db.query.organizations.findFirst({
-    where: eq(organizations.id, organizationId),
-  }))?.plan === 'team' || (await db.query.organizations.findFirst({
-    where: eq(organizations.id, organizationId),
-  }))?.plan === 'enterprise'
-  
-  const lookupUserId = isPooled ? null : userId
-  
-  const currentAllowance = await db.query.tokenAllowances.findFirst({
-    where: and(
-      eq(tokenAllowances.organizationId, organizationId),
-      lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-      eq(tokenAllowances.billingPeriodStart, period.start)
-    ),
-  })
-  
-  if (!currentAllowance) {
-    return {
-      success: false,
-      tokensDeducted: 0,
-      balanceAfter: 0,
-      source: 'base_allowance',
-      error: 'Allowance not found',
-      correlationId,
-    }
-  }
-  
-  // Deduct from base allowance first
-  const baseUsed = currentAllowance.creditsUsed
-  const baseAvailable = Math.max(0, currentAllowance.baseAllowance - baseUsed)
-  
-  if (baseAvailable >= remaining) {
-    source = 'base_allowance'
-  } else {
-    remaining -= baseAvailable
-    
-    // Try rollover
-    if (currentAllowance.rolloverCredits > 0 && remaining > 0) {
-      source = 'rollover'
-      if (currentAllowance.rolloverCredits < remaining) {
-        remaining -= currentAllowance.rolloverCredits
-        
-        // Try AI Booster
-        if (currentAllowance.aiActionsBonus > 0 && remaining > 0) {
-          source = 'ai_booster'
-          if (currentAllowance.aiActionsBonus < remaining) {
-            remaining -= currentAllowance.aiActionsBonus
-            
-            // Use addon pack (FIFO)
-            if (currentAllowance.addonCredits > 0 && remaining > 0) {
-              source = 'addon_pack'
-              
-              // Find oldest active pack with credits
-              const activePack = await db.query.addOnPurchases.findFirst({
-                where: and(
-                  eq(addOnPurchases.organizationId, organizationId),
-                  lookupUserId ? eq(addOnPurchases.userId, lookupUserId) : sql`${addOnPurchases.userId} IS NULL`,
-                  eq(addOnPurchases.addonType, 'ai_actions'),
-                  eq(addOnPurchases.status, 'active'),
-                  gte(addOnPurchases.creditsRemaining, 1)
-                ),
-                orderBy: [desc(addOnPurchases.purchasedAt)],
-              })
-              
-              if (activePack) {
-                addonPurchaseId = activePack.id
-                
-                // Update pack credits
-                await db.update(addOnPurchases)
-                  .set({
-                    creditsUsed: (activePack.creditsUsed || 0) + cost,
-                    creditsRemaining: Math.max(0, (activePack.creditsRemaining || 0) - cost),
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(addOnPurchases.id, activePack.id))
-              }
-            }
-          }
-        }
+  const cost = AI_ACTION_COSTS[actionType] * quantity
+
+  try {
+    // Check allowance first
+    const check = await checkAllowance(userId, organizationId, actionType, quantity)
+    if (!check.hasAllowance) {
+      return {
+        success: false,
+        remaining: check.available,
+        error: 'Insufficient AI action allowance'
       }
     }
-  }
-  
-  // Update allowance
-  const newCreditsUsed = currentAllowance.creditsUsed + cost
-  const newCreditsRemaining = Math.max(0, allowance.creditsRemaining - cost)
-  
-  await db.update(tokenAllowances)
-    .set({
-      creditsUsed: newCreditsUsed,
-      creditsRemaining: newCreditsRemaining,
-      lastUpdatedAt: new Date(),
-    })
-    .where(eq(tokenAllowances.id, currentAllowance.id))
-  
-  // Write to ledger (idempotent)
-  await db.insert(tokensLedger).values({
-    id: uuidv4(),
-    organizationId,
-    userId: lookupUserId,
-    correlationId,
-    operationType,
-    resourceType,
-    resourceId,
-    tokensDeducted: cost.toString(),
-    source,
-    addonPurchaseId,
-    balanceAfter: newCreditsRemaining,
-    metadata: { timestamp: new Date().toISOString() },
-    createdAt: new Date(),
-  })
-  
-  return {
-    success: true,
-    tokensDeducted: cost,
-    balanceAfter: newCreditsRemaining,
-    source,
-    correlationId,
+
+    // Get current allowance
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, userId),
+          eq(tokenAllowances.organizationId, organizationId)
+        )
+      )
+      .limit(1)
+
+    if (!allowance) {
+      return {
+        success: false,
+        remaining: 0,
+        error: 'Allowance record not found'
+      }
+    }
+
+    // Update usage
+    const newUsed = allowance.creditsUsed + cost
+    const newRemaining = Math.max(0, allowance.creditsRemaining - cost)
+
+    await db
+      .update(tokenAllowances)
+      .set({
+        creditsUsed: newUsed,
+        creditsRemaining: newRemaining,
+        lastUpdatedAt: new Date()
+      })
+      .where(eq(tokenAllowances.id, allowance.id))
+
+    // Record transaction in ledger
+    const transactionId = crypto.randomUUID()
+    await db
+      .insert(tokensLedger)
+      .values({
+        id: transactionId,
+        userId,
+        organizationId,
+        correlationId: metadata?.correlationId || crypto.randomUUID(),
+        operationType: actionType,
+        resourceType: metadata?.resourceType || 'story',
+        resourceId: metadata?.resourceId || '',
+        actionCost: cost,
+        creditsConsumed: cost,
+        providerTokens: 0,
+        estimatedCost: 0,
+        actualCost: 0,
+        providerModel: metadata?.model || 'unknown',
+        operationStatus: 'completed',
+        metadata: metadata || {},
+        timestamp: new Date(),
+        createdAt: new Date()
+      })
+
+    return {
+      success: true,
+      transactionId,
+      remaining: newRemaining
+    }
+  } catch (error) {
+    console.error('Error deducting tokens:', error)
+    return {
+      success: false,
+      remaining: 0,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
   }
 }
 
-// ============================================
-// APPLY ADD-ON CREDITS
-// ============================================
+/**
+ * Refund AI actions for failed/cancelled operations
+ */
+export async function refundNoOp(
+  userId: string,
+  organizationId: string,
+  transactionId: string,
+  reason: string
+): Promise<RefundResult> {
+  try {
+    // Get original transaction
+    const [transaction] = await db
+      .select()
+      .from(tokensLedger)
+      .where(eq(tokensLedger.id, transactionId))
+      .limit(1)
 
-export async function applyAddOnCredits(purchaseId: string): Promise<void> {
-  const purchase = await db.query.addOnPurchases.findFirst({
-    where: eq(addOnPurchases.id, purchaseId),
-  })
-  
-  if (!purchase) {
-    throw new Error('Add-on purchase not found')
-  }
-  
-  const period = getBillingPeriod()
-  
-  // Get organization tier to determine pooling
-  const org = await db.query.organizations.findFirst({
-    where: eq(organizations.id, purchase.organizationId),
-  })
-  
-  const isPooled = org?.plan === 'team' || org?.plan === 'enterprise'
-  const lookupUserId = isPooled ? null : purchase.userId
-  
-  // Get or create allowance
-  const allowance = await db.query.tokenAllowances.findFirst({
-    where: and(
-      eq(tokenAllowances.organizationId, purchase.organizationId),
-      lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-      eq(tokenAllowances.billingPeriodStart, period.start)
-    ),
-  })
-  
-  if (!allowance) {
-    // Create allowance if doesn't exist
-    await getOrCreateAllowance(purchase.organizationId, lookupUserId || undefined)
-  }
-  
-  // Update allowance with new credits
-  if (purchase.addonType === 'ai_actions') {
-    await db.update(tokenAllowances)
+    if (!transaction) {
+      return {
+        success: false,
+        refunded: 0,
+        error: 'Transaction not found'
+      }
+    }
+
+    // Get allowance record
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, userId),
+          eq(tokenAllowances.organizationId, organizationId)
+        )
+      )
+      .limit(1)
+
+    if (!allowance) {
+      return {
+        success: false,
+        refunded: 0,
+        error: 'Allowance record not found'
+      }
+    }
+
+    const refundAmount = transaction.creditsConsumed
+
+    // Restore credits
+    await db
+      .update(tokenAllowances)
       .set({
-        addonCredits: sql`${tokenAllowances.addonCredits} + ${purchase.creditsGranted || 0}`,
-        creditsRemaining: sql`${tokenAllowances.creditsRemaining} + ${purchase.creditsGranted || 0}`,
-        lastUpdatedAt: new Date(),
+        creditsUsed: Math.max(0, allowance.creditsUsed - refundAmount),
+        creditsRemaining: allowance.creditsRemaining + refundAmount,
+        lastUpdatedAt: new Date()
       })
-      .where(and(
-        eq(tokenAllowances.organizationId, purchase.organizationId),
-        lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-        eq(tokenAllowances.billingPeriodStart, period.start)
-      ))
-  } else if (purchase.addonType === 'ai_booster') {
-    await db.update(tokenAllowances)
-      .set({
-        aiActionsBonus: purchase.creditsGranted || 0,
-        creditsRemaining: sql`${tokenAllowances.creditsRemaining} + ${purchase.creditsGranted || 0}`,
-        lastUpdatedAt: new Date(),
+      .where(eq(tokenAllowances.id, allowance.id))
+
+    // Record refund transaction
+    await db
+      .insert(tokensLedger)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        organizationId,
+        correlationId: transaction.correlationId,
+        operationType: 'refund',
+        resourceType: transaction.resourceType,
+        resourceId: transaction.resourceId,
+        actionCost: -refundAmount,
+        creditsConsumed: -refundAmount,
+        providerTokens: 0,
+        estimatedCost: 0,
+        actualCost: 0,
+        providerModel: 'system',
+        operationStatus: 'refunded',
+        metadata: {
+          originalTransactionId: transactionId,
+          reason,
+          refundedAt: new Date().toISOString()
+        },
+        timestamp: new Date(),
+        createdAt: new Date()
       })
-      .where(and(
-        eq(tokenAllowances.organizationId, purchase.organizationId),
-        lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-        eq(tokenAllowances.billingPeriodStart, period.start)
-      ))
+
+    return {
+      success: true,
+      refunded: refundAmount
+    }
+  } catch (error) {
+    console.error('Error refunding tokens:', error)
+    return {
+      success: false,
+      refunded: 0,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
   }
 }
 
-// ============================================
-// EXPIRE ADD-ONS (CRON JOB)
-// ============================================
+/**
+ * Apply monthly rollover (20% of unused base actions)
+ */
+export async function applyMonthlyRollover(
+  userId: string,
+  organizationId: string,
+  tier: string
+): Promise<{ rolloverAdded: number; newBalance: number }> {
+  try {
+    const limits = SUBSCRIPTION_LIMITS[tier as keyof typeof SUBSCRIPTION_LIMITS]
+    if (!limits || limits.aiActionsRolloverPercent === 0) {
+      return { rolloverAdded: 0, newBalance: 0 }
+    }
 
-export async function expireAddOns(): Promise<{ expired: number }> {
-  const now = new Date()
-  
-  // Find expired packs
-  const expiredPacks = await db.query.addOnPurchases.findMany({
-    where: and(
-      eq(addOnPurchases.status, 'active'),
-      eq(addOnPurchases.addonType, 'ai_actions'),
-      lte(addOnPurchases.expiresAt, now)
-    ),
-  })
-  
-  for (const pack of expiredPacks) {
-    // Mark as expired
-    await db.update(addOnPurchases)
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, userId),
+          eq(tokenAllowances.organizationId, organizationId)
+        )
+      )
+      .limit(1)
+
+    if (!allowance) {
+      return { rolloverAdded: 0, newBalance: 0 }
+    }
+
+    // Calculate unused base actions
+    const unused = allowance.baseAllowance - allowance.creditsUsed
+    const rolloverPercent = limits.aiActionsRolloverPercent / 100
+    const rolloverAmount = Math.floor(unused * rolloverPercent)
+
+    // Calculate max rollover (20% of base = 1 month's worth)
+    const maxRollover = Math.floor(allowance.baseAllowance * rolloverPercent)
+    
+    // New rollover balance (cap at max)
+    const newRolloverBalance = Math.min(rolloverAmount, maxRollover)
+
+    // Update allowance for new period
+    const newTotalCredits = allowance.baseAllowance + newRolloverBalance + allowance.addonCredits + allowance.aiActionsBonus
+
+    await db
+      .update(tokenAllowances)
       .set({
-        status: 'expired',
-        updatedAt: now,
+        rolloverCredits: newRolloverBalance,
+        creditsUsed: 0, // Reset for new period
+        creditsRemaining: newTotalCredits,
+        billingPeriodStart: new Date(),
+        lastUpdatedAt: new Date()
       })
-      .where(eq(addOnPurchases.id, pack.id))
-    
-    // Remove unused credits from allowance
-    const period = getBillingPeriod()
-    const isPooled = (await db.query.organizations.findFirst({
-      where: eq(organizations.id, pack.organizationId),
-    }))?.plan === 'team'
-    
-    const lookupUserId = isPooled ? null : pack.userId
-    
-    await db.update(tokenAllowances)
-      .set({
-        addonCredits: sql`${tokenAllowances.addonCredits} - ${pack.creditsRemaining || 0}`,
-        creditsRemaining: sql`${tokenAllowances.creditsRemaining} - ${pack.creditsRemaining || 0}`,
-        lastUpdatedAt: now,
+      .where(eq(tokenAllowances.id, allowance.id))
+
+    // Record rollover transaction
+    await db
+      .insert(tokensLedger)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        organizationId,
+        correlationId: crypto.randomUUID(),
+        operationType: 'rollover',
+        resourceType: 'allowance',
+        resourceId: allowance.id,
+        actionCost: 0,
+        creditsConsumed: -rolloverAmount, // Credit
+        providerTokens: 0,
+        estimatedCost: 0,
+        actualCost: 0,
+        providerModel: 'system',
+        operationStatus: 'completed',
+        metadata: {
+          type: 'rollover',
+          unused,
+          rolloverPercent: limits.aiActionsRolloverPercent,
+          appliedAt: new Date().toISOString()
+        },
+        timestamp: new Date(),
+        createdAt: new Date()
       })
-      .where(and(
-        eq(tokenAllowances.organizationId, pack.organizationId),
-        lookupUserId ? eq(tokenAllowances.userId, lookupUserId) : sql`${tokenAllowances.userId} IS NULL`,
-        eq(tokenAllowances.billingPeriodStart, period.start)
-      ))
-    
-    // TODO: Send expiration email notification
-    console.log(`Expired AI Actions Pack ${pack.id} with ${pack.creditsRemaining} unused credits`)
+
+    return {
+      rolloverAdded: rolloverAmount,
+      newBalance: newRolloverBalance
+    }
+  } catch (error) {
+    console.error('Error applying rollover:', error)
+    return { rolloverAdded: 0, newBalance: 0 }
   }
-  
-  return { expired: expiredPacks.length }
 }
 
-export default {
-  getOrCreateAllowance,
-  checkAllowance,
-  deductTokens,
-  applyAddOnCredits,
-  expireAddOns,
+/**
+ * Get active add-ons for a user
+ */
+export async function getActiveAddons(
+  userId: string,
+  organizationId: string
+): Promise<any[]> {
+  try {
+    const now = new Date()
+    
+    const addons = await db
+      .select()
+      .from(addOnPurchases)
+      .where(
+        and(
+          eq(addOnPurchases.userId, userId),
+          eq(addOnPurchases.organizationId, organizationId),
+          eq(addOnPurchases.status, 'active'),
+          gte(addOnPurchases.expiresAt, now)
+        )
+      )
+      .orderBy(addOnPurchases.expiresAt)
+
+    return addons
+  } catch (error) {
+    console.error('Error getting active addons:', error)
+    return []
+  }
 }
 
+/**
+ * Purchase and activate an add-on
+ */
+export async function activateAddon(
+  userId: string,
+  organizationId: string,
+  addonType: string,
+  credits: number,
+  expiryDays: number,
+  metadata: Record<string, any>
+): Promise<{ success: boolean; addonId?: string; error?: string }> {
+  try {
+    // Check if user already has max active packs
+    const activeAddons = await getActiveAddons(userId, organizationId)
+    const actionPacks = activeAddons.filter(a => a.addonType === 'ai_actions')
+    
+    if (actionPacks.length >= 5) {
+      return {
+        success: false,
+        error: 'Maximum 5 active AI Actions Packs allowed'
+      }
+    }
+
+    // Create add-on purchase record
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + expiryDays)
+
+    const [addon] = await db
+      .insert(addOnPurchases)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        organizationId,
+        stripeProductId: metadata.stripeProductId || '',
+        stripePriceId: metadata.stripePriceId || '',
+        stripePaymentIntentId: metadata.stripePaymentIntentId || '',
+        addonType,
+        addonName: metadata.addonName || 'AI Actions Pack',
+        creditsGranted: credits,
+        creditsRemaining: credits,
+        creditsUsed: 0,
+        status: 'active',
+        purchasedAt: new Date(),
+        expiresAt,
+        recurring: metadata.recurring || false,
+        metadata,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning()
+
+    // Update user's token allowance
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, userId),
+          eq(tokenAllowances.organizationId, organizationId)
+        )
+      )
+      .limit(1)
+
+    if (allowance) {
+      await db
+        .update(tokenAllowances)
+        .set({
+          addonCredits: allowance.addonCredits + credits,
+          creditsRemaining: allowance.creditsRemaining + credits,
+          lastUpdatedAt: new Date()
+        })
+        .where(eq(tokenAllowances.id, allowance.id))
+    }
+
+    return {
+      success: true,
+      addonId: addon.id
+    }
+  } catch (error) {
+    console.error('Error activating addon:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}

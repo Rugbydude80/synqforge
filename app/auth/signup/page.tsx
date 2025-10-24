@@ -21,20 +21,20 @@ const plans = [
     features: plansData.tiers.starter.features.slice(0, 4), // First 4 features for display
   },
   {
-    id: 'pro_solo',
-    name: 'Pro (Solo)',
+    id: 'core',
+    name: 'Core',
     price: 10.99,
     icon: Zap,
-    description: plansData.tiers.pro_solo.description,
-    features: plansData.tiers.pro_solo.features.slice(0, 4),
+    description: plansData.tiers.core.description,
+    features: plansData.tiers.core.features.slice(0, 4),
   },
   {
-    id: 'pro_collaborative',
+    id: 'pro',
     name: 'Pro',
     price: 19.99,
     icon: Users,
-    description: plansData.tiers.pro_collaborative.description,
-    features: plansData.tiers.pro_collaborative.features.slice(0, 4),
+    description: plansData.tiers.pro.description,
+    features: plansData.tiers.pro.features.slice(0, 4),
     popular: true,
   },
   {
