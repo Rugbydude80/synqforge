@@ -17,8 +17,8 @@ export interface PaywallModalProps {
   isOpen: boolean
   onClose: () => void
   feature: string
-  currentTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
-  requiredTier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  currentTier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
+  requiredTier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
   customMessage?: string
 }
 
@@ -58,6 +58,19 @@ const tierInfo = {
       '50k AI tokens/month',
       'Export functionality',
       'Templates',
+    ],
+  },
+  core: {
+    name: 'Core',
+    price: 12,
+    icon: Sparkles,
+    color: 'text-purple-500',
+    features: [
+      '400 AI actions/month',
+      '20% rollover',
+      'Advanced Gherkin criteria',
+      'Export functionality',
+      'Custom templates',
     ],
   },
   team: {

@@ -5,7 +5,7 @@
 
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
-export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 
 export interface SubscriptionFeatures {
   // Projects & Stories

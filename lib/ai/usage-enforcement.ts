@@ -211,6 +211,7 @@ export async function checkRateLimit(
     free: { rpm: 5, tpm: 10000 },
     starter: { rpm: 5, tpm: 10000 },
     solo: { rpm: 10, tpm: 50000 },
+    core: { rpm: 10, tpm: 50000 },
     team: { rpm: 30, tpm: 200000 },
     pro: { rpm: 60, tpm: 500000 },
     business: { rpm: 60, tpm: 500000 },

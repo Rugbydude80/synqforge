@@ -129,7 +129,7 @@ export interface RateLimitResult {
  */
 export async function checkAIRateLimit(
   organizationId: string,
-  tier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
   try {
     const limiter = rateLimiters[tier].standard
@@ -189,7 +189,7 @@ export async function checkHeavyJobRateLimit(
  */
 export async function getAIQuota(
   organizationId: string,
-  tier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<{
   standard: { limit: number; remaining: number; reset: Date }
   heavy: { limit: number; remaining: number; reset: Date }
