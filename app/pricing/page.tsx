@@ -112,6 +112,16 @@ export default function PricingPage() {
     })
   }, [stripePrices, currency, billingInterval])
 
+  // Transform addons to include price based on selected currency
+  const transformedAddons = useMemo(() => {
+    const currencyKey = currency.toUpperCase() as 'GBP' | 'EUR' | 'USD'
+    return plansData.addons.map(addon => ({
+      ...addon,
+      price: addon.prices?.[currencyKey] || 0,
+      currency: currency.toUpperCase()
+    }))
+  }, [currency])
+
   const handleSelectPlan = async (planId: string) => {
     if (!session) {
       router.push(`/auth/signin?callbackUrl=/pricing`)
@@ -280,7 +290,7 @@ export default function PricingPage() {
         {/* Add-ons Section */}
         <div className="mb-20" id="addons">
           <AddOnsSection
-            addons={plansData.addons}
+            addons={transformedAddons}
             onSelectAddOn={handleSelectAddOn}
           />
         </div>

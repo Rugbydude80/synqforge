@@ -98,7 +98,7 @@ export async function generateRICEScore(
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    const rateLimitCheck = await checkAIRateLimit(organizationId, tier as any)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
@@ -276,7 +276,7 @@ export async function generateWSJFScore(
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    const rateLimitCheck = await checkAIRateLimit(organizationId, tier as any)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
@@ -447,7 +447,7 @@ export async function suggestEffortEstimate(
       throw new Error('Effort & Impact Scoring requires Team plan or higher.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    const rateLimitCheck = await checkAIRateLimit(organizationId, tier as any)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`

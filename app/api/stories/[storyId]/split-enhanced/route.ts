@@ -60,22 +60,23 @@ export async function POST(
     
     // Check allowance (includes add-on credits)
     const allowanceCheck = await checkAllowance(
+      session.user.id,
       session.user.organizationId,
-      'split',
-      session.user.id
+      'STORY_SPLIT',
+      1
     )
     
-    if (!allowanceCheck.allowed) {
+    if (!allowanceCheck.hasAllowance) {
       // Return quota exceeded with upgrade options
       const upgradePrompt = getQuotaExceededPrompt(
-        context.tier,
-        allowanceCheck.remaining
+        context.tier as any,
+        allowanceCheck.available
       )
       
       return NextResponse.json(
         {
           error: 'quota_exceeded',
-          remaining: allowanceCheck.remaining,
+          remaining: allowanceCheck.available,
           breakdown: allowanceCheck.breakdown,
           ...upgradePrompt,
         },
@@ -88,12 +89,15 @@ export async function POST(
     
     // Deduct tokens (idempotent)
     const deduction = await deductTokens(
+      session.user.id,
       session.user.organizationId,
-      'split',
-      'story',
-      storyId,
-      correlationId,
-      session.user.id
+      'STORY_SPLIT',
+      1,
+      {
+        correlationId,
+        resourceType: 'story',
+        resourceId: storyId
+      }
     )
     
     if (!deduction.success) {
@@ -109,10 +113,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       storyId,
-      tokensDeducted: deduction.tokensDeducted,
-      source: deduction.source,
-      balanceAfter: deduction.balanceAfter,
-      correlationId: deduction.correlationId,
+      transactionId: deduction.transactionId,
+      remaining: deduction.remaining,
+      correlationId,
       message: 'Story split successfully',
     })
   } catch (error) {

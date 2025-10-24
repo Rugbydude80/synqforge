@@ -270,8 +270,8 @@ export async function shouldQueueAction(
   estimatedWait?: number
 }> {
   const rateLimitCheck = isHeavyJob
-    ? await checkHeavyJobRateLimit(organizationId, tier)
-    : await checkAIRateLimit(organizationId, tier)
+    ? await checkHeavyJobRateLimit(organizationId, tier as any)
+    : await checkAIRateLimit(organizationId, tier as any)
 
   if (rateLimitCheck.success) {
     return { shouldQueue: false }
