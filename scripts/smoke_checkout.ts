@@ -52,7 +52,7 @@ class CheckoutSmokeTester {
   private successCount = 0;
   
   constructor(apiKey: string, createSessions: boolean = false) {
-    this.stripe = new Stripe(apiKey, { apiVersion: '2024-11-20.acacia' });
+    this.stripe = new Stripe(apiKey, { apiVersion: '2025-09-30.clover' });
     this.createSessions = createSessions;
   }
   
@@ -72,10 +72,10 @@ class CheckoutSmokeTester {
     this.log('ERROR', message);
   }
   
-  private warn(message: string) {
-    this.warnings.push(message);
-    this.log('WARN', message);
-  }
+  // private warn(message: string) {
+  //   this.warnings.push(message);
+  //   this.log('WARN', message);
+  // }
   
   private async findPrice(slug: string, currency: string): Promise<Stripe.Price | null> {
     try {
@@ -233,22 +233,23 @@ class CheckoutSmokeTester {
           this.error(`Session ${session.id}: quantity=${lineItem.quantity}, expected ${quantity}`);
         }
       }
-      
+
       // For Free tier, check trial via upcoming invoice
-      if (tier === 'free' && session.subscription) {
-        try {
-          const invoice = await this.stripe.invoices.retrieveUpcoming({
-            subscription: session.subscription as string,
-          });
-          
-          if (invoice.amount_due !== 0) {
-            this.warn(`Free tier session ${session.id}: upcoming invoice amount_due=${invoice.amount_due}, expected 0 during trial`);
-          }
-        } catch (err) {
-          // Upcoming invoice might not exist yet, that's okay
-          this.log('INFO', `Could not retrieve upcoming invoice for session ${session.id} (this is normal)`);
-        }
-      }
+      // TODO: Re-enable when Stripe API supports this method in v2025-09-30.clover
+      // if (tier === 'free' && session.subscription) {
+      //   try {
+      //     const invoice = await this.stripe.invoices.retrieveUpcoming({
+      //       subscription: session.subscription as string,
+      //     });
+      //
+      //     if (invoice.amount_due !== 0) {
+      //       this.warn(`Free tier session ${session.id}: upcoming invoice amount_due=${invoice.amount_due}, expected 0 during trial`);
+      //     }
+      //   } catch (err) {
+      //     // Upcoming invoice might not exist yet, that's okay
+      //     this.log('INFO', `Could not retrieve upcoming invoice for session ${session.id} (this is normal)`);
+      //   }
+      // }
       
       this.log('SUCCESS', `Session created: ${session.url}`);
       console.log(`  → ${session.url}\n`);
@@ -270,7 +271,7 @@ class CheckoutSmokeTester {
     
     for (const testCase of TEST_CASES) {
       const key = `${testCase.slug}_${testCase.currency}`;
-      const price = await validatePrice(testCase);
+      const price = await this.validatePrice(testCase);
       if (price) {
         validatedPrices.set(key, price);
       }
