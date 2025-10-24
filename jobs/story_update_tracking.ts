@@ -229,6 +229,7 @@ async function sendApproachingLimitWarnings(users: UpdateStats[]) {
 /**
  * Sync usage to Stripe for metered billing (future feature)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function syncToStripe(userStats: UpdateStats[]) {
   console.log('[Story Update Tracking] Syncing to Stripe (placeholder)');
 
