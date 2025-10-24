@@ -328,6 +328,10 @@ export const stories = pgTable(
     // Completion tracking
     doneAt: timestamp('done_at'),
 
+    // Version tracking for update story feature
+    lastUpdatedAt: timestamp('last_updated_at').defaultNow(),
+    updateVersion: integer('update_version').default(1),
+
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
@@ -384,6 +388,54 @@ export const tasks = pgTable(
     statusIdx: index('idx_tasks_status').on(table.storyId, table.status),
     assigneeIdx: index('idx_tasks_assignee').on(table.assigneeId),
     orderIdx: index('idx_tasks_order').on(table.storyId, table.orderIndex),
+  })
+)
+
+// ============================================
+// STORY UPDATES - Audit trail for story modifications
+// ============================================
+
+export const storyUpdates = pgTable(
+  'story_updates',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+
+    // Changes tracking (JSON diff of what changed)
+    changes: json('changes').$type<Record<string, {before: any, after: any}>>().notNull(),
+
+    // Tier and entitlement context at time of update
+    tierAtUpdate: text('tier_at_update').notNull(),
+
+    // Version tracking
+    version: integer('version').notNull(),
+
+    // Update metadata
+    updateType: varchar('update_type', { length: 50 }).default('manual'), // manual, ai_suggested, bulk, import
+    correlationId: varchar('correlation_id', { length: 64 }),
+
+    // AI metadata (if update was AI-assisted)
+    aiAssisted: boolean('ai_assisted').default(false),
+    aiModelUsed: varchar('ai_model_used', { length: 100 }),
+    aiTokensUsed: integer('ai_tokens_used'),
+    aiActionsConsumed: decimal('ai_actions_consumed', { precision: 10, scale: 2 }),
+
+    // Audit metadata
+    ipAddress: varchar('ip_address', { length: 45 }),
+    userAgent: text('user_agent'),
+  },
+  (table) => ({
+    storyIdx: index('idx_story_updates_story').on(table.storyId),
+    userIdx: index('idx_story_updates_user').on(table.userId),
+    orgIdx: index('idx_story_updates_org').on(table.organizationId),
+    updatedAtIdx: index('idx_story_updates_updated_at').on(table.updatedAt),
+    tierIdx: index('idx_story_updates_tier').on(table.tierAtUpdate),
+    correlationIdx: index('idx_story_updates_correlation').on(table.correlationId),
+    userDateIdx: index('idx_story_updates_user_date').on(table.userId, table.updatedAt),
+    orgDateIdx: index('idx_story_updates_org_date').on(table.organizationId, table.updatedAt),
   })
 )
 
