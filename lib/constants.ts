@@ -37,8 +37,8 @@ export const LIMITS = {
 
 /**
  * Subscription Tier Limits
- * NEW 2025 Per-User Pricing Structure
- * Pricing: Starter ($0), Pro ($8.99/user), Team ($14.99/user), Enterprise (custom)
+ * NEW 2025 Per-User Pricing Structure (GBP)
+ * Pricing: Starter (£0), Pro Solo (£10.99), Pro Collaborative (£19.99), Team (£16.99), Enterprise (custom)
  * Benchmarked against Jira, Linear, ClickUp, Shortcut, Asana
  */
 export const SUBSCRIPTION_LIMITS = {
@@ -196,8 +196,8 @@ export const SUBSCRIPTION_LIMITS = {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
-    maxSeats: Infinity,
-    includedSeats: 0, // Pay per user
+    maxSeats: 1,
+    includedSeats: 1,
     seatPrice: 0,
 
     // AI Actions (per-user allowance, no pooling)
@@ -251,7 +251,7 @@ export const SUBSCRIPTION_LIMITS = {
 
     // Billing
     price: 0,
-    currency: 'USD',
+    currency: 'GBP',
     billingInterval: 'monthly',
     trialDays: 0,
     perUser: true,
@@ -260,16 +260,16 @@ export const SUBSCRIPTION_LIMITS = {
     displayName: 'Starter',
     displayPrice: 'Free',
   },
-  pro: {
+  pro_solo: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
-    maxSeats: Infinity,
-    includedSeats: 0, // Pay per user
-    seatPrice: 8.99, // $8.99/user/month
+    maxSeats: 2,
+    includedSeats: 1,
+    seatPrice: 10.99, // £10.99/user/month
 
     // AI Actions (per-user allowance with 20% rollover)
-    monthlyAIActions: 500, // 500 AI actions per user/month
+    monthlyAIActions: 400, // 400 AI actions per user/month
     aiActionsPoolingEnabled: false, // Individual allowances
     aiActionsRolloverPercent: 20, // 20% rollover of unused actions
     maxChildrenPerSplit: 3, // Max 3 children when splitting stories
@@ -319,30 +319,100 @@ export const SUBSCRIPTION_LIMITS = {
     supportLevel: 'email',
 
     // Billing
-    price: 8.99, // $8.99/user/month
-    currency: 'USD',
+    price: 10.99, // £10.99/user/month
+    currency: 'GBP',
     billingInterval: 'monthly',
     trialDays: 14,
-    annualPrice: 89.90, // $89.90/user/year (saves ~17%)
+    annualPrice: 109.90, // £109.90/user/year (saves ~17%)
     perUser: true,
 
     // Display name
-    displayName: 'Pro',
-    displayPrice: '$8.99',
+    displayName: 'Pro (Solo)',
+    displayPrice: '£10.99',
+  },
+  pro_collaborative: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxSeats: 4,
+    includedSeats: 3,
+    seatPrice: 19.99, // £19.99/user/month
+
+    // AI Actions (per-user allowance with 20% rollover)
+    monthlyAIActions: 800, // 800 AI actions per user/month
+    aiActionsPoolingEnabled: false, // Individual allowances
+    aiActionsRolloverPercent: 20, // 20% rollover of unused actions
+    maxChildrenPerSplit: 3, // Max 3 children when splitting stories
+    
+    // Legacy token tracking
+    monthlyAITokens: 80000, // 80k tokens/month per user
+    monthlyAIGenerations: 80,
+    maxStoriesPerGeneration: 15,
+
+    // Advanced AI Modules
+    canUseBacklogAutopilot: false,
+    canUseACValidator: false,
+    canUseTestGeneration: false,
+    canUsePlanningForecast: false,
+    canUseEffortScoring: false,
+    canUseKnowledgeSearch: false,
+    canUseInboxParsing: false,
+    canUseRepoAwareness: false,
+    canUseWorkflowAgents: false,
+    canUseGovernance: false,
+    canUseModelControls: false,
+    canUseAnalytics: false,
+
+    // Story Split Features
+    canUseSingleStorySplit: true,
+    canUseStorySplitINVEST: true,
+    canUseStorySplitSPIDR: true,
+    canUseStoryUpdate: true,
+    canUseStoryUpdateDiff: true,
+    canUseStoryUpdateSectionAccept: true, // Per-section accept/reject
+    canUseBulkSplit: true, // Bulk split (up to 3)
+    canUseSplitPreflightEstimates: true,
+
+    // Features
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: false,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: false,
+    canUseSSO: false,
+
+    // Rate Limits
+    aiActionsPerMinute: 30,
+    heavyJobsPerMinute: 3,
+
+    // Support
+    supportLevel: 'email',
+
+    // Billing
+    price: 19.99, // £19.99/user/month
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 14,
+    annualPrice: 199.90, // £199.90/user/year (saves ~17%)
+    perUser: true,
+
+    // Display name
+    displayName: 'Pro (Collaborative)',
+    displayPrice: '£19.99',
   },
   team: {
     // Projects & Stories
     maxProjects: Infinity,
     maxStoriesPerProject: Infinity,
     maxSeats: Infinity,
-    includedSeats: 0, // Pay per user
-    seatPrice: 14.99, // $14.99/user/month
+    includedSeats: 5, // Minimum 5 seats
+    seatPrice: 16.99, // £16.99/user/month (15% off vs Pro)
 
     // AI Actions (workspace pool + per-seat allocation)
     monthlyAIActions: 10000, // Base pool of 10,000 AI actions
     aiActionsPerSeat: 1000, // Plus 1,000 per seat
     aiActionsPoolingEnabled: true, // Pooled allowances across workspace
-    aiActionsRolloverPercent: 0, // No rollover (use pooling instead)
+    aiActionsRolloverPercent: 20, // 20% rollover
     softPerUserCap: 2000, // Soft cap per user to prevent abuse
     maxChildrenPerSplit: 7, // Max 7 children when splitting stories
     
@@ -397,16 +467,16 @@ export const SUBSCRIPTION_LIMITS = {
     supportLevel: 'priority',
 
     // Billing
-    price: 14.99, // $14.99/user/month
-    currency: 'USD',
+    price: 16.99, // £16.99/user/month (15% discount applied)
+    currency: 'GBP',
     billingInterval: 'monthly',
     trialDays: 14,
-    annualPrice: 149.90, // $149.90/user/year (saves ~17%)
+    annualPrice: 169.90, // £169.90/user/year (saves ~17%)
     perUser: true,
 
     // Display name
-    displayName: 'Team',
-    displayPrice: '$14.99',
+    displayName: 'Team (5+)',
+    displayPrice: '£16.99',
   },
   enterprise: {
     // Projects & Stories
@@ -485,8 +555,9 @@ export const SUBSCRIPTION_LIMITS = {
     supportLevel: 'dedicated',
 
     // Billing
-    price: 0, // Custom pricing
-    currency: 'USD',
+    price: 0, // Custom pricing (starts at £25/user/month)
+    priceStarting: 25, // Starts at £25/user/month
+    currency: 'GBP',
     billingInterval: 'annual',
     trialDays: 14,
     perUser: false,
@@ -494,6 +565,59 @@ export const SUBSCRIPTION_LIMITS = {
     // Display name
     displayName: 'Enterprise',
     displayPrice: 'Custom',
+  },
+  // Legacy compatibility
+  pro: {
+    // Alias for pro_collaborative for backward compatibility
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxSeats: 4,
+    includedSeats: 3,
+    seatPrice: 19.99,
+    monthlyAIActions: 800,
+    aiActionsPoolingEnabled: false,
+    aiActionsRolloverPercent: 20,
+    maxChildrenPerSplit: 3,
+    monthlyAITokens: 80000,
+    monthlyAIGenerations: 80,
+    maxStoriesPerGeneration: 15,
+    canUseBacklogAutopilot: false,
+    canUseACValidator: false,
+    canUseTestGeneration: false,
+    canUsePlanningForecast: false,
+    canUseEffortScoring: false,
+    canUseKnowledgeSearch: false,
+    canUseInboxParsing: false,
+    canUseRepoAwareness: false,
+    canUseWorkflowAgents: false,
+    canUseGovernance: false,
+    canUseModelControls: false,
+    canUseAnalytics: false,
+    canUseSingleStorySplit: true,
+    canUseStorySplitINVEST: true,
+    canUseStorySplitSPIDR: true,
+    canUseStoryUpdate: true,
+    canUseStoryUpdateDiff: true,
+    canUseStoryUpdateSectionAccept: true,
+    canUseBulkSplit: true,
+    canUseSplitPreflightEstimates: true,
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: false,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: false,
+    canUseSSO: false,
+    aiActionsPerMinute: 30,
+    heavyJobsPerMinute: 3,
+    supportLevel: 'email' as const,
+    price: 19.99,
+    currency: 'GBP' as const,
+    billingInterval: 'monthly' as const,
+    trialDays: 14,
+    annualPrice: 199.90,
+    perUser: true,
+    displayName: 'Pro',
+    displayPrice: '£19.99',
   },
 } as const
 
@@ -526,30 +650,45 @@ export const AI_TOKEN_COSTS = {
 } as const
 
 /**
- * AI Action Overage Pricing
+ * AI Action Overage Pricing (2025 GBP)
  */
 export const AI_ACTION_OVERAGE = {
-  pricePerPack: 20, // $20 per pack
+  pricePerPack: 20, // £20 per pack
   actionsPerPack: 1000, // 1,000 actions per pack
-  availableFor: ['pro', 'team'], // Only Pro and Team can buy overage packs
+  expiryDays: 90, // 90-day expiry
+  maxActivePacks: 5, // Max 5 active packs
+  availableFor: ['pro_solo', 'pro_collaborative', 'pro', 'team', 'enterprise'], // Pro, Team, Enterprise can buy
 } as const
 
 /**
  * AI Booster Add-on (for Starter tier)
  */
 export const AI_BOOSTER_ADDON = {
-  price: 5, // $5/user/month
+  price: 5, // £5/user/month
   aiActions: 200, // Adds 200 AI actions per user
   tierRestriction: 'starter', // Only available for Starter tier
+  recurring: true, // Monthly subscription
 } as const
 
 /**
- * Seat Add-on Pricing (legacy - now using per-user pricing)
+ * Priority Support Pack (for Pro tiers)
+ */
+export const PRIORITY_SUPPORT_ADDON = {
+  price: 15, // £15/month
+  supportLevel: 'priority_24h', // Upgrades to 24h priority support
+  availableFor: ['pro_solo', 'pro_collaborative', 'pro'], // Only Pro users
+  recurring: true, // Monthly subscription
+} as const
+
+/**
+ * Seat Add-on Pricing (2025 GBP per-user pricing)
  */
 export const SEAT_PRICING = {
-  pro: 8.99, // $8.99/user/month
-  team: 14.99, // $14.99/user/month
-  enterprise: 0, // Custom pricing
+  pro_solo: 10.99, // £10.99/user/month
+  pro_collaborative: 19.99, // £19.99/user/month
+  pro: 19.99, // £19.99/user/month (alias)
+  team: 16.99, // £16.99/user/month (15% discount for 5+)
+  enterprise: 0, // Custom pricing (starts £25/user)
 } as const
 
 /**

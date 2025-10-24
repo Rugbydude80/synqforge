@@ -69,6 +69,31 @@ const config: Config = {
           '900': '#064e3b',
           '950': '#022c22',
         },
+        // Pricing tier colors
+        'pricing-starter': {
+          '50': '#f0fdf4',
+          '100': '#dcfce7',
+          '500': '#22c55e',
+          '600': '#16a34a',
+        },
+        'pricing-pro': {
+          '50': '#eff6ff',
+          '100': '#dbeafe',
+          '500': '#3b82f6',
+          '600': '#2563eb',
+        },
+        'pricing-team': {
+          '50': '#fef3c7',
+          '100': '#fde68a',
+          '500': '#f59e0b',
+          '600': '#d97706',
+        },
+        'pricing-enterprise': {
+          '50': '#fdf4ff',
+          '100': '#fae8ff',
+          '500': '#d946ef',
+          '600': '#c026d3',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -78,10 +103,35 @@ const config: Config = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'pricing-gradient': 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
+      },
+      boxShadow: {
+        'pricing-card': '0 4px 20px -2px rgba(0, 0, 0, 0.1)',
+        'pricing-card-hover': '0 8px 30px -4px rgba(0, 0, 0, 0.15)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in',
+        'slide-up': 'slideUp 0.5s ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
       },
     },
   },
   plugins: [],
+  // Safelist pricing colors for dynamic classes
+  safelist: [
+    {
+      pattern: /(bg|text|border)-(green|blue|purple|orange|pink)-(50|100|500|600)/,
+    },
+  ],
 };
 
 export default config;
