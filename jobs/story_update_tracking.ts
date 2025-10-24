@@ -228,64 +228,65 @@ async function sendApproachingLimitWarnings(users: UpdateStats[]) {
 
 /**
  * Sync usage to Stripe for metered billing (future feature)
+ * TODO: Implement Stripe usage records API
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function _syncToStripe(userStats: UpdateStats[]) {
-  console.log('[Story Update Tracking] Syncing to Stripe (placeholder)');
-
-  // TODO: Implement Stripe usage records API
-  // for (const user of userStats) {
-  //   if (user.tier !== 'free') {
-  //     await stripe.subscriptionItems.createUsageRecord(
-  //       user.stripeSubscriptionItemId,
-  //       {
-  //         quantity: user.totalUpdates,
-  //         timestamp: Math.floor(Date.now() / 1000),
-  //         action: 'set',
-  //       }
-  //     );
-  //   }
-  // }
-}
+// async function syncToStripe(userStats: UpdateStats[]) {
+//   console.log('[Story Update Tracking] Syncing to Stripe (placeholder)');
+//
+//   for (const user of userStats) {
+//     if (user.tier !== 'free') {
+//       await stripe.subscriptionItems.createUsageRecord(
+//         user.stripeSubscriptionItemId,
+//         {
+//           quantity: user.totalUpdates,
+//           timestamp: Math.floor(Date.now() / 1000),
+//           action: 'set',
+//         }
+//       );
+//     }
+//   }
+// }
 
 /**
  * Clean up old audit records beyond retention policy
+ * TODO: Implement as scheduled job
  */
-async function cleanupOldAuditRecords() {
-  const retentionDays = 365; // Keep 1 year by default
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-
-  console.log(`[Story Update Tracking] Cleaning up audit records older than ${cutoffDate.toISOString()}`);
-
-  const result = await db
-    .delete(storyUpdates)
-    .where(lte(storyUpdates.updatedAt, cutoffDate));
-
-  console.log(`[Story Update Tracking] Deleted old audit records`);
-}
+// async function cleanupOldAuditRecords() {
+//   const retentionDays = 365; // Keep 1 year by default
+//   const cutoffDate = new Date();
+//   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+//
+//   console.log(`[Story Update Tracking] Cleaning up audit records older than ${cutoffDate.toISOString()}`);
+//
+//   const result = await db
+//     .delete(storyUpdates)
+//     .where(lte(storyUpdates.updatedAt, cutoffDate));
+//
+//   console.log(`[Story Update Tracking] Deleted old audit records`);
+// }
 
 /**
  * Get update limit for a tier
+ * TODO: Move to shared entitlements module
  */
-function getTierUpdateLimit(tier: string): number {
-  switch (tier) {
-    case 'free':
-    case 'starter':
-      return 5;
-    case 'solo':
-    case 'pro_solo':
-    case 'pro_collaborative':
-    case 'pro':
-      return 1000;
-    case 'team':
-    case 'business':
-    case 'enterprise':
-      return Infinity;
-    default:
-      return 0;
-  }
-}
+// function getTierUpdateLimit(tier: string): number {
+//   switch (tier) {
+//     case 'free':
+//     case 'starter':
+//       return 5;
+//     case 'solo':
+//     case 'pro_solo':
+//     case 'pro_collaborative':
+//     case 'pro':
+//       return 1000;
+//     case 'team':
+//     case 'business':
+//     case 'enterprise':
+//       return Infinity;
+//     default:
+//       return 0;
+//   }
+// }
 
 /**
  * Manual trigger for testing (call from API or CLI)
