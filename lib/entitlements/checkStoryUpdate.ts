@@ -12,9 +12,8 @@
  */
 
 import { db } from '@/lib/db';
-import { storyUpdates, organizations, users, stories } from '@/lib/db/schema';
+import { storyUpdates, users } from '@/lib/db/schema';
 import { eq, and, gte, count } from 'drizzle-orm';
-import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 
 export interface StoryUpdateCheck {
   allowed: boolean;
@@ -42,7 +41,7 @@ export interface StoryUpdateContext {
 export async function checkStoryUpdateEntitlement(
   context: StoryUpdateContext
 ): Promise<StoryUpdateCheck> {
-  const { userId, storyId, organizationId, tier } = context;
+  const { userId, storyId: _storyId, organizationId, tier } = context;
 
   // Get tier limits
   const tierLimits = getTierUpdateLimits(tier);
