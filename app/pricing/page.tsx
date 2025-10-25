@@ -71,8 +71,8 @@ export default function PricingPage() {
       const currencyKey = currency.toUpperCase() as 'GBP' | 'EUR' | 'USD'
       const planPrices = plan.prices?.[currencyKey]
 
-      let displayPrice = typeof planPrices === 'object' ? planPrices.monthly : 0
-      let displayPriceAnnual = typeof planPrices === 'object' ? planPrices.annual : 0
+      let displayPrice = typeof planPrices === 'object' && typeof planPrices.monthly === 'number' ? planPrices.monthly : (plan.price ?? 0)
+      let displayPriceAnnual = typeof planPrices === 'object' && typeof planPrices.annual === 'number' ? planPrices.annual : (plan.priceAnnual ?? 0)
       let stripePriceId = undefined
 
       // If we have Stripe prices, use them and get the price ID

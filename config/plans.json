@@ -46,6 +46,8 @@
       "id": "core",
       "name": "Core",
       "label": "Core",
+      "price": 10.99,
+      "priceAnnual": 109.90,
       "prices": {
         "GBP": { "monthly": 10.99, "annual": 109.90 },
         "EUR": { "monthly": 11.99, "annual": 119.90 },
@@ -82,6 +84,8 @@
       "id": "pro",
       "name": "Pro (Collaborative)",
       "label": "Pro",
+      "price": 19.99,
+      "priceAnnual": 199.90,
       "prices": {
         "GBP": { "monthly": 19.99, "annual": 199.90 },
         "EUR": { "monthly": 21.99, "annual": 219.90 },
@@ -121,6 +125,8 @@
       "id": "team",
       "name": "Team (5+)",
       "label": "Team",
+      "price": 16.99,
+      "priceAnnual": 169.90,
       "prices": {
         "GBP": { "monthly": 16.99, "annual": 169.90 },
         "EUR": { "monthly": 18.99, "annual": 189.90 },
@@ -164,6 +170,8 @@
       "id": "enterprise",
       "name": "Enterprise",
       "label": "Enterprise",
+      "price": null,
+      "priceAnnual": null,
       "prices": {
         "GBP": { "monthly": "custom", "annual": "custom" },
         "EUR": { "monthly": "custom", "annual": "custom" },
