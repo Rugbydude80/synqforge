@@ -5,7 +5,7 @@
 
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
-export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'core' | 'pro' | 'team' | 'business' | 'enterprise'
 
 export interface SubscriptionFeatures {
   // Projects & Stories
@@ -58,7 +58,7 @@ export function getSubscriptionFeatures(tier: SubscriptionTier): SubscriptionFea
     maxStoriesPerProject: limits.maxStoriesPerProject,
 
     // Seats
-    canAddSeats: tier !== 'free' && tier !== 'starter',
+    canAddSeats: tier !== 'free' && tier !== 'starter' && tier !== 'solo',
     maxSeats: limits.maxSeats,
     seatPrice: limits.seatPrice,
 
@@ -171,6 +171,23 @@ export function getUpgradeMessage(
       canUseSSO: 'Upgrade to Pro to use SSO',
       canAddSeats: 'Upgrade to Team to add more seats',
     },
+    core: {
+      canUseBacklogAutopilot: 'Upgrade to Team to use Backlog Autopilot',
+      canUseACValidator: 'Upgrade to Team to use AC Validator',
+      canUseTestGeneration: 'Upgrade to Team to use Test Generation',
+      canUsePlanningForecast: 'Upgrade to Team to use Planning & Forecasting',
+      canUseEffortScoring: 'Upgrade to Team to use Effort Scoring',
+      canUseKnowledgeSearch: 'Upgrade to Team to use Knowledge Search',
+      canUseInboxParsing: 'Upgrade to Pro to use Inbox to Backlog',
+      canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
+      canUseWorkflowAgents: 'Upgrade to Enterprise to use Workflow Agents',
+      canUseGovernance: 'Upgrade to Enterprise to use Governance & Compliance',
+      canUseModelControls: 'Upgrade to Enterprise to use Model Controls',
+      canUseAnalytics: 'Upgrade to Team to use Analytics',
+      canUseAPI: 'Upgrade to Pro to use the API',
+      canUseSSO: 'Upgrade to Pro to use SSO',
+      canAddSeats: 'Upgrade to Team to add more seats',
+    },
     team: {
       canUseInboxParsing: 'Upgrade to Pro to use Inbox to Backlog',
       canUseRepoAwareness: 'Upgrade to Enterprise to use Repo Awareness',
@@ -203,7 +220,7 @@ export function getUpgradeMessage(
  * Get the minimum tier required for a feature
  */
 export function getMinimumTierForFeature(feature: keyof SubscriptionFeatures): SubscriptionTier {
-  const tiers: SubscriptionTier[] = ['free', 'starter', 'solo', 'team', 'pro', 'business', 'enterprise']
+  const tiers: SubscriptionTier[] = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise']
 
   for (const tier of tiers) {
     if (hasFeature(tier, feature)) {
@@ -221,7 +238,7 @@ export function needsUpgrade(
   currentTier: SubscriptionTier,
   requiredTier: SubscriptionTier
 ): boolean {
-  const tierOrder: SubscriptionTier[] = ['free', 'starter', 'solo', 'team', 'pro', 'business', 'enterprise']
+  const tierOrder: SubscriptionTier[] = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise']
   const currentIndex = tierOrder.indexOf(currentTier)
   const requiredIndex = tierOrder.indexOf(requiredTier)
 
@@ -233,9 +250,10 @@ export function needsUpgrade(
  */
 export function getRecommendedUpgrade(currentTier: SubscriptionTier): SubscriptionTier | null {
   const upgradeMap: Record<SubscriptionTier, SubscriptionTier | null> = {
-    free: 'solo',
-    starter: 'pro',
-    solo: 'team',
+    free: 'starter',
+    starter: 'solo',
+    solo: 'core',
+    core: 'pro',
     team: 'pro',
     pro: 'business',
     business: 'enterprise',

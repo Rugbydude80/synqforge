@@ -163,22 +163,22 @@ export async function deductTokens(
       .insert(tokensLedger)
       .values({
         id: transactionId,
-        userId,
+        userId: userId || null,
         organizationId,
         correlationId: metadata?.correlationId || crypto.randomUUID(),
         operationType: actionType,
         resourceType: metadata?.resourceType || 'story',
         resourceId: metadata?.resourceId || '',
-        actionCost: cost,
-        creditsConsumed: cost,
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: metadata?.model || 'unknown',
-        operationStatus: 'completed',
-        metadata: metadata || {},
-        timestamp: new Date(),
-        createdAt: new Date()
+        tokensDeducted: cost.toString(),
+        source: 'base_allowance',
+        addonPurchaseId: null,
+        balanceAfter: newRemaining,
+        metadata: {
+          ...(metadata || {}),
+          actionCost: cost,
+          creditsConsumed: cost,
+          operationStatus: 'completed'
+        }
       })
 
     return {
@@ -241,7 +241,7 @@ export async function refundNoOp(
       }
     }
 
-    const refundAmount = transaction.creditsConsumed
+    const refundAmount = parseFloat(transaction.tokensDeducted)
 
     // Restore credits
     await db
@@ -258,26 +258,23 @@ export async function refundNoOp(
       .insert(tokensLedger)
       .values({
         id: crypto.randomUUID(),
-        userId,
+        userId: userId || null,
         organizationId,
         correlationId: transaction.correlationId,
         operationType: 'refund',
         resourceType: transaction.resourceType,
         resourceId: transaction.resourceId,
-        actionCost: -refundAmount,
-        creditsConsumed: -refundAmount,
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: 'system',
-        operationStatus: 'refunded',
+        tokensDeducted: (-refundAmount).toString(),
+        source: 'refund',
+        addonPurchaseId: null,
+        balanceAfter: allowance.creditsRemaining + refundAmount,
         metadata: {
           originalTransactionId: transactionId,
           reason,
-          refundedAt: new Date().toISOString()
-        },
-        timestamp: new Date(),
-        createdAt: new Date()
+          refundedAt: new Date().toISOString(),
+          creditsConsumed: -refundAmount,
+          operationStatus: 'refunded'
+        }
       })
 
     return {
@@ -353,27 +350,24 @@ export async function applyMonthlyRollover(
       .insert(tokensLedger)
       .values({
         id: crypto.randomUUID(),
-        userId,
+        userId: userId || null,
         organizationId,
         correlationId: crypto.randomUUID(),
         operationType: 'rollover',
         resourceType: 'allowance',
         resourceId: allowance.id,
-        actionCost: 0,
-        creditsConsumed: -rolloverAmount, // Credit
-        providerTokens: 0,
-        estimatedCost: 0,
-        actualCost: 0,
-        providerModel: 'system',
-        operationStatus: 'completed',
+        tokensDeducted: (-rolloverAmount).toString(), // Negative = credit
+        source: 'rollover',
+        addonPurchaseId: null,
+        balanceAfter: newTotalCredits,
         metadata: {
           type: 'rollover',
           unused,
           rolloverPercent: limits.aiActionsRolloverPercent,
-          appliedAt: new Date().toISOString()
-        },
-        timestamp: new Date(),
-        createdAt: new Date()
+          appliedAt: new Date().toISOString(),
+          creditsConsumed: -rolloverAmount,
+          operationStatus: 'completed'
+        }
       })
 
     return {
@@ -419,6 +413,86 @@ export async function getActiveAddons(
 /**
  * Purchase and activate an add-on
  */
+/**
+ * Apply credits from an existing add-on purchase record
+ */
+export async function applyAddOnCredits(
+  purchaseId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the purchase record
+    const [purchase] = await db
+      .select()
+      .from(addOnPurchases)
+      .where(eq(addOnPurchases.id, purchaseId))
+      .limit(1)
+    
+    if (!purchase) {
+      return {
+        success: false,
+        error: 'Add-on purchase not found'
+      }
+    }
+    
+    // Validate purchase has required fields
+    if (!purchase.userId || purchase.creditsGranted === null) {
+      return {
+        success: false,
+        error: 'Invalid purchase record: missing userId or creditsGranted'
+      }
+    }
+    
+    const creditsGranted = purchase.creditsGranted
+    
+    // Get user's token allowance
+    const [allowance] = await db
+      .select()
+      .from(tokenAllowances)
+      .where(
+        and(
+          eq(tokenAllowances.userId, purchase.userId),
+          eq(tokenAllowances.organizationId, purchase.organizationId)
+        )
+      )
+      .limit(1)
+    
+    if (!allowance) {
+      // Create allowance if it doesn't exist
+      await db.insert(tokenAllowances).values({
+        id: crypto.randomUUID(),
+        userId: purchase.userId,
+        organizationId: purchase.organizationId,
+        baseCredits: 0,
+        rolloverCredits: 0,
+        addonCredits: creditsGranted,
+        creditsUsed: 0,
+        creditsRemaining: creditsGranted,
+        billingPeriodStart: new Date(),
+        lastUpdatedAt: new Date(),
+        createdAt: new Date()
+      })
+    } else {
+      // Update existing allowance
+      await db
+        .update(tokenAllowances)
+        .set({
+          addonCredits: allowance.addonCredits + creditsGranted,
+          creditsRemaining: allowance.creditsRemaining + creditsGranted,
+          lastUpdatedAt: new Date()
+        })
+        .where(eq(tokenAllowances.id, allowance.id))
+    }
+    
+    return { success: true }
+  } catch (error) {
+    console.error('Error applying add-on credits:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
 export async function activateAddon(
   userId: string,
   organizationId: string,

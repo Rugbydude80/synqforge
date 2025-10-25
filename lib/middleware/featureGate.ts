@@ -9,7 +9,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { SUBSCRIPTION_LIMITS, COMING_SOON_FEATURES } from '@/lib/constants'
 import { db } from '@/lib/db'
-import { organizationMemberships, organizations } from '@/lib/db/schema'
+import { organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export interface FeatureGateResult {
@@ -305,10 +305,8 @@ export async function validateOperationLimits(
       }
     }
 
-    // Check if the operation is allowed for this tier
-    const { limits } = context
-    
     // For now, allow all operations - specific limits handled by token service
+    // Future: Add tier-specific operation limits here using context.limits
     return {
       allowed: true
     }

@@ -7,7 +7,11 @@
  * - AI action costs and tier-specific limits
  */
 
-export type SubscriptionTier = 'starter' | 'pro' | 'team' | 'enterprise'
+// Main type - matches database schema
+export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'core' | 'pro' | 'team' | 'business' | 'enterprise'
+
+// New 2025 pricing tiers (subset of all tiers)
+export type New2025Tier = 'starter' | 'pro' | 'team' | 'enterprise'
 
 export type AddOnType = 'ai_actions' | 'ai_booster' | 'priority_support'
 
@@ -68,7 +72,7 @@ export interface TierConfig {
   }
 }
 
-export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
+export const TIER_CONFIGS: Record<New2025Tier, TierConfig> = {
   starter: {
     id: 'prod_starter',
     name: 'Starter',
@@ -317,8 +321,24 @@ export const ADD_ON_CONFIGS: Record<AddOnType, AddOnConfig> = {
 // HELPER FUNCTIONS
 // ============================================
 
+// Helper to check if a tier is in the New2025Tier set
+function is2025Tier(tier: SubscriptionTier): tier is New2025Tier {
+  return tier in TIER_CONFIGS
+}
+
+// Map legacy tiers to closest 2025 tier
+function mapToNew2025Tier(tier: SubscriptionTier): New2025Tier {
+  if (is2025Tier(tier)) return tier
+  // Map legacy tiers to closest equivalent
+  if (tier === 'free' || tier === 'solo' || tier === 'core' || tier === 'business') {
+    return 'starter' // Default fallback
+  }
+  return 'starter'
+}
+
 export function getTierConfig(tier: SubscriptionTier): TierConfig {
-  return TIER_CONFIGS[tier]
+  const mappedTier = mapToNew2025Tier(tier)
+  return TIER_CONFIGS[mappedTier]
 }
 
 export function getAddOnConfig(type: AddOnType): AddOnConfig {
@@ -340,15 +360,18 @@ export function isAddOnAvailableForTier(addOnType: AddOnType, tier: Subscription
 }
 
 export function getMaxSeatsForTier(tier: SubscriptionTier): number | null {
-  return TIER_CONFIGS[tier].limits.maxSeats
+  const mappedTier = mapToNew2025Tier(tier)
+  return TIER_CONFIGS[mappedTier].limits.maxSeats
 }
 
 export function getMinSeatsForTier(tier: SubscriptionTier): number {
-  return TIER_CONFIGS[tier].limits.minSeats
+  const mappedTier = mapToNew2025Tier(tier)
+  return TIER_CONFIGS[mappedTier].limits.minSeats
 }
 
 export function isFeatureEnabled(tier: SubscriptionTier, feature: keyof TierConfig['features']): boolean {
-  const config = TIER_CONFIGS[tier]
+  const mappedTier = mapToNew2025Tier(tier)
+  const config = TIER_CONFIGS[mappedTier]
   const featureValue = config.features[feature]
   
   if (typeof featureValue === 'boolean') {
@@ -359,7 +382,8 @@ export function isFeatureEnabled(tier: SubscriptionTier, feature: keyof TierConf
 }
 
 export function getFeatureLimit(tier: SubscriptionTier, limit: keyof TierConfig['limits']): number | null {
-  const config = TIER_CONFIGS[tier]
+  const mappedTier = mapToNew2025Tier(tier)
+  const config = TIER_CONFIGS[mappedTier]
   return config.limits[limit] as number | null
 }
 
@@ -381,7 +405,8 @@ export function getUpgradePrompt(
   currentTier: SubscriptionTier,
   requiredTier: SubscriptionTier
 ): UpgradePrompt {
-  const requiredConfig = TIER_CONFIGS[requiredTier]
+  const mappedRequired = mapToNew2025Tier(requiredTier)
+  const requiredConfig = TIER_CONFIGS[mappedRequired]
   
   return {
     feature,
@@ -467,7 +492,8 @@ export function validateSeatCount(tier: SubscriptionTier, seats: number): {
   valid: boolean
   error?: string
 } {
-  const config = TIER_CONFIGS[tier]
+  const mappedTier = mapToNew2025Tier(tier)
+  const config = TIER_CONFIGS[mappedTier]
   
   if (seats < config.limits.minSeats) {
     return {

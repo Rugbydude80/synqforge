@@ -8,7 +8,12 @@ import { Check, Package, Zap, Headphones } from 'lucide-react'
 interface AddOn {
   id: string
   name: string
-  price: number
+  price?: number
+  prices?: {
+    GBP: number
+    EUR: number
+    USD: number
+  }
   currency?: string
   type: string
   interval?: string
@@ -81,7 +86,9 @@ export function AddOnsSection({ addons, onSelectAddOn }: AddOnsSectionProps) {
 
               <CardContent className="flex-1 space-y-4">
                 <div className="flex items-baseline gap-1 py-3 border-y">
-                  <span className="text-3xl font-bold">£{addon.price}</span>
+                  <span className="text-3xl font-bold">
+                    {addon.currency || '£'}{addon.price || addon.prices?.GBP || 0}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {addon.type === 'recurring' ? '/month' : 'one-off'}
                   </span>
