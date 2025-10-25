@@ -112,8 +112,14 @@ async function getStories(req: NextRequest, context: { user: any }) {
 
   } catch (error) {
     console.error('Error fetching stories:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('User context:', context.user);
     return NextResponse.json(
-      { error: 'Internal server error', message: 'Failed to fetch stories' },
+      {
+        error: 'Internal server error',
+        message: 'Failed to fetch stories',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
