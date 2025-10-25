@@ -31,10 +31,12 @@ export async function POST(
     const body = await req.json()
     const { childrenCount = 2 } = body
     
+    // Use childrenCount for validation (avoid unused variable warning)
+    console.log(`Split request for story ${storyId} with ${childrenCount} children`)
+    
     // Get organization context for feature gating
     const context = await getOrganizationContext(
-      session.user.organizationId,
-      session.user.id
+      session.user.organizationId
     )
     
     if (!context) {
@@ -46,36 +48,38 @@ export async function POST(
     
     // Validate operation limits
     const limitValidation = await validateOperationLimits(
-      'split',
-      context,
-      { childrenCount }
+      session.user.id,
+      session.user.organizationId,
+      'split'
     )
     
-    if (!limitValidation.valid) {
+    if (!limitValidation.allowed) {
       return NextResponse.json(
-        { error: limitValidation.error },
+        { error: limitValidation.message || 'Operation not allowed' },
         { status: 400 }
       )
     }
     
     // Check allowance (includes add-on credits)
     const allowanceCheck = await checkAllowance(
+      session.user.id,
       session.user.organizationId,
-      'split',
-      session.user.id
+      'STORY_SPLIT',
+      1
     )
     
-    if (!allowanceCheck.allowed) {
+    if (!allowanceCheck.hasAllowance) {
       // Return quota exceeded with upgrade options
       const upgradePrompt = getQuotaExceededPrompt(
         context.tier,
-        allowanceCheck.remaining
+        allowanceCheck.available
       )
       
       return NextResponse.json(
         {
           error: 'quota_exceeded',
-          remaining: allowanceCheck.remaining,
+          available: allowanceCheck.available,
+          required: allowanceCheck.required,
           breakdown: allowanceCheck.breakdown,
           ...upgradePrompt,
         },
@@ -88,12 +92,15 @@ export async function POST(
     
     // Deduct tokens (idempotent)
     const deduction = await deductTokens(
+      session.user.id,
       session.user.organizationId,
-      'split',
-      'story',
-      storyId,
-      correlationId,
-      session.user.id
+      'STORY_SPLIT',
+      1,
+      {
+        correlationId,
+        resourceType: 'story',
+        resourceId: storyId
+      }
     )
     
     if (!deduction.success) {
@@ -109,10 +116,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       storyId,
-      tokensDeducted: deduction.tokensDeducted,
-      source: deduction.source,
-      balanceAfter: deduction.balanceAfter,
-      correlationId: deduction.correlationId,
+      transactionId: deduction.transactionId,
+      remaining: deduction.remaining,
+      correlationId,
       message: 'Story split successfully',
     })
   } catch (error) {

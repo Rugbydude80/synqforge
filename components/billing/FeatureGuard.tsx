@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Lock, Sparkles, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { type SubscriptionTier, TIER_CONFIGS } from '@/lib/config/tiers'
+import { type SubscriptionTier, type New2025Tier, TIER_CONFIGS } from '@/lib/config/tiers'
 
 interface FeatureGuardProps {
   children: ReactNode
@@ -35,7 +35,13 @@ export function FeatureGuard({
   onUpgrade,
 }: FeatureGuardProps) {
   const router = useRouter()
-  const requiredTierConfig = TIER_CONFIGS[requiredTier]
+  // TIER_CONFIGS only has 2025 tiers, handle legacy tiers gracefully
+  const is2025Tier = (tier: SubscriptionTier): tier is New2025Tier => {
+    return tier in TIER_CONFIGS
+  }
+  const requiredTierConfig = is2025Tier(requiredTier) 
+    ? TIER_CONFIGS[requiredTier] 
+    : TIER_CONFIGS['starter']
   
   const handleUpgrade = () => {
     if (onUpgrade) {

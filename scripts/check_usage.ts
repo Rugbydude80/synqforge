@@ -139,15 +139,15 @@ async function checkUserUsage(userId: string, detailed: boolean = false): Promis
         .select()
         .from(tokensLedger)
         .where(eq(tokensLedger.userId, userId))
-        .orderBy(desc(tokensLedger.timestamp))
+        .orderBy(desc(tokensLedger.createdAt))
         .limit(10)
 
       stats.recentTransactions = transactions.map(tx => ({
         id: tx.id,
         operationType: tx.operationType,
-        creditsConsumed: tx.creditsConsumed,
-        status: tx.operationStatus,
-        timestamp: tx.timestamp
+        creditsConsumed: parseFloat(tx.tokensDeducted),
+        status: (tx.metadata as any)?.operationStatus || 'completed',
+        timestamp: tx.createdAt
       }))
     }
 
@@ -247,15 +247,15 @@ async function checkOrgUsage(organizationId: string, detailed: boolean = false):
           .select()
           .from(tokensLedger)
           .where(eq(tokensLedger.userId, allowance.userId))
-          .orderBy(desc(tokensLedger.timestamp))
+          .orderBy(desc(tokensLedger.createdAt))
           .limit(5)
 
         userStats.recentTransactions = transactions.map(tx => ({
           id: tx.id,
           operationType: tx.operationType,
-          creditsConsumed: tx.creditsConsumed,
-          status: tx.operationStatus,
-          timestamp: tx.timestamp
+          creditsConsumed: parseFloat(tx.tokensDeducted),
+          status: (tx.metadata as any)?.operationStatus || 'completed',
+          timestamp: tx.createdAt
         }))
       }
 
