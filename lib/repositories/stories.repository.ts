@@ -525,49 +525,61 @@ export class StoriesRepository {
 
     const count = countResult[0]?.count || 0;
 
-    // Get stories
+    // Get stories without relations first (avoid Drizzle lateral join issues)
     const orderColumn = orderBy === 'createdAt' ? stories.createdAt
       : orderBy === 'updatedAt' ? stories.updatedAt
       : orderBy === 'priority' ? stories.priority
       : stories.storyPoints;
 
-    const storiesData = await db.query.stories.findMany({
+    const rawStories = await db.query.stories.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
       limit,
       offset,
       orderBy: orderDirection === 'desc' ? [desc(orderColumn)] : [asc(orderColumn)],
-      with: {
-        project: {
-          columns: {
-            id: true,
-            name: true,
-            key: true
-          }
-        },
-        epic: {
-          columns: {
-            id: true,
-            title: true,
-            color: true
-          }
-        },
-        assignee: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true
-          }
-        },
-        creator: {
-          columns: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
     });
+
+    // Fetch related data separately to avoid lateral join issues
+    const projectIds = Array.from(new Set(rawStories.map(s => s.projectId)));
+    const epicIds = Array.from(new Set(rawStories.map(s => s.epicId).filter(Boolean)));
+    const assigneeIds = rawStories.map(s => s.assigneeId).filter(Boolean);
+    const creatorIds = rawStories.map(s => s.createdBy);
+    const userIds = Array.from(new Set([...assigneeIds, ...creatorIds]));
+
+    // Fetch all relations in parallel
+    const [projectsData, epicsData, usersData] = await Promise.all([
+      projectIds.length > 0
+        ? db.query.projects.findMany({
+            where: inArray(projects.id, projectIds),
+            columns: { id: true, name: true, key: true }
+          })
+        : Promise.resolve([]),
+      epicIds.length > 0
+        ? db.query.epics.findMany({
+            where: inArray(epics.id, epicIds as string[]),
+            columns: { id: true, title: true, color: true }
+          })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? db.query.users.findMany({
+            where: inArray(users.id, userIds as string[]),
+            columns: { id: true, name: true, email: true, avatar: true }
+          })
+        : Promise.resolve([])
+    ]);
+
+    // Create lookup maps
+    const projectsMap = new Map(projectsData.map(p => [p.id, p]));
+    const epicsMap = new Map(epicsData.map(e => [e.id, e]));
+    const usersMap = new Map(usersData.map(u => [u.id, u]));
+
+    // Combine data
+    const storiesData = rawStories.map(story => ({
+      ...story,
+      project: projectsMap.get(story.projectId) || null,
+      epic: story.epicId ? epicsMap.get(story.epicId) || null : null,
+      assignee: story.assigneeId ? usersMap.get(story.assigneeId) || null : null,
+      creator: usersMap.get(story.createdBy) || null
+    }));
 
     // Fetch current sprints for all stories
     const storyIds = storiesData.map(s => s.id);
