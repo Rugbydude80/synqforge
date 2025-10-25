@@ -58,6 +58,20 @@ const rateLimiters = {
       prefix: 'ratelimit:ai_heavy:solo',
     }),
   },
+  core: {
+    standard: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai:core',
+    }),
+    heavy: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(3, '60 s'),
+      analytics: true,
+      prefix: 'ratelimit:ai_heavy:core',
+    }),
+  },
   team: {
     standard: new Ratelimit({
       redis,
@@ -129,7 +143,7 @@ export interface RateLimitResult {
  */
 export async function checkAIRateLimit(
   organizationId: string,
-  tier: 'free' | 'starter' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
   try {
     const limiter = rateLimiters[tier].standard
@@ -159,7 +173,7 @@ export async function checkAIRateLimit(
  */
 export async function checkHeavyJobRateLimit(
   organizationId: string,
-  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
   try {
     const limiter = rateLimiters[tier].heavy
@@ -243,7 +257,7 @@ export async function getAIQuota(
  * Reset rate limits for an organization (admin function)
  */
 export async function resetRateLimits(organizationId: string): Promise<void> {
-  const tiers = ['free', 'solo', 'team', 'pro', 'business', 'enterprise'] as const
+  const tiers = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise'] as const
 
   try {
     const keys = tiers.flatMap(tier => [
@@ -262,7 +276,7 @@ export async function resetRateLimits(organizationId: string): Promise<void> {
  */
 export async function shouldQueueAction(
   organizationId: string,
-  tier: 'free' | 'solo' | 'team' | 'pro' | 'business' | 'enterprise',
+  tier: 'free' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise',
   isHeavyJob: boolean = false
 ): Promise<{
   shouldQueue: boolean

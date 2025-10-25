@@ -460,16 +460,15 @@ export async function applyAddOnCredits(
       // Create allowance if it doesn't exist
       await db.insert(tokenAllowances).values({
         id: crypto.randomUUID(),
-        userId: purchase.userId,
         organizationId: purchase.organizationId,
-        baseCredits: 0,
+        userId: purchase.userId,
+        billingPeriodStart: new Date(),
+        billingPeriodEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+        baseAllowance: 0,
         rolloverCredits: 0,
         addonCredits: creditsGranted,
         creditsUsed: 0,
         creditsRemaining: creditsGranted,
-        billingPeriodStart: new Date(),
-        lastUpdatedAt: new Date(),
-        createdAt: new Date()
       })
     } else {
       // Update existing allowance
