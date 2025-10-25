@@ -575,10 +575,10 @@ export class StoriesRepository {
     // Combine data
     const storiesData = rawStories.map(story => ({
       ...story,
-      project: projectsMap.get(story.projectId) || null,
-      epic: story.epicId ? epicsMap.get(story.epicId) || null : null,
-      assignee: story.assigneeId ? usersMap.get(story.assigneeId) || null : null,
-      creator: usersMap.get(story.createdBy) || null
+      project: projectsMap.get(story.projectId),
+      epic: story.epicId ? (epicsMap.get(story.epicId) || null) : null,
+      assignee: story.assigneeId ? (usersMap.get(story.assigneeId) || null) : null,
+      creator: usersMap.get(story.createdBy)
     }));
 
     // Fetch current sprints for all stories
