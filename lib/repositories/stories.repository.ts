@@ -461,20 +461,21 @@ export class StoriesRepository {
       orderDirection?: 'asc' | 'desc';
     } = {}
   ): Promise<{ stories: StoryWithRelations[]; total: number }> {
-    const {
-      limit = 50,
-      offset = 0,
-      orderBy = 'createdAt',
-      orderDirection = 'desc'
-    } = options;
+    try {
+      const {
+        limit = 50,
+        offset = 0,
+        orderBy = 'createdAt',
+        orderDirection = 'desc'
+      } = options;
 
-    // Build where conditions
-    const conditions = [];
+      // Build where conditions
+      const conditions = [];
 
-    // Always filter by organizationId if provided (for security)
-    if (filters.organizationId) {
-      conditions.push(eq(stories.organizationId, filters.organizationId));
-    }
+      // Always filter by organizationId if provided (for security)
+      if (filters.organizationId) {
+        conditions.push(eq(stories.organizationId, filters.organizationId));
+      }
 
     if (filters.projectId) {
       conditions.push(eq(stories.projectId, filters.projectId));
@@ -517,10 +518,12 @@ export class StoriesRepository {
     }
 
     // Get total count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
+    const countResult = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(stories)
       .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const count = countResult[0]?.count || 0;
 
     // Get stories
     const orderColumn = orderBy === 'createdAt' ? stories.createdAt
@@ -587,25 +590,31 @@ export class StoriesRepository {
 
     const sprintMap = new Map(
       sprintRelations
-        .filter(sr => sr.sprint.status === 'active')
+        .filter(sr => sr.sprint && sr.sprint.status === 'active')
         .map(sr => [sr.storyId, sr.sprint])
     );
 
-    return {
-      stories: storiesData.map(story => {
-        const sprint = sprintMap.get(story.id);
-        return {
-          ...story,
-          currentSprint: sprint ? {
-            id: sprint.id,
-            name: sprint.name,
-            startDate: new Date(sprint.startDate),
-            endDate: new Date(sprint.endDate)
-          } : null
-        };
-      }),
-      total: count
-    };
+      return {
+        stories: storiesData.map(story => {
+          const sprint = sprintMap.get(story.id);
+          return {
+            ...story,
+            currentSprint: sprint ? {
+              id: sprint.id,
+              name: sprint.name,
+              startDate: new Date(sprint.startDate),
+              endDate: new Date(sprint.endDate)
+            } : null
+          };
+        }),
+        total: count
+      };
+    } catch (error) {
+      console.error('Error in storiesRepository.list:', error);
+      console.error('Filters:', filters);
+      console.error('Options:', options);
+      throw error;
+    }
   }
 
   /**
