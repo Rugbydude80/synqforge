@@ -145,7 +145,11 @@ export async function POST(req: NextRequest) {
     if (PAID_PLANS_WITH_CHECKOUT.includes(validatedData.plan as any)) {
       try {
         const { default: Stripe } = await import('stripe')
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-09-30.clover' })
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
+          apiVersion: '2025-09-30.clover',
+          timeout: 10000, // 10 second timeout
+          maxNetworkRetries: 2,
+        })
         
         // Get price ID for the selected plan
         // Map plan names to environment variables
@@ -190,6 +194,7 @@ export async function POST(req: NextRequest) {
           priceId,
           email: validatedData.email,
           orgId,
+          timestamp: new Date().toISOString(),
         })
 
         const session = await stripe.checkout.sessions.create({
@@ -219,15 +224,27 @@ export async function POST(req: NextRequest) {
         })
 
         checkoutUrl = session.url
-        console.log('✅ Stripe checkout session created successfully:', session.id)
+        console.log('✅ Stripe checkout session created successfully:', {
+          sessionId: session.id,
+          url: session.url,
+          timestamp: new Date().toISOString(),
+        })
       } catch (stripeError) {
-        console.error('❌ Stripe checkout error:', stripeError)
-        // For paid plans, this is critical - throw as external service error
-        throw new ExternalServiceError(
-          'Unable to create payment session',
-          'stripe',
-          { originalError: stripeError instanceof Error ? stripeError.message : 'Unknown error' }
-        )
+        console.error('❌ Stripe checkout error:', {
+          error: stripeError,
+          message: stripeError instanceof Error ? stripeError.message : 'Unknown error',
+          plan: validatedData.plan,
+          priceId,
+          timestamp: new Date().toISOString(),
+        })
+        
+        // For paid plans, we already created the user account
+        // Return success but warn about payment issue
+        // They can try payment later via settings
+        console.warn('⚠️  User account created but Stripe checkout failed. User can upgrade later.')
+        
+        // Don't throw error - let them sign up as free and upgrade later
+        checkoutUrl = null
       }
     }
 
