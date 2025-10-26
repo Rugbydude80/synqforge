@@ -53,15 +53,17 @@ async function getStory(req: NextRequest, context: { user: any }) {
 
     // Handle custom application errors
     if (isApplicationError(error)) {
-      const response = formatErrorResponse(error);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle "Story not found" from repository
     if (error.message && error.message.includes('Story not found')) {
       const notFoundError = new NotFoundError('Story', '', 'Story not found');
-      const response = formatErrorResponse(notFoundError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(notFoundError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
@@ -217,34 +219,39 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
     // Handle custom application errors
     if (isApplicationError(error)) {
-      const response = formatErrorResponse(error);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle specific repository errors
     if (error.message && error.message.includes('Story not found')) {
       const notFoundError = new NotFoundError('Story', '', 'Story not found');
-      const response = formatErrorResponse(notFoundError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(notFoundError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     if (error.message && error.message.includes('not found')) {
       const notFoundError = new NotFoundError('Resource', '', error.message);
-      const response = formatErrorResponse(notFoundError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(notFoundError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     if (error.message && error.message.includes('does not belong to')) {
       const authError = new AuthorizationError(error.message);
-      const response = formatErrorResponse(authError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(authError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle database errors
     if (error.message && (error.message.includes('database') || error.message.includes('insert') || error.message.includes('update'))) {
-      const dbError = new DatabaseError('Failed to update story', error.message);
-      const response = formatErrorResponse(dbError);
-      return NextResponse.json(response.body, { status: response.status });
+      const dbError = new DatabaseError('Failed to update story', error instanceof Error ? error : undefined);
+      const response = formatErrorResponse(dbError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Return the actual error message in development/staging for debugging
@@ -302,22 +309,25 @@ async function deleteStory(_request: NextRequest, context: { user: any }) {
 
     // Handle custom application errors
     if (isApplicationError(error)) {
-      const response = formatErrorResponse(error);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle "Story not found" from repository
     if (error.message && error.message.includes('Story not found')) {
       const notFoundError = new NotFoundError('Story', '', 'Story not found');
-      const response = formatErrorResponse(notFoundError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(notFoundError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle database errors
     if (error.message && (error.message.includes('database') || error.message.includes('delete'))) {
-      const dbError = new DatabaseError('Failed to delete story', error.message);
-      const response = formatErrorResponse(dbError);
-      return NextResponse.json(response.body, { status: response.status });
+      const dbError = new DatabaseError('Failed to delete story', error instanceof Error ? error : undefined);
+      const response = formatErrorResponse(dbError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     return NextResponse.json(

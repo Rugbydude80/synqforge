@@ -178,7 +178,8 @@ export async function POST(req: NextRequest) {
     // Handle custom application errors
     if (isApplicationError(error)) {
       const response = formatErrorResponse(error)
-      return NextResponse.json(response.body, { status: response.status })
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
 
     // Unknown error

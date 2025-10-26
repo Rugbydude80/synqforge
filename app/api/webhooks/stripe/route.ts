@@ -5,100 +5,212 @@ import { organizations, stripeSubscriptions } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { entitlementsFromPrice, entitlementsToDbValues, getFreeTierEntitlements } from '@/lib/billing/entitlements'
+import {
+  ValidationError,
+  ExternalServiceError,
+  DatabaseError,
+  formatErrorResponse,
+  isApplicationError
+} from '@/lib/errors/custom-errors'
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
- * POST /api/webhooks/stripe
- * Handle Stripe webhook events
+ * Parses subscription data from Stripe subscription object
+ * 
+ * @param subscription - Stripe subscription object
+ * @param customerId - Stripe customer ID
+ * @param organizationId - Organization ID
+ * @param priceId - Stripe price ID
+ * @param entitlements - Parsed entitlements from price metadata
+ * @returns Parsed subscription data ready for database
  */
-export async function POST(req: NextRequest) {
-  const body = await req.text()
-  const signature = req.headers.get('stripe-signature')
+function parseSubscriptionData(
+  subscription: Stripe.Subscription,
+  customerId: string,
+  organizationId: string,
+  priceId: string,
+  entitlements: ReturnType<typeof entitlementsFromPrice>
+) {
+  const dbValues = entitlementsToDbValues(entitlements)
+  const includedSeats = dbValues.seatsIncluded
+  const billingInterval = entitlements.plan_cycle
 
-  if (!signature) {
-    return NextResponse.json(
-      { error: 'No signature provided' },
-      { status: 400 }
-    )
-  }
-
-  let event: Stripe.Event
-
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message)
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
-    )
-  }
-
-  console.log('Received Stripe webhook event:', event.type)
-
-  try {
-    switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
-        break
-
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-        // Also handle add-on subscription cancellations
-        const subscription = event.data.object as Stripe.Subscription
-        const { handleSubscriptionCancelled } = await import('@/lib/services/addOnService')
-        await handleSubscriptionCancelled(subscription.id)
-        break
-
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-
-      case 'invoice.payment_failed':
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
-        break
-
-      case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
-        break
-
-      case 'customer.created':
-      case 'customer.updated':
-        // Handle customer creation/update if needed
-        console.log('Customer event:', event.type)
-        break
-
-      default:
-        console.log('Unhandled event type:', event.type)
+  // Calculate addon seats
+  let addonSeats = 0
+  for (const item of subscription.items.data) {
+    const metadata = item.price.metadata || {}
+    if (metadata.type === 'seat_addon') {
+      addonSeats += item.quantity || 0
     }
+  }
 
-    return NextResponse.json({ received: true })
-  } catch (error) {
-    console.error('Error handling webhook:', error)
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    )
+  return {
+    subscriptionData: {
+      organizationId,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      status: subscription.status as any,
+      currentPeriodStart: subscription.current_period_start
+        ? new Date(subscription.current_period_start * 1000)
+        : null,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000)
+        : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
+      canceledAt: subscription.canceled_at
+        ? new Date(subscription.canceled_at * 1000)
+        : null,
+      trialStart: subscription.trial_start
+        ? new Date(subscription.trial_start * 1000)
+        : null,
+      trialEnd: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000)
+        : null,
+      billingInterval,
+      includedSeats,
+      addonSeats,
+      metadata: subscription.metadata,
+      updatedAt: new Date(),
+    },
+    includedSeats,
+    addonSeats,
+    dbValues,
   }
 }
 
 /**
- * Handle subscription creation or update
- * Uses entitlements model - reads all limits from Stripe Price metadata
+ * Updates or creates a subscription record in the database
+ * 
+ * @param subscriptionId - Stripe subscription ID
+ * @param subscriptionData - Parsed subscription data
+ * @returns Created or updated subscription ID
  */
-async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+async function updateOrCreateSubscription(
+  subscriptionId: string,
+  subscriptionData: any
+): Promise<string> {
+  const [existingSubscription] = await db
+    .select()
+    .from(stripeSubscriptions)
+    .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+    .limit(1)
+
+  if (existingSubscription) {
+    await db
+      .update(stripeSubscriptions)
+      .set(subscriptionData)
+      .where(eq(stripeSubscriptions.id, existingSubscription.id))
+    return existingSubscription.id
+  } else {
+    const newId = generateId()
+    await db.insert(stripeSubscriptions).values({
+      id: newId,
+      ...subscriptionData,
+      createdAt: new Date(),
+    })
+    return newId
+  }
+}
+
+/**
+ * Maps plan name to legacy tier for backward compatibility
+ */
+function getLegacyTier(planName: string): 'free' | 'team' | 'business' | 'enterprise' {
+  if (planName === 'solo') return 'free'
+  if (planName === 'team') return 'team'
+  if (planName === 'pro') return 'business'
+  if (planName === 'enterprise') return 'enterprise'
+  return 'free'
+}
+
+/**
+ * Updates organization with entitlements and subscription details
+ * 
+ * @param organizationId - Organization ID
+ * @param entitlements - Parsed entitlements
+ * @param subscription - Stripe subscription object
+ * @param subscriptionId - Stripe subscription ID
+ * @param priceId - Stripe price ID
+ */
+async function updateOrganizationEntitlements(
+  organizationId: string,
+  entitlements: ReturnType<typeof entitlementsFromPrice>,
+  subscription: Stripe.Subscription,
+  subscriptionId: string,
+  priceId: string
+): Promise<void> {
+  const dbValues = entitlementsToDbValues(entitlements)
+  const legacyTier = getLegacyTier(entitlements.plan)
+
+  await db
+    .update(organizations)
+    .set({
+      subscriptionTier: legacyTier,
+      ...dbValues,
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      subscriptionStatus: subscription.status,
+      subscriptionRenewalAt: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000)
+        : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, organizationId))
+}
+
+/**
+ * Initializes usage tracking and metering for new/active subscriptions
+ * 
+ * @param organizationId - Organization ID
+ * @param status - Subscription status
+ */
+async function initializeUsageTracking(
+  organizationId: string,
+  status: string
+): Promise<void> {
+  if (status === 'trialing' || status === 'active') {
+    // Sync seats
+    const { syncSeatsFromStripe } = await import('@/lib/services/seat-management.service')
+    await syncSeatsFromStripe(organizationId)
+
+    // Initialize AI usage metering
+    const { getOrCreateUsageMetering } = await import('@/lib/services/ai-metering.service')
+    await getOrCreateUsageMetering(organizationId)
+
+    // Initialize fair-usage workspace tracking
+    const { getOrCreateWorkspaceUsage } = await import('@/lib/billing/fair-usage-guards')
+    await getOrCreateWorkspaceUsage(organizationId)
+  }
+}
+
+// ============================================================================
+// WEBHOOK EVENT HANDLERS
+// ============================================================================
+
+/**
+ * Handle subscription creation or update
+ * Parses entitlements from Stripe Price metadata and updates organization
+ * 
+ * @param subscription - Stripe subscription object
+ * @throws {ValidationError} Invalid subscription data
+ * @throws {DatabaseError} Database operation failed
+ * @throws {ExternalServiceError} Stripe API error
+ */
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Promise<void> {
   const customerId = subscription.customer as string
   const subscriptionId = subscription.id
   const status = subscription.status
   const priceItem = subscription.items.data[0]
 
   if (!priceItem) {
-    console.error('No price item found in subscription')
-    return
+    throw new ValidationError('No price item found in subscription', {
+      subscriptionId,
+      customerId,
+    })
   }
 
   const priceId = priceItem.price.id
@@ -118,144 +230,46 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     .limit(1)
 
   if (!organization) {
-    console.error('Organization not found for customer:', customerId)
-    return
+    throw new DatabaseError(
+      'Organization not found for customer',
+      `No organization found with Stripe customer ID: ${customerId}`
+    )
   }
 
   // Fetch full price object with metadata from Stripe
   const price = await stripe.prices.retrieve(priceId)
-
-  // Parse entitlements from price metadata
   const entitlements = entitlementsFromPrice(price)
-  const dbValues = entitlementsToDbValues(entitlements)
+  const parsed = parseSubscriptionData(subscription, customerId, organization.id, priceId, entitlements)
 
   console.log('Parsed entitlements:', {
     plan: entitlements.plan,
     cycle: entitlements.plan_cycle,
-    seats: entitlements.seats_included,
-    projects: entitlements.projects_included,
-    stories: dbValues.storiesPerMonth,
+    seats: parsed.includedSeats,
+    addonSeats: parsed.addonSeats,
+    projects: parsed.dbValues.projectsIncluded,
     tokens: entitlements.ai_tokens_included,
   })
 
-  // Extract seat information from subscription items
-  const includedSeats = dbValues.seatsIncluded
-  let addonSeats = 0
-  const billingInterval = entitlements.plan_cycle
-
-  // Check for additional seat addons
-  for (const item of subscription.items.data) {
-    const metadata = item.price.metadata || {}
-    if (metadata.type === 'seat_addon') {
-      addonSeats += item.quantity || 0
-    }
-  }
-
   // Update or create subscription record
-  const [existingSubscription] = await db
-    .select()
-    .from(stripeSubscriptions)
-    .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
-    .limit(1)
+  await updateOrCreateSubscription(subscriptionId, parsed.subscriptionData)
 
-  const subscriptionData = {
-    organizationId: organization.id,
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: subscriptionId,
-    stripePriceId: priceId,
-    status: status as any,
-    currentPeriodStart: (subscription as any).current_period_start
-      ? new Date((subscription as any).current_period_start * 1000)
-      : null,
-    currentPeriodEnd: (subscription as any).current_period_end
-      ? new Date((subscription as any).current_period_end * 1000)
-      : null,
-    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
-    canceledAt: (subscription as any).canceled_at
-      ? new Date((subscription as any).canceled_at * 1000)
-      : null,
-    trialStart: (subscription as any).trial_start
-      ? new Date((subscription as any).trial_start * 1000)
-      : null,
-    trialEnd: (subscription as any).trial_end
-      ? new Date((subscription as any).trial_end * 1000)
-      : null,
-    billingInterval,
-    includedSeats,
-    addonSeats,
-    metadata: subscription.metadata,
-    updatedAt: new Date(),
-  }
+  // Update organization with entitlements
+  await updateOrganizationEntitlements(
+    organization.id,
+    entitlements,
+    subscription,
+    subscriptionId,
+    priceId
+  )
 
-  if (existingSubscription) {
-    // Update existing subscription
-    await db
-      .update(stripeSubscriptions)
-      .set(subscriptionData)
-      .where(eq(stripeSubscriptions.id, existingSubscription.id))
-  } else {
-    // Create new subscription
-    await db.insert(stripeSubscriptions).values({
-      id: generateId(),
-      ...subscriptionData,
-      createdAt: new Date(),
-    })
-  }
-
-  // Determine legacy tier for backward compatibility
-  let legacyTier: 'free' | 'team' | 'business' | 'enterprise' = 'free'
-  if (entitlements.plan === 'solo') legacyTier = 'free' // Solo uses free features
-  else if (entitlements.plan === 'team') legacyTier = 'team'
-  else if (entitlements.plan === 'pro') legacyTier = 'business'
-  else if (entitlements.plan === 'enterprise') legacyTier = 'enterprise'
-
-  // Update organization with entitlements and Stripe details
-  await db
-    .update(organizations)
-    .set({
-      // Legacy tier field for backward compatibility
-      subscriptionTier: legacyTier,
-
-      // New entitlements model
-      ...dbValues,
-
-      // Stripe integration fields
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      subscriptionStatus: status,
-      subscriptionRenewalAt: (subscription as any).current_period_end
-        ? new Date((subscription as any).current_period_end * 1000)
-        : null,
-
-      updatedAt: new Date(),
-    })
-    .where(eq(organizations.id, organization.id))
-
-  // Sync seats with seat management service
-  const { syncSeatsFromStripe } = await import('@/lib/services/seat-management.service')
-  await syncSeatsFromStripe(organization.id)
-
-  // Initialize or reset AI usage metering for new subscriptions
-  if (status === 'trialing' || status === 'active') {
-    const { getOrCreateUsageMetering } = await import('@/lib/services/ai-metering.service')
-    await getOrCreateUsageMetering(organization.id)
-
-    // Initialize fair-usage workspace tracking
-    const { getOrCreateWorkspaceUsage } = await import('@/lib/billing/fair-usage-guards')
-    await getOrCreateWorkspaceUsage(organization.id)
-  }
+  // Initialize usage tracking
+  await initializeUsageTracking(organization.id, status)
 
   console.log('Subscription updated successfully for org:', organization.name, {
     plan: entitlements.plan,
     cycle: entitlements.plan_cycle,
-    seats: dbValues.seatsIncluded,
-    addonSeats,
-    projects: dbValues.projectsIncluded,
-    tokens: dbValues.aiTokensIncluded,
-    docs: dbValues.docsPerMonth,
-    throughput: dbValues.throughputSpm,
-    bulkLimit: dbValues.bulkStoryLimit,
-    pageLimit: dbValues.maxPagesPerUpload,
+    seats: parsed.includedSeats,
+    addonSeats: parsed.addonSeats,
     status,
   })
 }
@@ -263,8 +277,11 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 /**
  * Handle subscription deletion (cancellation)
  * Resets organization to free tier entitlements
+ * 
+ * @param subscription - Stripe subscription object
+ * @throws {DatabaseError} Database operation failed
  */
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
   const subscriptionId = subscription.id
 
   console.log('Handling subscription deletion:', subscriptionId)
@@ -277,8 +294,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     .limit(1)
 
   if (!existingSubscription) {
-    console.error('Subscription not found:', subscriptionId)
-    return
+    throw new DatabaseError(
+      'Subscription not found',
+      `No subscription found with ID: ${subscriptionId}`
+    )
   }
 
   // Update subscription status
@@ -295,42 +314,31 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const freeEntitlements = getFreeTierEntitlements()
   const dbValues = entitlementsToDbValues(freeEntitlements)
 
-  // Downgrade organization to free tier with free tier entitlements
+  // Downgrade organization to free tier
   await db
     .update(organizations)
     .set({
       subscriptionTier: 'free',
-
-      // Reset to free tier entitlements
       ...dbValues,
-
-      // Clear Stripe subscription details
       stripeSubscriptionId: null,
       stripePriceId: null,
       subscriptionStatus: 'inactive',
       subscriptionRenewalAt: null,
-
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, existingSubscription.organizationId))
 
-  console.log('Subscription canceled, org downgraded to free tier with limits:', {
-    seats: dbValues.seatsIncluded,
-    projects: dbValues.projectsIncluded,
-    stories: dbValues.storiesPerMonth,
-    tokens: dbValues.aiTokensIncluded,
-  })
+  console.log('Subscription canceled, org downgraded to free tier')
 }
 
 /**
- * Handle successful payment
+ * Handle successful payment - updates subscription to active
  */
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = (invoice as any).subscription as string
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  const subscriptionId = invoice.subscription as string
 
   console.log('Payment succeeded for subscription:', subscriptionId)
 
-  // Update subscription if needed
   if (subscriptionId) {
     await db
       .update(stripeSubscriptions)
@@ -343,14 +351,13 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 /**
- * Handle failed payment
+ * Handle failed payment - updates subscription to past_due
  */
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionId = (invoice as any).subscription as string
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const subscriptionId = invoice.subscription as string
 
   console.log('Payment failed for subscription:', subscriptionId)
 
-  // Update subscription status
   if (subscriptionId) {
     await db
       .update(stripeSubscriptions)
@@ -364,8 +371,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 
 /**
  * Handle checkout session completion
+ * Links Stripe customer to organization and processes add-ons/token purchases
  */
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const metadata = session.metadata
 
   console.log('Checkout completed:', {
@@ -374,12 +382,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     customerId: session.customer,
   })
 
-  // Check if this is a subscription signup
+  // Link Stripe customer to organization
   if (metadata?.organizationId && session.customer) {
     const organizationId = metadata.organizationId
     const customerId = session.customer as string
 
-    // Update organization with Stripe customer ID
     await db
       .update(organizations)
       .set({
@@ -391,7 +398,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     console.log(`Linked customer ${customerId} to organization ${organizationId}`)
   }
 
-  // Check if this is an add-on purchase
+  // Process add-on purchase
   if (metadata?.addOnType) {
     const { applyAddOnFromCheckout } = await import('@/lib/services/addOnService')
     
@@ -400,26 +407,132 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       console.log(`Applied add-on ${metadata.addOnType} from checkout ${session.id}`)
     } catch (error) {
       console.error('Failed to apply add-on from checkout:', error)
-      // Continue processing other checkout types even if add-on fails
     }
   }
 
-  // Check if this is a token purchase
+  // Process token purchase
   if (metadata?.type === 'token_purchase') {
     const organizationId = metadata.organizationId
     const tokens = parseInt(metadata.tokens || '0')
 
     if (!organizationId || !tokens) {
-      console.error('Missing organizationId or tokens in metadata')
-      return
+      throw new ValidationError('Missing organizationId or tokens in checkout metadata', { metadata })
     }
 
-    // Import the token balance functions dynamically to avoid circular dependencies
     const { addPurchasedTokens } = await import('@/lib/services/ai-usage.service')
-
-    // Add the purchased tokens to the organization's balance
     await addPurchasedTokens(organizationId, tokens, session.id)
 
     console.log(`Added ${tokens} tokens to organization ${organizationId}`)
+  }
+}
+
+// ============================================================================
+// MAIN WEBHOOK HANDLER
+// ============================================================================
+
+/**
+ * POST /api/webhooks/stripe
+ * 
+ * Handles Stripe webhook events for subscriptions, payments, and checkouts.
+ * Verifies webhook signature and routes events to appropriate handlers.
+ * 
+ * Supported events:
+ * - customer.subscription.created/updated
+ * - customer.subscription.deleted
+ * - invoice.payment_succeeded/failed
+ * - checkout.session.completed
+ * 
+ * @param req - Next.js request with Stripe webhook payload
+ * @returns Success response or error
+ * @throws {ValidationError} Missing or invalid signature
+ * @throws {ExternalServiceError} Stripe verification failed
+ */
+export async function POST(req: NextRequest) {
+  const body = await req.text()
+  const signature = req.headers.get('stripe-signature')
+
+  if (!signature) {
+    const error = new ValidationError('No Stripe signature provided')
+    const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
+  }
+
+  let event: Stripe.Event
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message)
+    const error = new ExternalServiceError(
+      'Invalid webhook signature',
+      'stripe',
+      { originalError: err.message }
+    )
+    const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
+  }
+
+  console.log('Received Stripe webhook event:', event.type)
+
+  try {
+    switch (event.type) {
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
+        break
+
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        const subscription = event.data.object as Stripe.Subscription
+        const { handleSubscriptionCancelled } = await import('@/lib/services/addOnService')
+        await handleSubscriptionCancelled(subscription.id)
+        break
+
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
+        break
+
+      case 'checkout.session.completed':
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+        break
+
+      case 'customer.created':
+      case 'customer.updated':
+        console.log('Customer event:', event.type)
+        break
+
+      default:
+        console.log('Unhandled event type:', event.type)
+    }
+
+    return NextResponse.json({ received: true })
+  } catch (error) {
+    console.error('Error handling webhook:', error)
+
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+
+    // Unknown error
+    return NextResponse.json(
+      { 
+        error: 'Webhook handler failed',
+        message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      },
+      { status: 500 }
+    )
   }
 }
