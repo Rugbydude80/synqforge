@@ -12,19 +12,35 @@ import { db } from '@/lib/db';
 import { storyUpdates, organizations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import {
+  ValidationError,
+  NotFoundError,
+  AuthorizationError,
+  QuotaExceededError,
+  DatabaseError,
+  formatErrorResponse,
+  isApplicationError
+} from '@/lib/errors/custom-errors';
 
 /**
  * GET /api/stories/[storyId] - Get a single story by ID
+ * 
+ * Retrieves a story by its unique ID with access validation.
+ * 
+ * @param req - Next.js request with story ID in path
+ * @param context - Authenticated user context
+ * @returns Story object
+ * @throws {ValidationError} Missing story ID
+ * @throws {NotFoundError} Story not found
+ * @throws {AuthorizationError} No access to story
+ * @throws {DatabaseError} Database query failed
  */
 async function getStory(req: NextRequest, context: { user: any }) {
   try {
     const storyId = req.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
-      return NextResponse.json(
-        { error: 'Bad request', message: 'Story ID is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Story ID is required');
     }
 
     await assertStoryAccessible(storyId, context.user.organizationId);
@@ -35,11 +51,17 @@ async function getStory(req: NextRequest, context: { user: any }) {
     console.error('Error fetching story:', error);
     console.error('Error stack:', error.stack);
 
-    if (error.message.includes('Story not found')) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Handle "Story not found" from repository
+    if (error.message && error.message.includes('Story not found')) {
+      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const response = formatErrorResponse(notFoundError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
     const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
@@ -77,9 +99,9 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
     // Check if user can modify stories
     if (!canModify(context.user)) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Insufficient permissions to update stories' },
-        { status: 403 }
+      throw new AuthorizationError(
+        'Insufficient permissions to update stories',
+        { userRole: context.user.role }
       );
     }
 
@@ -89,13 +111,9 @@ async function updateStory(req: NextRequest, context: { user: any }) {
     const validationResult = safeValidateUpdateStory(body);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          message: 'Invalid story update data',
-          details: validationResult.error.issues
-        },
-        { status: 400 }
+      throw new ValidationError(
+        'Invalid story update data',
+        { issues: validationResult.error.issues }
       );
     }
 
@@ -110,10 +128,7 @@ async function updateStory(req: NextRequest, context: { user: any }) {
     });
 
     if (!organization) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Organization not found' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Organization', context.user.organizationId);
     }
 
     const tier = organization.subscriptionTier || 'free';
@@ -128,21 +143,25 @@ async function updateStory(req: NextRequest, context: { user: any }) {
     });
 
     if (!entitlementCheck.allowed) {
-      // Return detailed error with upgrade information
-      return NextResponse.json(
-        {
-          error: 'Quota exceeded',
-          message: entitlementCheck.reason,
-          limit: entitlementCheck.limit,
-          used: entitlementCheck.used,
-          remaining: entitlementCheck.remaining,
-          upgradeRequired: entitlementCheck.upgradeRequired,
-          upgradeTier: entitlementCheck.upgradeTier,
-          upgradeUrl: entitlementCheck.upgradeUrl,
-          requiresApproval: entitlementCheck.requiresApproval,
-        },
-        { status: entitlementCheck.requiresApproval ? 403 : 429 }
-      );
+      // Use appropriate error type based on the entitlement check result
+      if (entitlementCheck.requiresApproval) {
+        throw new AuthorizationError(
+          entitlementCheck.reason || 'Approval required for this update',
+          { requiresApproval: true, storyStatus: existingStory.status }
+        );
+      } else {
+        throw new QuotaExceededError(
+          entitlementCheck.reason || 'Story update quota exceeded',
+          entitlementCheck.limit || 0,
+          entitlementCheck.used || 0,
+          {
+            remaining: entitlementCheck.remaining,
+            upgradeRequired: entitlementCheck.upgradeRequired,
+            upgradeTier: entitlementCheck.upgradeTier,
+            upgradeUrl: entitlementCheck.upgradeUrl,
+          }
+        );
+      }
     }
 
     // Calculate diff for audit trail
@@ -196,25 +215,36 @@ async function updateStory(req: NextRequest, context: { user: any }) {
       cause: error.cause
     });
 
-    if (error.message.includes('Story not found')) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
-    if (error.message.includes('not found')) {
-      return NextResponse.json(
-        { error: 'Not found', message: error.message },
-        { status: 404 }
-      );
+    // Handle specific repository errors
+    if (error.message && error.message.includes('Story not found')) {
+      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const response = formatErrorResponse(notFoundError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
-    if (error.message.includes('does not belong to')) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: error.message },
-        { status: 403 }
-      );
+    if (error.message && error.message.includes('not found')) {
+      const notFoundError = new NotFoundError('Resource', '', error.message);
+      const response = formatErrorResponse(notFoundError);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    if (error.message && error.message.includes('does not belong to')) {
+      const authError = new AuthorizationError(error.message);
+      const response = formatErrorResponse(authError);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Handle database errors
+    if (error.message && (error.message.includes('database') || error.message.includes('insert') || error.message.includes('update'))) {
+      const dbError = new DatabaseError('Failed to update story', error.message);
+      const response = formatErrorResponse(dbError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
     // Return the actual error message in development/staging for debugging
@@ -233,23 +263,30 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
 /**
  * DELETE /api/stories/[storyId] - Delete a story
+ * 
+ * Deletes a story by its unique ID with access validation.
+ * 
+ * @param _request - Next.js request with story ID in path
+ * @param context - Authenticated user context
+ * @returns Success message
+ * @throws {ValidationError} Missing story ID
+ * @throws {AuthorizationError} Insufficient permissions
+ * @throws {NotFoundError} Story not found
+ * @throws {DatabaseError} Database operation failed
  */
 async function deleteStory(_request: NextRequest, context: { user: any }) {
   try {
     const storyId = _request.nextUrl.pathname.split('/')[3];
 
     if (!storyId) {
-      return NextResponse.json(
-        { error: 'Bad request', message: 'Story ID is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Story ID is required');
     }
 
     // Check if user can modify stories
     if (!canModify(context.user)) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Insufficient permissions to delete stories' },
-        { status: 403 }
+      throw new AuthorizationError(
+        'Insufficient permissions to delete stories',
+        { userRole: context.user.role }
       );
     }
 
@@ -263,11 +300,24 @@ async function deleteStory(_request: NextRequest, context: { user: any }) {
   } catch (error: any) {
     console.error('Error deleting story:', error);
 
-    if (error.message.includes('Story not found')) {
-      return NextResponse.json(
-        { error: 'Not found', message: 'Story not found' },
-        { status: 404 }
-      );
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Handle "Story not found" from repository
+    if (error.message && error.message.includes('Story not found')) {
+      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const response = formatErrorResponse(notFoundError);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Handle database errors
+    if (error.message && (error.message.includes('database') || error.message.includes('delete'))) {
+      const dbError = new DatabaseError('Failed to delete story', error.message);
+      const response = formatErrorResponse(dbError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
     return NextResponse.json(

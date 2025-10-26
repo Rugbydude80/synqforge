@@ -91,22 +91,36 @@ export class ConflictError extends ApplicationError {
 /**
  * Rate Limit Error - thrown when rate limit is exceeded
  * @example throw new RateLimitError('story-updates', 100, 3600)
+ * @example throw new RateLimitError('Too many requests', { retryAfter: '60' })
  */
 export class RateLimitError extends ApplicationError {
   constructor(
-    resource: string,
-    limit: number,
-    windowSeconds: number,
+    resourceOrMessage: string,
+    limitOrDetails?: number | Record<string, any>,
+    windowSeconds?: number,
     details?: Record<string, any>
   ) {
-    const message = `Rate limit exceeded for ${resource}. Limit: ${limit} requests per ${windowSeconds} seconds`;
-    super(message, 429, 'RATE_LIMIT_ERROR', {
-      resource,
-      limit,
-      windowSeconds,
-      retryAfter: windowSeconds,
-      ...details,
-    });
+    // Support both constructor signatures
+    let message: string;
+    let finalDetails: Record<string, any>;
+
+    if (typeof limitOrDetails === 'number' && windowSeconds !== undefined) {
+      // Full constructor: resource, limit, windowSeconds, details
+      message = `Rate limit exceeded for ${resourceOrMessage}. Limit: ${limitOrDetails} requests per ${windowSeconds} seconds`;
+      finalDetails = {
+        resource: resourceOrMessage,
+        limit: limitOrDetails,
+        windowSeconds,
+        retryAfter: windowSeconds,
+        ...details,
+      };
+    } else {
+      // Simplified constructor: message, details
+      message = resourceOrMessage;
+      finalDetails = (limitOrDetails as Record<string, any>) || {};
+    }
+
+    super(message, 429, 'RATE_LIMIT_ERROR', finalDetails);
   }
 }
 
