@@ -177,15 +177,23 @@ export async function POST(req: NextRequest) {
         }
 
         if (!priceId) {
-          console.error(`Missing price ID for plan: ${validatedData.plan}`)
-          console.error('Available env vars:', {
+          console.error('❌ Missing price ID for plan:', validatedData.plan)
+          console.error('📋 Available env vars:', {
+            NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID ? 'SET' : 'MISSING',
+            NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID ? 'SET' : 'MISSING',
+            STRIPE_ENTERPRISE_PRICE_ID: process.env.STRIPE_ENTERPRISE_PRICE_ID ? 'SET' : 'MISSING',
+          })
+          console.error('🔍 Actual values:', {
             pro: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
             team: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID,
-            enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID,
           })
+          console.error('⚠️  Did you restart your dev server after updating .env.local?')
           throw new ConfigurationError(
             `Price ID not found for ${validatedData.plan} plan. Please contact support.`,
-            { plan: validatedData.plan }
+            { 
+              plan: validatedData.plan,
+              hint: 'Restart your dev server to load updated environment variables'
+            }
           )
         }
 
