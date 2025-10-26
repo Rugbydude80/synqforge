@@ -11,7 +11,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Zap,
   Layers,
   Menu,
   X,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { DynamicLogo } from '@/components/dynamic-logo'
 
 export interface NavItem {
   id: string
@@ -110,11 +110,8 @@ export function AppSidebar() {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        <span className="text-xl font-bold gradient-text">SynqForge</span>
+      <div className="flex h-16 items-center border-b border-border px-6">
+        <DynamicLogo size="md" showText={true} />
       </div>
 
       <nav className="space-y-1 p-4">
