@@ -10,6 +10,7 @@ import {
   Bell,
   Palette,
   Database,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -311,9 +312,21 @@ function AppearanceSettings() {
   ]
 
   const colorSchemes = [
-    { name: 'Purple & Emerald', colors: ['bg-brand-purple-500', 'bg-brand-emerald-500'] },
-    { name: 'Blue & Orange', colors: ['bg-blue-500', 'bg-orange-500'] },
-    { name: 'Green & Teal', colors: ['bg-green-500', 'bg-teal-500'] },
+    { 
+      name: 'Purple & Emerald', 
+      colors: ['bg-brand-purple-500', 'bg-brand-emerald-500'],
+      gradient: 'from-brand-purple-500 to-brand-emerald-500'
+    },
+    { 
+      name: 'Blue & Orange', 
+      colors: ['bg-blue-500', 'bg-orange-500'],
+      gradient: 'from-blue-500 to-orange-500'
+    },
+    { 
+      name: 'Green & Teal', 
+      colors: ['bg-green-500', 'bg-teal-500'],
+      gradient: 'from-green-500 to-teal-500'
+    },
   ]
 
   const applyTheme = (theme: string) => {
@@ -345,6 +358,13 @@ function AppearanceSettings() {
       // Apply the theme
       applyTheme(selectedTheme)
 
+      // Dispatch custom event to notify components of color scheme change
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'colorScheme',
+        newValue: selectedColorScheme,
+        url: window.location.href
+      }))
+
       setSaveMessage('Appearance settings saved successfully!')
       setTimeout(() => setSaveMessage(null), 3000)
     } catch {
@@ -361,6 +381,17 @@ function AppearanceSettings() {
         <CardDescription>Customize how SynqForge looks and feels</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Logo Preview */}
+        <div className="p-4 border border-border rounded-lg bg-muted/30">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-muted-foreground">Logo Preview</h4>
+            <span className="text-xs text-muted-foreground">with {selectedColorScheme}</span>
+          </div>
+          <div className="flex items-center justify-center py-6 bg-card rounded-lg border border-border">
+            <LogoPreview colorScheme={selectedColorScheme} />
+          </div>
+        </div>
+
         <div className="space-y-4">
           <div>
             <h4 className="font-medium mb-3">Theme</h4>
@@ -390,18 +421,21 @@ function AppearanceSettings() {
                   key={scheme.name}
                   type="button"
                   onClick={() => setSelectedColorScheme(scheme.name)}
-                  className={`p-3 border rounded-lg transition-all ${
+                  className={`p-4 border rounded-lg transition-all ${
                     selectedColorScheme === scheme.name
-                      ? 'border-primary bg-primary/10 shadow-md'
+                      ? 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/20'
                       : 'border-border hover:border-primary'
                   }`}
                 >
-                  <div className="flex gap-2 mb-2 justify-center">
-                    {scheme.colors.map((color) => (
-                      <div key={color} className={`h-4 w-4 rounded-full ${color}`} />
-                    ))}
+                  <div className="flex flex-col gap-3">
+                    <div className={`h-8 w-full rounded-md bg-gradient-to-r ${scheme.gradient} shadow-sm`} />
+                    <div className="flex gap-2 justify-center">
+                      {scheme.colors.map((color) => (
+                        <div key={color} className={`h-3 w-3 rounded-full ${color} ring-1 ring-white/20`} />
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium">{scheme.name}</span>
                   </div>
-                  {scheme.name}
                 </button>
               ))}
             </div>
@@ -423,6 +457,43 @@ function AppearanceSettings() {
         </Button>
       </CardContent>
     </Card>
+  )
+}
+
+// Logo Preview Component
+function LogoPreview({ colorScheme }: { colorScheme: string }) {
+  const getColors = () => {
+    switch (colorScheme) {
+      case 'Blue & Orange':
+        return {
+          primary: 'from-blue-500 to-blue-600',
+          text: 'from-blue-500 via-blue-600 to-orange-500'
+        }
+      case 'Green & Teal':
+        return {
+          primary: 'from-green-500 to-green-600',
+          text: 'from-green-500 via-green-600 to-teal-500'
+        }
+      case 'Purple & Emerald':
+      default:
+        return {
+          primary: 'from-brand-purple-500 to-brand-purple-600',
+          text: 'from-brand-purple-500 via-brand-purple-600 to-brand-emerald-500'
+        }
+    }
+  }
+
+  const colors = getColors()
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`flex items-center justify-center rounded-lg bg-gradient-to-br ${colors.primary} h-12 w-12`}>
+        <Zap className="h-7 w-7 text-white" />
+      </div>
+      <span className={`text-3xl font-bold bg-gradient-to-r ${colors.text} bg-clip-text text-transparent`}>
+        SynqForge
+      </span>
+    </div>
   )
 }
 
