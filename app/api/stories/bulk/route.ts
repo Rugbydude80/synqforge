@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, canModify } from '@/lib/middleware/auth';
+import { requireTier } from '@/lib/middleware/subscription-guard';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import {
   safeValidateBulkCreateStories,
@@ -11,9 +12,14 @@ import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/stories/bulk - Create multiple stories at once
+ * Requires: Pro tier or higher for bulk operations
  */
 async function bulkCreateStories(req: NextRequest, context: { user: any }) {
   try {
+    // Check if user has Pro tier or higher for bulk operations
+    const tierCheck = await requireTier(context.user, 'pro')
+    if (tierCheck) return tierCheck
+
     // Check if user can modify stories
     if (!canModify(context.user)) {
       return NextResponse.json(

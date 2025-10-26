@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
-import { checkFeatureLimit } from '@/lib/middleware/subscription'
+import { requireTier, requireFeatureEnabled } from '@/lib/middleware/subscription-guard'
 import { db } from '@/lib/db'
 import { stories, epics, users, projects } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -14,16 +14,16 @@ import {
 /**
  * GET /api/stories/export
  * Export stories with optional filters
+ * Requires: Core tier or higher + exportsEnabled feature
  */
 async function exportStories(req: NextRequest, context: any) {
-  // Check if user can export
-  const exportCheck = await checkFeatureLimit(context.user, 'export')
-  if (!exportCheck.allowed) {
-    return NextResponse.json(
-      { error: exportCheck.error },
-      { status: 403 }
-    )
-  }
+  // Check if user has Core tier or higher for export functionality
+  const tierCheck = await requireTier(context.user, 'core')
+  if (tierCheck) return tierCheck
+
+  // Check if exports are enabled for this organization
+  const featureCheck = await requireFeatureEnabled(context.user, 'exportsEnabled')
+  if (featureCheck) return featureCheck
 
   const { searchParams } = new URL(req.url)
   const format = searchParams.get('format') || 'excel'
