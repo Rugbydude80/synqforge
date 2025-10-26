@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     if (validatedData.plan !== 'free') {
       try {
         const { default: Stripe } = await import('stripe')
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-06-30.basil' as any })
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-09-30.clover' })
         
         // Get price ID for the selected plan
         const priceId = validatedData.plan === 'solo'

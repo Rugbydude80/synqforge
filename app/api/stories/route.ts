@@ -81,8 +81,7 @@ async function getStories(req: NextRequest, context: { user: any }) {
       if (!project) {
         throw new NotFoundError(
           'Project',
-          filters.projectId,
-          'The specified project does not exist'
+          filters.projectId
         );
       }
 
@@ -204,8 +203,7 @@ async function createStory(req: NextRequest, context: { user: any }) {
     if (!project) {
       throw new NotFoundError(
         'Project',
-        storyData.projectId,
-        'The specified project does not exist'
+        storyData.projectId
       );
     }
 
@@ -233,7 +231,7 @@ async function createStory(req: NextRequest, context: { user: any }) {
 
     // Handle specific errors from repository
     if (error.message && error.message.includes('not found')) {
-      const notFoundError = new NotFoundError('Resource', 'unknown', error.message);
+      const notFoundError = new NotFoundError('Resource', 'unknown');
       const response = formatErrorResponse(notFoundError)
       const { statusCode, ...errorBody } = response;
       return NextResponse.json(errorBody, { status: statusCode });

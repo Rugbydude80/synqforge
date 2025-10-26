@@ -53,22 +53,22 @@ function parseSubscriptionData(
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceId,
-      status: subscription.status as any,
-      currentPeriodStart: subscription.current_period_start
-        ? new Date(subscription.current_period_start * 1000)
+      status: subscription.status as 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid',
+      currentPeriodStart: (subscription as {current_period_start?: number}).current_period_start
+        ? new Date((subscription as {current_period_start?: number}).current_period_start! * 1000)
         : null,
-      currentPeriodEnd: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000)
+      currentPeriodEnd: (subscription as {current_period_end?: number}).current_period_end
+        ? new Date((subscription as {current_period_end?: number}).current_period_end! * 1000)
         : null,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
-      canceledAt: subscription.canceled_at
-        ? new Date(subscription.canceled_at * 1000)
+      cancelAtPeriodEnd: (subscription as {cancel_at_period_end?: boolean}).cancel_at_period_end || false,
+      canceledAt: (subscription as {canceled_at?: number}).canceled_at
+        ? new Date((subscription as {canceled_at?: number}).canceled_at! * 1000)
         : null,
-      trialStart: subscription.trial_start
-        ? new Date(subscription.trial_start * 1000)
+      trialStart: (subscription as {trial_start?: number}).trial_start
+        ? new Date((subscription as {trial_start?: number}).trial_start! * 1000)
         : null,
-      trialEnd: subscription.trial_end
-        ? new Date(subscription.trial_end * 1000)
+      trialEnd: (subscription as {trial_end?: number}).trial_end
+        ? new Date((subscription as {trial_end?: number}).trial_end! * 1000)
         : null,
       billingInterval,
       includedSeats,
@@ -154,8 +154,8 @@ async function updateOrganizationEntitlements(
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
       subscriptionStatus: subscription.status,
-      subscriptionRenewalAt: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000)
+      subscriptionRenewalAt: (subscription as {current_period_end?: number}).current_period_end
+        ? new Date((subscription as {current_period_end?: number}).current_period_end! * 1000)
         : null,
       updatedAt: new Date(),
     })
@@ -232,7 +232,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
   if (!organization) {
     throw new DatabaseError(
       'Organization not found for customer',
-      `No organization found with Stripe customer ID: ${customerId}`
+      undefined,
+      { customerId, message: `No organization found with Stripe customer ID: ${customerId}` }
     )
   }
 
@@ -296,7 +297,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
   if (!existingSubscription) {
     throw new DatabaseError(
       'Subscription not found',
-      `No subscription found with ID: ${subscriptionId}`
+      undefined,
+      { subscriptionId, message: `No subscription found with ID: ${subscriptionId}` }
     )
   }
 
@@ -335,7 +337,9 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
  * Handle successful payment - updates subscription to active
  */
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = invoice.subscription as string
+  const subscriptionId = typeof (invoice as any).subscription === 'string' 
+    ? (invoice as any).subscription 
+    : (invoice as any).subscription?.id
 
   console.log('Payment succeeded for subscription:', subscriptionId)
 
@@ -354,7 +358,9 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
  * Handle failed payment - updates subscription to past_due
  */
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = invoice.subscription as string
+  const subscriptionId = typeof (invoice as any).subscription === 'string' 
+    ? (invoice as any).subscription 
+    : (invoice as any).subscription?.id
 
   console.log('Payment failed for subscription:', subscriptionId)
 

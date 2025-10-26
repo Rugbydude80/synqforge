@@ -60,7 +60,7 @@ async function getStory(req: NextRequest, context: { user: any }) {
 
     // Handle "Story not found" from repository
     if (error.message && error.message.includes('Story not found')) {
-      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const notFoundError = new NotFoundError('Story', '');
       const response = formatErrorResponse(notFoundError)
       const { statusCode, ...errorBody } = response;
       return NextResponse.json(errorBody, { status: statusCode });
@@ -119,7 +119,15 @@ async function updateStory(req: NextRequest, context: { user: any }) {
       );
     }
 
-    const { projectId: _projectId, ...updateData } = validationResult.data as any;
+    const { projectId: _projectId, ...rawUpdateData } = validationResult.data;
+    
+    // Convert null values to undefined for type compatibility with UpdateStoryInput
+    const updateData: any = {};
+    for (const [key, value] of Object.entries(rawUpdateData)) {
+      if (value !== null) {
+        updateData[key] = value;
+      }
+    }
 
     await assertStoryAccessible(storyId, context.user.organizationId);
 
@@ -141,7 +149,7 @@ async function updateStory(req: NextRequest, context: { user: any }) {
       storyId,
       organizationId: context.user.organizationId,
       tier,
-      storyStatus: existingStory.status as any,
+      storyStatus: existingStory.status || undefined,
     });
 
     if (!entitlementCheck.allowed) {
@@ -153,10 +161,12 @@ async function updateStory(req: NextRequest, context: { user: any }) {
         );
       } else {
         throw new QuotaExceededError(
-          entitlementCheck.reason || 'Story update quota exceeded',
-          entitlementCheck.limit || 0,
+          'story updates',
           entitlementCheck.used || 0,
+          entitlementCheck.limit || 0,
+          tier,
           {
+            reason: entitlementCheck.reason,
             remaining: entitlementCheck.remaining,
             upgradeRequired: entitlementCheck.upgradeRequired,
             upgradeTier: entitlementCheck.upgradeTier,
@@ -226,7 +236,7 @@ async function updateStory(req: NextRequest, context: { user: any }) {
 
     // Handle specific repository errors
     if (error.message && error.message.includes('Story not found')) {
-      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const notFoundError = new NotFoundError('Story', '');
       const response = formatErrorResponse(notFoundError)
       const { statusCode, ...errorBody } = response;
       return NextResponse.json(errorBody, { status: statusCode });
@@ -316,7 +326,7 @@ async function deleteStory(_request: NextRequest, context: { user: any }) {
 
     // Handle "Story not found" from repository
     if (error.message && error.message.includes('Story not found')) {
-      const notFoundError = new NotFoundError('Story', '', 'Story not found');
+      const notFoundError = new NotFoundError('Story', '');
       const response = formatErrorResponse(notFoundError)
       const { statusCode, ...errorBody } = response;
       return NextResponse.json(errorBody, { status: statusCode });

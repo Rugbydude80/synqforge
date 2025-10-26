@@ -16,7 +16,6 @@ interface LogContext {
 
 class Logger {
   private isDevelopment = process.env.NODE_ENV === 'development'
-  private isProduction = process.env.NODE_ENV === 'production'
 
   /**
    * Debug-level logs (development only)

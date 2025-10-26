@@ -83,7 +83,7 @@ export async function handleOAuthCallback(
  * SCIM 2.0 - User provisioning
  */
 export async function scimCreateUser(
-  _organizationId: string,
+  organizationId: string,
   userData: {
     userName: string
     name: { givenName: string; familyName: string }
@@ -116,7 +116,7 @@ export async function scimCreateUser(
  */
 export async function scimUpdateUser(
   _organizationId: string,
-  _userId: string,
+  userId: string,
   updates: { active?: boolean; name?: any; emails?: any }
 ): Promise<{ id: string; active: boolean }> {
   // Update user in database

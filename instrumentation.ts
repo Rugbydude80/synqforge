@@ -32,7 +32,7 @@ export async function register() {
         // Remove sensitive data
         if (event.request) {
           if (event.request.cookies) {
-            event.request.cookies = '[Filtered]';
+            event.request.cookies = {} as any;
           }
           if (event.request.headers) {
             const headers = event.request.headers;
@@ -46,7 +46,7 @@ export async function register() {
           if (event.request.data) {
             const data = event.request.data;
             if (typeof data === 'object') {
-              const sanitized = { ...data };
+              const sanitized: Record<string, any> = { ...data as object };
               ['password', 'token', 'secret', 'apiKey', 'api_key', 'creditCard', 'ssn'].forEach(key => {
                 if (sanitized[key]) {
                   sanitized[key] = '[Filtered]';
