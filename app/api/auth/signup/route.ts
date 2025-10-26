@@ -11,7 +11,6 @@ import {
   ConflictError,
   DatabaseError,
   ConfigurationError,
-  ExternalServiceError,
   formatErrorResponse,
   isApplicationError
 } from '@/lib/errors/custom-errors'
