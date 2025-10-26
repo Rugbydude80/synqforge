@@ -35,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDroppable } from '@dnd-kit/core'
 
 // Draggable Story Card Component
-function DraggableStoryCard({ story }: { story: Story }) {
+function DraggableStoryCard({ story, onClick }: { story: Story; onClick: (storyId: string) => void }) {
   const {
     attributes,
     listeners,
@@ -48,7 +48,7 @@ function DraggableStoryCard({ story }: { story: Story }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
   }
 
   const getPriorityColor = (priority: Story['priority']) => {
@@ -66,13 +66,24 @@ function DraggableStoryCard({ story }: { story: Story }) {
     }
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Only navigate if not dragging
+    if (!isDragging) {
+      onClick(story.id)
+    }
+  }
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="group hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-grab active:cursor-grabbing"
+      onClick={handleClick}
+      className={cn(
+        "group hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-grab active:cursor-grabbing",
+        isDragging && "shadow-2xl ring-2 ring-purple-500"
+      )}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-2">
@@ -109,9 +120,11 @@ function DraggableStoryCard({ story }: { story: Story }) {
 function DroppableColumn({
   column,
   stories,
+  onStoryClick,
 }: {
   column: { id: Story['status']; title: string; color: string }
   stories: Story[]
+  onStoryClick: (storyId: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -143,7 +156,7 @@ function DroppableColumn({
       >
         <SortableContext items={stories.map(s => s.id)} strategy={verticalListSortingStrategy}>
           {stories.map(story => (
-            <DraggableStoryCard key={story.id} story={story} />
+            <DraggableStoryCard key={story.id} story={story} onClick={onStoryClick} />
           ))}
         </SortableContext>
 
@@ -177,7 +190,9 @@ export default function ProjectDetailPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
+        delay: 100,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -253,8 +268,13 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const handleStoryClick = (storyId: string) => {
+    router.push(`/stories/${storyId}`)
+  }
+
   const columns: Array<{ id: Story['status']; title: string; color: string }> = [
     { id: 'backlog', title: 'Backlog', color: 'from-gray-500 to-gray-600' },
+    { id: 'ready', title: 'Ready', color: 'from-blue-500 to-blue-600' },
     { id: 'in_progress', title: 'In Progress', color: 'from-purple-500 to-purple-600' },
     { id: 'review', title: 'Review', color: 'from-amber-500 to-amber-600' },
     { id: 'done', title: 'Done', color: 'from-emerald-500 to-emerald-600' },
@@ -423,12 +443,13 @@ export default function ProjectDetailPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {columns.map(column => (
                 <DroppableColumn
                   key={column.id}
                   column={column}
                   stories={getStoriesByStatus(column.id)}
+                  onStoryClick={handleStoryClick}
                 />
               ))}
             </div>
