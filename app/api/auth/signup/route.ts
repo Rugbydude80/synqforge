@@ -5,6 +5,16 @@ import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/utils/auth'
 import { z } from 'zod'
 import { checkRateLimit, getResetTimeMessage, signupRateLimit } from '@/lib/rate-limit'
+import {
+  ValidationError,
+  RateLimitError,
+  ConflictError,
+  DatabaseError,
+  ConfigurationError,
+  ExternalServiceError,
+  formatErrorResponse,
+  isApplicationError
+} from '@/lib/errors/custom-errors'
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -13,11 +23,38 @@ const signupSchema = z.object({
   plan: z.enum(['free', 'solo', 'team', 'pro', 'enterprise']).default('free'),
 })
 
+/**
+ * POST /api/auth/signup
+ * 
+ * Creates a new user account and organization with rate limiting and validation.
+ * Handles paid plan signup by creating a Stripe checkout session.
+ * 
+ * @param req - Next.js request with signup data (name, email, password, plan)
+ * @returns User data with optional checkout URL for paid plans
+ * @throws {ValidationError} Invalid input data
+ * @throws {RateLimitError} Too many signup attempts
+ * @throws {ConflictError} Email already exists
+ * @throws {DatabaseError} Database operation failed
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const validatedData = signupSchema.parse(body)
+    
+    // Validate input
+    let validatedData
+    try {
+      validatedData = signupSchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new ValidationError(
+          'Invalid signup data',
+          { errors: error.errors.map(e => ({ field: e.path.join('.'), message: e.message })) }
+        )
+      }
+      throw error
+    }
 
+    // Check rate limit
     const rateLimitResult = await checkRateLimit(
       `signup:${validatedData.email.toLowerCase()}`,
       signupRateLimit
@@ -25,16 +62,11 @@ export async function POST(req: NextRequest) {
 
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
-      return NextResponse.json(
+      throw new RateLimitError(
+        'Too many signup attempts. Please try again later.',
         {
-          error: 'Too many signup attempts. Please try again later.',
-          retryAfter: getResetTimeMessage(rateLimitResult.reset),
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': retryAfter.toString(),
-          },
+          retryAfter: retryAfter.toString(),
+          resetTime: getResetTimeMessage(rateLimitResult.reset),
         }
       )
     }
@@ -47,9 +79,9 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
+      throw new ConflictError(
+        'User with this email already exists',
+        { email: validatedData.email }
       )
     }
 
@@ -123,7 +155,10 @@ export async function POST(req: NextRequest) {
         if (!priceId) {
           console.error(`Missing price ID for plan: ${validatedData.plan}`)
           console.error('Expected env var: BILLING_PRICE_' + validatedData.plan.toUpperCase() + '_GBP')
-          throw new Error(`Payment configuration error: Price ID not found for ${validatedData.plan} plan. Please contact support.`)
+          throw new ConfigurationError(
+            `Price ID not found for ${validatedData.plan} plan`,
+            { plan: validatedData.plan, expectedEnv: `BILLING_PRICE_${validatedData.plan.toUpperCase()}_GBP` }
+          )
         }
 
         console.log('Creating Stripe checkout session:', {
@@ -163,17 +198,12 @@ export async function POST(req: NextRequest) {
         console.log('✅ Stripe checkout session created successfully:', session.id)
       } catch (stripeError) {
         console.error('❌ Stripe checkout error:', stripeError)
-        // For paid plans, this is critical - return the error to the user
-        if (stripeError instanceof Error) {
-          return NextResponse.json(
-            { 
-              error: 'Payment setup failed', 
-              details: stripeError.message,
-              message: 'Unable to create payment session. Please try again or contact support.'
-            },
-            { status: 500 }
-          )
-        }
+        // For paid plans, this is critical - throw as external service error
+        throw new ExternalServiceError(
+          'Unable to create payment session',
+          'stripe',
+          { originalError: stripeError instanceof Error ? stripeError.message : 'Unknown error' }
+        )
       }
     }
 
@@ -191,29 +221,40 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Signup error:', error)
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: 'Validation error',
-          details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        },
-        { status: 400 }
-      )
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      
+      // For rate limit errors, add Retry-After header
+      if (error instanceof RateLimitError && error.details?.retryAfter) {
+        return NextResponse.json(response.body, {
+          status: response.status,
+          headers: {
+            'Retry-After': error.details.retryAfter,
+          },
+        })
+      }
+      
+      return NextResponse.json(response.body, { status: response.status })
     }
 
-    // Log the full error for debugging
-    if (error instanceof Error) {
-      console.error('Signup error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      })
+    // Handle database errors
+    if (error instanceof Error && error.message.includes('database')) {
+      const dbError = new DatabaseError('Failed to create user account', error.message)
+      const response = formatErrorResponse(dbError)
+      return NextResponse.json(response.body, { status: response.status })
     }
+
+    // Unknown error - log details and return generic error
+    console.error('Unexpected signup error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    })
 
     return NextResponse.json(
       {
         error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+        message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : 'An unexpected error occurred'
       },
       { status: 500 }
     )

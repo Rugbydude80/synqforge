@@ -100,8 +100,8 @@ export default function PaymentRequiredPage() {
             setSelectedPlan(data.plan)
           }
         }
-      } catch (err) {
-        console.error('Error fetching org details:', err)
+      } catch (error) {
+        console.error('Error fetching org details:', error)
       } finally {
         setCheckingStatus(false)
       }
@@ -125,7 +125,7 @@ export default function PaymentRequiredPage() {
         const data = await response.json()
         setError(data.error || 'Failed to switch to free plan')
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
@@ -159,7 +159,7 @@ export default function PaymentRequiredPage() {
         const data = await response.json()
         setError(data.error || 'Failed to create checkout session')
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)

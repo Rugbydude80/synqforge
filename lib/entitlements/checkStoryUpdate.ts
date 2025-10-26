@@ -36,7 +36,49 @@ export interface StoryUpdateContext {
 }
 
 /**
- * Check if user is allowed to update a story based on tier limits
+ * Checks if a user is allowed to update a story based on their subscription tier and usage limits
+ * 
+ * This function enforces tier-based limits on story updates:
+ * - Free tier: 5 updates/month total (organization-wide)
+ * - Pro tier: 1000 updates/month per user
+ * - Team tier: Unlimited updates, requires admin approval for Done/Blocked stories
+ * - Enterprise tier: Unlimited updates with configurable policies
+ * 
+ * @param {StoryUpdateContext} context - The update context containing user, story, organization, and tier info
+ * @param {string} context.userId - The ID of the user attempting the update
+ * @param {string} context.storyId - The ID of the story being updated
+ * @param {string} context.organizationId - The ID of the organization
+ * @param {string} context.tier - The subscription tier (free, pro, team, enterprise)
+ * @param {string} [context.storyStatus] - Optional current status of the story
+ * 
+ * @returns {Promise<StoryUpdateCheck>} Object indicating if update is allowed and why
+ * @returns {boolean} .allowed - Whether the update is permitted
+ * @returns {string} [.reason] - Explanation if update is not allowed
+ * @returns {number} [.used] - Number of updates used this month
+ * @returns {number} [.remaining] - Number of updates remaining
+ * @returns {boolean} [.requiresApproval] - If admin approval is needed
+ * @returns {boolean} [.upgradeRequired] - If tier upgrade is needed
+ * @returns {string} [.upgradeTier] - Recommended tier to upgrade to
+ * 
+ * @throws {Error} If database query fails
+ * 
+ * @example
+ * ```typescript
+ * const check = await checkStoryUpdateEntitlement({
+ *   userId: 'user_123',
+ *   storyId: 'story_456',
+ *   organizationId: 'org_789',
+ *   tier: 'pro',
+ *   storyStatus: 'in_progress'
+ * });
+ * 
+ * if (!check.allowed) {
+ *   console.log(`Update blocked: ${check.reason}`);
+ *   if (check.upgradeRequired) {
+ *     console.log(`Upgrade to ${check.upgradeTier}`);
+ *   }
+ * }
+ * ```
  */
 export async function checkStoryUpdateEntitlement(
   context: StoryUpdateContext

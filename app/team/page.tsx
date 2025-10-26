@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import {
@@ -51,22 +51,7 @@ export default function TeamPage() {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'members' | 'invitations'>('members')
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-      return
-    }
-
-    if (status === 'authenticated') {
-      fetchTeamData()
-    }
-  }, [status, router])
-
-  const fetchTeamData = async () => {
-    await Promise.all([fetchTeamMembers(), fetchInvitations()])
-  }
-
-  const fetchTeamMembers = async () => {
+  const fetchTeamMembers = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/team')
@@ -79,9 +64,9 @@ export default function TeamPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const fetchInvitations = async () => {
+  const fetchInvitations = useCallback(async () => {
     try {
       const response = await fetch('/api/team/invite')
       if (response.ok) {
@@ -91,7 +76,24 @@ export default function TeamPage() {
     } catch (error: any) {
       console.error('Failed to fetch invitations:', error)
     }
-  }
+  }, [])
+
+  const fetchTeamData = useCallback(async () => {
+    await Promise.all([fetchTeamMembers(), fetchInvitations()])
+  }, [fetchTeamMembers, fetchInvitations])
+
+  useEffect(() => {
+    if (status === 'loading') return
+
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+
+    if (status === 'authenticated') {
+      fetchTeamData()
+    }
+  }, [status, router, fetchTeamData])
 
   const handleRevokeInvitation = async (invitationId: string) => {
     if (!confirm('Are you sure you want to revoke this invitation?')) {

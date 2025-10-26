@@ -23,13 +23,7 @@ export default function EpicDetailPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (epicId) {
-      fetchEpicData()
-    }
-  }, [epicId])
-
-  const fetchEpicData = async () => {
+  const fetchEpicData = React.useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -48,7 +42,13 @@ export default function EpicDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [epicId])
+
+  React.useEffect(() => {
+    if (epicId) {
+      fetchEpicData()
+    }
+  }, [epicId, fetchEpicData])
 
   const getStatusColor = (status: Story['status']) => {
     switch (status) {

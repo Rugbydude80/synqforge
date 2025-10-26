@@ -36,11 +36,7 @@ export function VelocityChart({ projectId }: VelocityChartProps) {
   const [averageVelocity, setAverageVelocity] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadVelocityData()
-  }, [projectId])
-
-  const loadVelocityData = async () => {
+  const loadVelocityData = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/analytics/velocity?projectId=${projectId}&limit=6`)
@@ -48,12 +44,16 @@ export function VelocityChart({ projectId }: VelocityChartProps) {
       const data = await res.json()
       setVelocityTrend(data.velocityTrend)
       setAverageVelocity(data.averageVelocity)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to load velocity data')
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId])
+
+  useEffect(() => {
+    loadVelocityData()
+  }, [loadVelocityData])
 
   if (loading) {
     return (

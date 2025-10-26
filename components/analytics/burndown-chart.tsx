@@ -35,23 +35,23 @@ export function BurndownChart({
   const [data, setData] = useState<BurndownData[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadBurndownData()
-  }, [sprintId])
-
-  const loadBurndownData = async () => {
+  const loadBurndownData = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/analytics/burndown?sprintId=${sprintId}`)
       if (!res.ok) throw new Error('Failed to load burndown data')
       const burndownData = await res.json()
       setData(burndownData)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to load burndown data')
     } finally {
       setLoading(false)
     }
-  }
+  }, [sprintId])
+
+  useEffect(() => {
+    loadBurndownData()
+  }, [loadBurndownData])
 
   // Calculate ideal burndown line
   const idealBurnRate = plannedPoints / totalDays

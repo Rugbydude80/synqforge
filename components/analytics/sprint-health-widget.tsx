@@ -31,23 +31,23 @@ export function SprintHealthWidget({ sprintId }: SprintHealthWidgetProps) {
   const [health, setHealth] = useState<SprintHealth | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSprintHealth()
-  }, [sprintId])
-
-  const loadSprintHealth = async () => {
+  const loadSprintHealth = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/analytics/sprint-health?sprintId=${sprintId}`)
       if (!res.ok) throw new Error('Failed to load sprint health')
       const data = await res.json()
       setHealth(data)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to load sprint health')
     } finally {
       setLoading(false)
     }
-  }
+  }, [sprintId])
+
+  useEffect(() => {
+    loadSprintHealth()
+  }, [loadSprintHealth])
 
   if (loading) {
     return (

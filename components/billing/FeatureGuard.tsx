@@ -26,8 +26,8 @@ interface FeatureGuardProps {
 
 export function FeatureGuard({
   children,
-  feature,
-  currentTier,
+  feature: _feature,
+  currentTier: _currentTier,
   requiredTier,
   isAllowed,
   customMessage,
@@ -124,7 +124,7 @@ interface QuotaExceededGuardProps {
 
 export function QuotaExceededGuard({
   remaining,
-  currentTier,
+  currentTier: _currentTier,
   upgradeOptions,
   onOptionSelect,
 }: QuotaExceededGuardProps) {

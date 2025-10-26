@@ -55,14 +55,91 @@
       "idx": 7,
       "version": "7",
       "when": 1760599239103,
-      "tag": "0007_vengeful_carlie_cooper",
+      "tag": "0007_add_token_balances",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "7",
       "when": 1761049720590,
-      "tag": "0008_parallel_black_cat",
+      "tag": "0008_add_team_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1761416393693,
+      "tag": "0009_advanced_ai_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1761416393694,
+      "tag": "0010_add_rls_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1761416393695,
+      "tag": "0011_add_entitlements_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1761416393696,
+      "tag": "0012_add_fair_usage_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1761416393697,
+      "tag": "0013_add_epic_aggregates",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1761416393698,
+      "tag": "0014_add_story_completion_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1761416393699,
+      "tag": "0015_add_sprint_velocity_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1761416393700,
+      "tag": "0016_add_backlog_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1761416393701,
+      "tag": "0017_add_velocity_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1761416393702,
+      "tag": "0018_add_pricing_tiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1761416393703,
+      "tag": "0019_add_tasks_table",
       "breakpoints": true
     }
   ]

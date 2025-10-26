@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, CheckCircle2, AlertTriangle, GitBranch, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -56,13 +56,7 @@ export function AutopilotReviewModal({
   const [reviewData, setReviewData] = useState<ReviewData | null>(null)
   const [selectedStoryIds, setSelectedStoryIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (isOpen && jobId) {
-      fetchReviewData()
-    }
-  }, [isOpen, jobId])
-
-  const fetchReviewData = async () => {
+  const fetchReviewData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -98,7 +92,13 @@ export function AutopilotReviewModal({
     } finally {
       setLoading(false)
     }
-  }
+  }, [jobId])
+
+  useEffect(() => {
+    if (isOpen && jobId) {
+      fetchReviewData()
+    }
+  }, [isOpen, jobId, fetchReviewData])
 
   const handleApprove = async () => {
     try {

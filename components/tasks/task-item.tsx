@@ -76,7 +76,7 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
       }
 
       onUpdate()
-    } catch (error) {
+    } catch {
       toast.error('Failed to update task status')
     } finally {
       setIsUpdatingStatus(false)
@@ -99,7 +99,7 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
       }
 
       onDelete()
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete task')
     } finally {
       setIsDeleting(false)

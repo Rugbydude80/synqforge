@@ -8,7 +8,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { getIntegrationStatus } from '@/lib/services/integrationsService'
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(status, { status: 200 })
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {

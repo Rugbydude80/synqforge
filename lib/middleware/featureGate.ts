@@ -293,7 +293,7 @@ export async function getOrganizationContext(organizationId: string) {
 export async function validateOperationLimits(
   userId: string,
   organizationId: string,
-  operationType: 'split' | 'update' | 'generate'
+  _operationType: 'split' | 'update' | 'generate'
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     const context = await getOrganizationContext(organizationId)

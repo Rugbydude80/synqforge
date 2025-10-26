@@ -52,7 +52,7 @@ export function AddOnCard({
     try {
       await onPurchase(type)
       toast.success(`${config.name} purchased successfully!`)
-    } catch (error) {
+    } catch {
       toast.error(`Failed to purchase ${config.name}`)
     } finally {
       setLoading(false)
@@ -66,7 +66,7 @@ export function AddOnCard({
     try {
       await onCancel(activeAddOn.id)
       toast.success(`${config.name} cancelled successfully`)
-    } catch (error) {
+    } catch {
       toast.error(`Failed to cancel ${config.name}`)
     } finally {
       setLoading(false)

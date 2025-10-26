@@ -185,13 +185,7 @@ export default function ProjectDetailPage() {
     })
   )
 
-  React.useEffect(() => {
-    if (projectId) {
-      fetchProjectData()
-    }
-  }, [projectId])
-
-  const fetchProjectData = async () => {
+  const fetchProjectData = React.useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -213,7 +207,13 @@ export default function ProjectDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [projectId])
+
+  React.useEffect(() => {
+    if (projectId) {
+      fetchProjectData()
+    }
+  }, [projectId, fetchProjectData])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
