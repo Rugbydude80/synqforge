@@ -6,7 +6,7 @@ export interface CreateCommentInput {
   storyId: string
   userId: string
   content: string
-  parentCommentId?: string
+  parentCommentId?: string | null
   mentions?: string[]
 }
 

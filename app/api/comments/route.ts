@@ -9,7 +9,7 @@ import { z } from 'zod'
 const createCommentSchema = z.object({
   storyId: z.string().min(1),
   content: z.string().min(1),
-  parentCommentId: z.string().optional(),
+  parentCommentId: z.string().nullable().optional(),
   mentions: z.array(z.string()).optional(),
 })
 
