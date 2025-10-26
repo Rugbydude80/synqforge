@@ -18,7 +18,7 @@ export interface CreateTaskInput {
   status?: 'todo' | 'in_progress' | 'done' | 'blocked';
   estimatedHours?: number;
   actualHours?: number;
-  assigneeId?: string;
+  assigneeId?: string | null;
   tags?: string[];
   orderIndex?: number;
 }

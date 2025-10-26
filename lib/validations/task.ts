@@ -12,7 +12,7 @@ const baseTaskSchema = {
   }).optional(),
   estimatedHours: z.number().int().min(0, 'Estimated hours cannot be negative').max(1000, 'Estimated hours cannot exceed 1000').optional(),
   actualHours: z.number().int().min(0, 'Actual hours cannot be negative').max(1000, 'Actual hours cannot exceed 1000').optional(),
-  assigneeId: z.string().min(1, 'Assignee ID must be valid').optional(),
+  assigneeId: z.string().min(1, 'Assignee ID must be valid').nullable().optional(),
   tags: z.array(z.string().max(50, 'Each tag must be less than 50 characters')).max(10, 'Maximum 10 tags').optional(),
   orderIndex: z.number().int().min(0, 'Order index must be non-negative').optional(),
 };
