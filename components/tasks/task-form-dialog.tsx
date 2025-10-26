@@ -50,22 +50,38 @@ export function TaskFormDialog({
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [stories, setStories] = React.useState<Array<{ id: string; title: string }>>([])
   const [loadingStories, setLoadingStories] = React.useState(false)
+  const [storiesError, setStoriesError] = React.useState<string | null>(null)
 
   // Fetch stories when projectId changes or dialog opens
   React.useEffect(() => {
     if (open && projectId && !storyId) {
       const fetchStories = async () => {
         setLoadingStories(true)
+        setStoriesError(null)
         try {
           const response = await fetch(`/api/projects/${projectId}/stories`, {
             credentials: 'include'
           })
           if (response.ok) {
             const data = await response.json()
-            setStories(Array.isArray(data?.data) ? data.data : [])
+            console.log('Fetched stories:', data)
+            if (Array.isArray(data?.data)) {
+              setStories(data.data)
+              if (data.data.length === 0) {
+                setStoriesError('No stories found in this project. Please create a story first.')
+              }
+            } else {
+              setStories([])
+              setStoriesError('Unexpected response format from server')
+            }
+          } else {
+            const error = await response.json().catch(() => ({ error: 'Failed to fetch stories' }))
+            setStoriesError(error.error || `Error: ${response.status} ${response.statusText}`)
+            console.error('Failed to fetch stories:', response.status, error)
           }
         } catch (error) {
           console.error('Failed to fetch stories:', error)
+          setStoriesError('Network error: Unable to fetch stories')
         } finally {
           setLoadingStories(false)
         }
@@ -186,7 +202,7 @@ export function TaskFormDialog({
                 id="story"
                 value={formData.storyId}
                 onChange={(e) => setFormData({ ...formData, storyId: e.target.value })}
-                disabled={loadingStories}
+                disabled={loadingStories || stories.length === 0}
                 required
               >
                 <option value="">Select a story...</option>
@@ -199,8 +215,18 @@ export function TaskFormDialog({
               {loadingStories && (
                 <p className="text-sm text-muted-foreground">Loading stories...</p>
               )}
-              {!loadingStories && stories.length === 0 && (
-                <p className="text-sm text-muted-foreground">No stories found in this project</p>
+              {storiesError && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-sm text-destructive font-medium">{storiesError}</p>
+                  {storiesError.includes('No stories found') && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      💡 Tip: Go to your project and create a story first, then come back to create tasks.
+                    </p>
+                  )}
+                </div>
+              )}
+              {!loadingStories && !storiesError && stories.length === 0 && (
+                <p className="text-sm text-muted-foreground">No stories available</p>
               )}
             </div>
           )}
@@ -320,7 +346,10 @@ export function TaskFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || (!task && !storyId && stories.length === 0)}
+            >
               {isSubmitting ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
             </Button>
           </DialogFooter>
