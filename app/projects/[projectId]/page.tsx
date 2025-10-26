@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { EpicFormModal } from '@/components/epic-form-modal'
+import { ProjectEditModal } from '@/components/project-edit-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ExportButton } from '@/components/export-button'
 import { ArrowLeft, Plus, Settings, Sparkles, Layers, FileText, Edit, Trash2, Rocket } from 'lucide-react'
@@ -183,6 +184,7 @@ export default function ProjectDetailPage() {
   const [error, setError] = React.useState<string | null>(null)
   const [isStoryModalOpen, setIsStoryModalOpen] = React.useState(false)
   const [isEpicModalOpen, setIsEpicModalOpen] = React.useState(false)
+  const [isProjectEditModalOpen, setIsProjectEditModalOpen] = React.useState(false)
   const [selectedEpic, setSelectedEpic] = React.useState<Epic | undefined>()
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [activeTab, setActiveTab] = React.useState<'stories' | 'epics'>('stories')
@@ -386,7 +388,11 @@ export default function ProjectDetailPage() {
                 <Sparkles className="h-4 w-4 mr-2" />
                 AI Generate
               </Button>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsProjectEditModalOpen(true)}
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
@@ -589,6 +595,14 @@ export default function ProjectDetailPage() {
         epic={selectedEpic}
         onSuccess={fetchProjectData}
       />
+      {project && (
+        <ProjectEditModal
+          open={isProjectEditModalOpen}
+          onOpenChange={setIsProjectEditModalOpen}
+          project={project}
+          onSuccess={fetchProjectData}
+        />
+      )}
         </div>
       </main>
     </div>
