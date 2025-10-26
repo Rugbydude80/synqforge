@@ -23,6 +23,9 @@ const signupSchema = z.object({
   plan: z.enum(['free', 'solo', 'team', 'pro', 'enterprise']).default('free'),
 })
 
+// Plans that require Stripe checkout (enterprise is contact sales)
+const PAID_PLANS_WITH_CHECKOUT = ['solo', 'pro', 'team'] as const
+
 /**
  * POST /api/auth/signup
  * 
@@ -136,28 +139,49 @@ export async function POST(req: NextRequest) {
       })
     })
 
-    // If paid plan, create Stripe checkout session
+    // If paid plan (not enterprise), create Stripe checkout session
+    // Enterprise is a contact sales plan, so it doesn't go through Stripe checkout
     let checkoutUrl = null
-    if (validatedData.plan !== 'free') {
+    if (PAID_PLANS_WITH_CHECKOUT.includes(validatedData.plan as any)) {
       try {
         const { default: Stripe } = await import('stripe')
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-09-30.clover' })
         
         // Get price ID for the selected plan
-        const priceId = validatedData.plan === 'solo'
-          ? process.env.BILLING_PRICE_SOLO_GBP
-          : validatedData.plan === 'team'
-          ? process.env.BILLING_PRICE_TEAM_GBP
-          : validatedData.plan === 'pro'
-          ? process.env.BILLING_PRICE_PRO_GBP
-          : process.env.BILLING_PRICE_ENTERPRISE_GBP
+        // Map plan names to environment variables
+        let priceId: string | undefined
+        switch (validatedData.plan) {
+          case 'solo':
+            // Solo plan uses the Pro monthly price (renamed from "Core" to "Solo")
+            priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+            break
+          case 'pro':
+            // Pro plan also uses the Pro monthly price (for compatibility)
+            priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+            break
+          case 'team':
+            priceId = process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID
+            break
+          case 'enterprise':
+            // Enterprise is a contact sales plan, not available via self-service signup
+            // This should not be reached if PAID_PLANS_WITH_CHECKOUT is properly configured
+            console.warn('Enterprise plan attempted in self-service signup')
+            priceId = undefined
+            break
+          default:
+            priceId = undefined
+        }
 
         if (!priceId) {
           console.error(`Missing price ID for plan: ${validatedData.plan}`)
-          console.error('Expected env var: BILLING_PRICE_' + validatedData.plan.toUpperCase() + '_GBP')
+          console.error('Available env vars:', {
+            pro: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+            team: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID,
+            enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID,
+          })
           throw new ConfigurationError(
-            `Price ID not found for ${validatedData.plan} plan`,
-            { plan: validatedData.plan, expectedEnv: `BILLING_PRICE_${validatedData.plan.toUpperCase()}_GBP` }
+            `Price ID not found for ${validatedData.plan} plan. Please contact support.`,
+            { plan: validatedData.plan }
           )
         }
 
