@@ -18,20 +18,41 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                const root = document.documentElement;
+                
+                if (savedTheme === 'dark') {
+                  root.classList.add('dark');
+                } else if (savedTheme === 'light') {
+                  root.classList.remove('dark');
+                } else {
+                  // System theme
+                  const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (isDarkMode) {
+                    root.classList.add('dark');
+                  } else {
+                    root.classList.remove('dark');
+                  }
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={cn(inter.className, 'min-h-screen bg-background antialiased')}>
         <Providers>
           {children}
         </Providers>
         <Toaster
-          theme="dark"
           position="bottom-right"
           toastOptions={{
-            style: {
-              background: 'rgb(31 41 55)',
-              border: '1px solid rgb(55 65 81)',
-              color: '#fff',
-            },
+            className: 'bg-card border-border text-foreground',
           }}
         />
       </body>
