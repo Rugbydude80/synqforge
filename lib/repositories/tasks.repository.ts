@@ -421,7 +421,7 @@ export class TasksRepository {
   /**
    * Reorder tasks within a story
    */
-  async reorder(storyId: string, taskIds: string[], userId: string): Promise<void> {
+  async reorder(storyId: string, taskIds: string[], _userId: string): Promise<void> {
     // Verify all tasks belong to the story
     const tasksToReorder = await db
       .select()

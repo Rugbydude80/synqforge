@@ -79,7 +79,7 @@ export default function NotificationsPage() {
           n.id === notificationId ? { ...n, read: true } : n
         )
       )
-    } catch (_error) {
+    } catch {
       toast.error('Failed to mark as read')
     }
   }
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
 
       setNotifications(notifications.map((n) => ({ ...n, read: true })))
       toast.success('All notifications marked as read')
-    } catch (_error) {
+    } catch {
       toast.error('Failed to mark all as read')
     }
   }

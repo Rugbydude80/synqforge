@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
       setSuccess(true)
       setEmail('')
-    } catch (_err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setIsLoading(false)

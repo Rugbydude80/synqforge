@@ -10,9 +10,28 @@ import {
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import {
+  ValidationError,
+  NotFoundError,
+  AuthorizationError,
+  DatabaseError,
+  formatErrorResponse,
+  isApplicationError
+} from '@/lib/errors/custom-errors';
 
 /**
  * GET /api/stories - List stories with filtering and pagination
+ * 
+ * Retrieves a paginated list of stories for the user's organization with optional filters.
+ * Enforces organization-level security and project access validation.
+ * 
+ * @param req - Next.js request with query parameters (projectId, epicId, status, etc.)
+ * @param context - Authenticated user context from withAuth middleware
+ * @returns Paginated list of stories with metadata
+ * @throws {ValidationError} Invalid query parameters
+ * @throws {NotFoundError} Project not found
+ * @throws {AuthorizationError} No access to project
+ * @throws {DatabaseError} Database query failed
  */
 async function getStories(req: NextRequest, context: { user: any }) {
   try {
@@ -45,13 +64,9 @@ async function getStories(req: NextRequest, context: { user: any }) {
     const validationResult = safeValidateStoryFilters(queryParams);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          message: 'Invalid query parameters',
-          details: validationResult.error.issues
-        },
-        { status: 400 }
+      throw new ValidationError(
+        'Invalid query parameters',
+        { issues: validationResult.error.issues }
       );
     }
 
@@ -64,17 +79,18 @@ async function getStories(req: NextRequest, context: { user: any }) {
       });
 
       if (!project) {
-        return NextResponse.json(
-          { error: 'Project not found', message: 'The specified project does not exist' },
-          { status: 404 }
+        throw new NotFoundError(
+          'Project',
+          filters.projectId,
+          'The specified project does not exist'
         );
       }
 
       // Check if project belongs to user's organization
       if (project.organizationId !== context.user.organizationId) {
-        return NextResponse.json(
-          { error: 'Forbidden', message: 'Access denied to this project' },
-          { status: 403 }
+        throw new AuthorizationError(
+          'Access denied to this project',
+          { projectId: filters.projectId, requiredOrg: project.organizationId }
         );
       }
     }
@@ -114,11 +130,26 @@ async function getStories(req: NextRequest, context: { user: any }) {
     console.error('Error fetching stories:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     console.error('User context:', context.user);
+
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Handle database errors
+    if (error instanceof Error && (error.message.includes('database') || error.message.includes('query'))) {
+      const dbError = new DatabaseError('Failed to fetch stories', error.message);
+      const response = formatErrorResponse(dbError);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Unknown error
     return NextResponse.json(
       {
         error: 'Internal server error',
         message: 'Failed to fetch stories',
-        details: error instanceof Error ? error.message : String(error)
+        details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       },
       { status: 500 }
     );
@@ -127,14 +158,25 @@ async function getStories(req: NextRequest, context: { user: any }) {
 
 /**
  * POST /api/stories - Create a new story
+ * 
+ * Creates a new user story in the specified project with validation.
+ * Enforces user permissions, project access, and organization security.
+ * 
+ * @param req - Next.js request with story data (title, description, projectId, etc.)
+ * @param context - Authenticated user context from withAuth middleware
+ * @returns Created story object
+ * @throws {ValidationError} Invalid story data
+ * @throws {AuthorizationError} Insufficient permissions
+ * @throws {NotFoundError} Project not found
+ * @throws {DatabaseError} Database operation failed
  */
 async function createStory(req: NextRequest, context: { user: any }) {
   try {
     // Check if user can modify stories
     if (!canModify(context.user)) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Insufficient permissions to create stories' },
-        { status: 403 }
+      throw new AuthorizationError(
+        'Insufficient permissions to create stories',
+        { userRole: context.user.role, requiredPermission: 'modify' }
       );
     }
 
@@ -144,13 +186,9 @@ async function createStory(req: NextRequest, context: { user: any }) {
     const validationResult = safeValidateCreateStory(body);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          message: 'Invalid story data',
-          details: validationResult.error.issues
-        },
-        { status: 400 }
+      throw new ValidationError(
+        'Invalid story data',
+        { issues: validationResult.error.issues }
       );
     }
 
@@ -162,16 +200,17 @@ async function createStory(req: NextRequest, context: { user: any }) {
     });
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found', message: 'The specified project does not exist' },
-        { status: 404 }
+      throw new NotFoundError(
+        'Project',
+        storyData.projectId,
+        'The specified project does not exist'
       );
     }
 
     if (project.organizationId !== context.user.organizationId) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Access denied to this project' },
-        { status: 403 }
+      throw new AuthorizationError(
+        'Access denied to this project',
+        { projectId: storyData.projectId, requiredOrg: project.organizationId }
       );
     }
 

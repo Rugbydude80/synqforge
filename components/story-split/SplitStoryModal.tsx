@@ -63,7 +63,7 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
         spidrStrategy: analysis?.spidr,
       });
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };

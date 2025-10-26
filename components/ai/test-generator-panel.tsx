@@ -31,7 +31,7 @@ interface GeneratedArtefact {
 
 interface TestGeneratorPanelProps {
   storyId: string
-  storyTitle: string
+  _storyTitle: string
   hasAcceptanceCriteria: boolean
   onGenerate?: (artefact: GeneratedArtefact) => void
   className?: string
@@ -39,7 +39,7 @@ interface TestGeneratorPanelProps {
 
 export function TestGeneratorPanel({
   storyId,
-  storyTitle,
+  storyTitle: _storyTitle,
   hasAcceptanceCriteria,
   onGenerate,
   className,
@@ -57,13 +57,7 @@ export function TestGeneratorPanel({
     language: 'typescript' as 'typescript' | 'javascript',
   })
 
-  useEffect(() => {
-    if (hasAcceptanceCriteria) {
-      fetchArtefacts()
-    }
-  }, [storyId, hasAcceptanceCriteria])
-
-  const fetchArtefacts = async () => {
+  const fetchArtefacts = useCallback(async () => {
     try {
       setLoadingArtefacts(true)
       const response = await fetch(`/api/ai/test-generator?storyId=${storyId}`, {
@@ -82,7 +76,13 @@ export function TestGeneratorPanel({
     } finally {
       setLoadingArtefacts(false)
     }
-  }
+  }, [storyId])
+
+  useEffect(() => {
+    if (hasAcceptanceCriteria) {
+      fetchArtefacts()
+    }
+  }, [hasAcceptanceCriteria, fetchArtefacts])
 
   const handleGenerate = async (type: ArtefactType) => {
     try {

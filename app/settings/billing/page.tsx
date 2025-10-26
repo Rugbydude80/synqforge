@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CreditCard, Calendar, CheckCircle2, Loader2, ExternalLink, Users, Sparkles, TrendingUp, ShoppingCart, Zap } from 'lucide-react'
@@ -20,26 +20,7 @@ function BillingPageContent() {
   const [usageData, setUsageData] = useState<any>(null)
   const [purchasingTokens, setPurchasingTokens] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-      return
-    }
-
-    // Check for success/canceled params
-    if (searchParams.get('success') === 'true') {
-      toast.success('Subscription activated successfully!')
-    }
-    if (searchParams.get('canceled') === 'true') {
-      toast.error('Checkout canceled')
-    }
-
-    // Fetch current subscription and usage
-    fetchSubscription()
-    fetchUsageData()
-  }, [status, searchParams])
-
-  const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async () => {
     try {
       // First try new entitlements-based API
       const userResponse = await fetch('/api/user/me', { credentials: 'include' })
@@ -96,9 +77,9 @@ function BillingPageContent() {
     } catch (error) {
       console.error('Error fetching subscription:', error)
     }
-  }
+  }, [])
 
-  const fetchUsageData = async () => {
+  const fetchUsageData = useCallback(async () => {
     // Usage data now fetched in fetchSubscription for new API
     // Keep this for compatibility with old API
     if (usageData) return // Already loaded by fetchSubscription
@@ -115,7 +96,28 @@ function BillingPageContent() {
     } catch (error) {
       console.error('Error fetching usage:', error)
     }
-  }
+  }, [usageData])
+
+  useEffect(() => {
+    if (status === 'loading') return
+
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+
+    // Check for success/canceled params
+    if (searchParams.get('success') === 'true') {
+      toast.success('Subscription activated successfully!')
+    }
+    if (searchParams.get('canceled') === 'true') {
+      toast.error('Checkout canceled')
+    }
+
+    // Fetch current subscription and usage
+    fetchSubscription()
+    fetchUsageData()
+  }, [status, searchParams, router, fetchSubscription, fetchUsageData])
 
   const handlePurchaseTokens = async (packageSize: 'small' | 'medium' | 'large') => {
     try {

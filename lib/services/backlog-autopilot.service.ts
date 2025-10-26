@@ -389,7 +389,7 @@ Focus on quality over quantity. Ensure each story is INVEST-compliant, productio
     const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
     const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
     parsedData = JSON.parse(jsonString.trim())
-  } catch (_error) {
+  } catch {
     console.error('Failed to parse Claude response:', textContent.text)
     throw new Error('Failed to parse AI response. Please try again.')
   }

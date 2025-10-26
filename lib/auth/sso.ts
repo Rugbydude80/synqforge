@@ -48,8 +48,8 @@ export async function validateSSOAccess(
  * Process SAML assertion
  */
 export async function processSAMLAssertion(
-  assertion: string,
-  organizationId: string
+  _assertion: string,
+  _organizationId: string
 ): Promise<{ userId: string; email: string }> {
   // In production, validate SAML assertion with certificate
   // Parse user attributes from assertion
@@ -65,9 +65,9 @@ export async function processSAMLAssertion(
  * OAuth 2.0 callback handler
  */
 export async function handleOAuthCallback(
-  code: string,
-  provider: 'google' | 'microsoft' | 'okta',
-  organizationId: string
+  _code: string,
+  _provider: 'google' | 'microsoft' | 'okta',
+  _organizationId: string
 ): Promise<{ userId: string; email: string }> {
   // Exchange code for access token
   // Fetch user profile from provider
@@ -83,7 +83,7 @@ export async function handleOAuthCallback(
  * SCIM 2.0 - User provisioning
  */
 export async function scimCreateUser(
-  organizationId: string,
+  _organizationId: string,
   userData: {
     userName: string
     name: { givenName: string; familyName: string }
@@ -115,8 +115,8 @@ export async function scimCreateUser(
  * SCIM 2.0 - Update user
  */
 export async function scimUpdateUser(
-  organizationId: string,
-  userId: string,
+  _organizationId: string,
+  _userId: string,
   updates: { active?: boolean; name?: any; emails?: any }
 ): Promise<{ id: string; active: boolean }> {
   // Update user in database
@@ -130,8 +130,8 @@ export async function scimUpdateUser(
  * SCIM 2.0 - Deprovision user
  */
 export async function scimDeprovisionUser(
-  organizationId: string,
-  userId: string
+  _organizationId: string,
+  _userId: string
 ): Promise<void> {
   // Deactivate user in database
   // Remove from all projects

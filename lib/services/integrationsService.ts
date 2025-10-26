@@ -74,7 +74,7 @@ export async function getIntegrationStatus(): Promise<{
  * Stub - returns empty array until Q2 2026
  */
 export async function listIntegrations(
-  organizationId: string
+  _organizationId: string
 ): Promise<IntegrationConfig[]> {
   // TODO: Implement in Q2 2026
   return []
@@ -85,9 +85,9 @@ export async function listIntegrations(
  * Stub - throws coming soon error
  */
 export async function createIntegration(
-  organizationId: string,
-  type: string,
-  config: Record<string, any>
+  _organizationId: string,
+  _type: string,
+  _config: Record<string, any>
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
@@ -101,8 +101,8 @@ export async function createIntegration(
  * Stub - throws coming soon error
  */
 export async function updateIntegration(
-  integrationId: string,
-  config: Record<string, any>
+  _integrationId: string,
+  _config: Record<string, any>
 ): Promise<{ success: false; error: string }> {
   return {
     success: false,
@@ -115,7 +115,7 @@ export async function updateIntegration(
  * Stub - throws coming soon error
  */
 export async function deleteIntegration(
-  integrationId: string
+  _integrationId: string
 ): Promise<{ success: false; error: string }> {
   return {
     success: false,
@@ -128,7 +128,7 @@ export async function deleteIntegration(
  * Stub - returns empty array until Q2 2026
  */
 export async function listWebhooks(
-  organizationId: string
+  _organizationId: string
 ): Promise<WebhookConfig[]> {
   // TODO: Implement in Q2 2026
   return []
@@ -139,9 +139,9 @@ export async function listWebhooks(
  * Stub - throws coming soon error
  */
 export async function createWebhook(
-  organizationId: string,
-  url: string,
-  events: string[]
+  _organizationId: string,
+  _url: string,
+  _events: string[]
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
@@ -155,7 +155,7 @@ export async function createWebhook(
  * Stub - returns empty array until Q2 2026
  */
 export async function listAPIKeys(
-  organizationId: string
+  _organizationId: string
 ): Promise<APIKey[]> {
   // TODO: Implement in Q2 2026
   return []
@@ -166,9 +166,9 @@ export async function listAPIKeys(
  * Stub - throws coming soon error
  */
 export async function createAPIKey(
-  organizationId: string,
-  name: string,
-  scopes: string[]
+  _organizationId: string,
+  _name: string,
+  _scopes: string[]
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
@@ -182,7 +182,7 @@ export async function createAPIKey(
  * Stub - throws coming soon error
  */
 export async function revokeAPIKey(
-  keyId: string
+  _keyId: string
 ): Promise<{ success: false; error: string }> {
   return {
     success: false,
@@ -195,8 +195,8 @@ export async function revokeAPIKey(
  * Stub - throws coming soon error
  */
 export async function syncToJira(
-  organizationId: string,
-  storyIds: string[]
+  _organizationId: string,
+  _storyIds: string[]
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
@@ -210,8 +210,8 @@ export async function syncToJira(
  * Stub - throws coming soon error
  */
 export async function syncToLinear(
-  organizationId: string,
-  storyIds: string[]
+  _organizationId: string,
+  _storyIds: string[]
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
@@ -225,9 +225,9 @@ export async function syncToLinear(
  * Stub - throws coming soon error
  */
 export async function sendSlackNotification(
-  organizationId: string,
-  channel: string,
-  message: string
+  _organizationId: string,
+  _channel: string,
+  _message: string
 ): Promise<{ success: false; error: string; releaseQuarter: string }> {
   return {
     success: false,
