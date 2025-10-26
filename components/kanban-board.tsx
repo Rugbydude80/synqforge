@@ -10,7 +10,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
+  DragOverEvent,
   useDroppable,
 } from '@dnd-kit/core'
 import {
@@ -76,13 +77,13 @@ function StoryCard({ story }: { story: Story }) {
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card className="p-4 cursor-grab active:cursor-grabbing group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+      <Card 
+        className="p-4 group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+        {...attributes}
+        {...listeners}
+      >
         {/* Drag Handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-        >
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
 
@@ -184,13 +185,7 @@ function DroppableColumn({
   })
 
   return (
-    <div 
-      ref={setNodeRef} 
-      className={cn(
-        "w-80 shrink-0 rounded-lg p-3 transition-colors",
-        isOver && "bg-brand-purple-500/10 ring-2 ring-brand-purple-500"
-      )}
-    >
+    <div className="w-80 shrink-0">
       {/* Column Header */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -218,36 +213,49 @@ function DroppableColumn({
         />
       </div>
 
-      {/* Stories */}
-      <SortableContext
-        items={stories.map((s) => s.id)}
-        strategy={verticalListSortingStrategy}
+      {/* Droppable Area */}
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "min-h-[500px] rounded-lg p-3 transition-all",
+          isOver && "bg-brand-purple-500/10 ring-2 ring-brand-purple-500 ring-inset"
+        )}
       >
-        <div className="space-y-3 min-h-[200px]">
-          <AnimatePresence>
-            {stories.map((story) => (
-              <motion.div
-                key={story.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                layout
-              >
-                <StoryCard story={story} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+        <SortableContext
+          items={stories.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-3">
+            <AnimatePresence>
+              {stories.map((story) => (
+                <motion.div
+                  key={story.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  layout
+                >
+                  <StoryCard story={story} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
-          {/* Add Story Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground border-2 border-dashed"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Story
-          </Button>
-        </div>
-      </SortableContext>
+            {/* Add Story Button */}
+            {stories.length === 0 && (
+              <div className="text-center text-muted-foreground text-sm py-8">
+                Drop stories here or
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground border-2 border-dashed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Story
+            </Button>
+          </div>
+        </SortableContext>
+      </div>
     </div>
   )
 }
@@ -342,17 +350,21 @@ export default function KanbanBoard() {
     setActiveId(event.active.id as string)
   }
 
+  const handleDragOver = (event: DragOverEvent) => {
+    // Track drag over for visual feedback
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
+    setActiveId(null)
+
     if (!over) {
-      setActiveId(null)
       return
     }
 
     const activeStory = stories.find((s) => s.id === active.id)
     if (!activeStory) {
-      setActiveId(null)
       return
     }
 
@@ -360,7 +372,7 @@ export default function KanbanBoard() {
     const validColumns: StoryStatus[] = ['backlog', 'ready', 'in_progress', 'review', 'done']
     let targetColumnId: StoryStatus | null = null
 
-    // Check if dropped over a column
+    // Check if dropped directly over a column
     if (validColumns.includes(over.id as StoryStatus)) {
       targetColumnId = over.id as StoryStatus
     } else {
@@ -370,8 +382,11 @@ export default function KanbanBoard() {
         targetColumnId = targetStory.status
       }
     }
-    
+
+    // Only update if moving to a different column
     if (targetColumnId && activeStory.status !== targetColumnId) {
+      const oldStatus = activeStory.status
+
       // Optimistically update UI
       setStories((prev) =>
         prev.map((story) =>
@@ -403,7 +418,7 @@ export default function KanbanBoard() {
         setStories((prev) =>
           prev.map((story) =>
             story.id === activeStory.id
-              ? { ...story, status: activeStory.status }
+              ? { ...story, status: oldStatus }
               : story
           )
         )
@@ -411,8 +426,6 @@ export default function KanbanBoard() {
         console.error('Error updating story:', error)
       }
     }
-
-    setActiveId(null)
   }
 
   const getStoriesByColumn = (columnId: StoryStatus) =>
@@ -423,8 +436,9 @@ export default function KanbanBoard() {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="h-full overflow-x-auto">
@@ -445,8 +459,13 @@ export default function KanbanBoard() {
       {/* Drag Overlay */}
       <DragOverlay>
         {activeStory ? (
-          <div className="opacity-90 rotate-3 scale-105">
-            <StoryCard story={activeStory} />
+          <div className="opacity-90 rotate-3 scale-105 cursor-grabbing">
+            <Card className="p-4 shadow-2xl">
+              <div className="font-medium">{activeStory.title}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {activeStory.description}
+              </div>
+            </Card>
           </div>
         ) : null}
       </DragOverlay>
