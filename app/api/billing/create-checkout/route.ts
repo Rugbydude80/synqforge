@@ -8,7 +8,6 @@ import {
   ValidationError,
   AuthenticationError,
   NotFoundError,
-  ConfigurationError,
   ExternalServiceError,
   formatErrorResponse,
   isApplicationError
@@ -37,12 +36,26 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { plan, returnUrl } = body
+    const { priceId, tier, billingInterval, currency, returnUrl } = body
 
-    if (!plan || plan === 'free') {
+    if (!priceId || !tier) {
       throw new ValidationError(
-        'Invalid plan. Use /api/organizations/downgrade-to-free for free plan.',
-        { plan }
+        'Missing required fields: priceId and tier are required',
+        { priceId, tier }
+      )
+    }
+
+    if (tier === 'starter' || tier === 'free') {
+      throw new ValidationError(
+        'Invalid tier. Starter/Free tier does not require checkout.',
+        { tier }
+      )
+    }
+
+    if (tier === 'enterprise') {
+      throw new ValidationError(
+        'Enterprise plans require custom pricing. Please contact sales.',
+        { tier }
       )
     }
 
@@ -66,24 +79,6 @@ export async function POST(req: NextRequest) {
 
     if (!organization) {
       throw new NotFoundError('Organization', user.organizationId)
-    }
-
-    // Get price ID from environment
-    const priceId = plan === 'solo'
-      ? process.env.BILLING_PRICE_SOLO_GBP
-      : plan === 'team'
-      ? process.env.BILLING_PRICE_TEAM_GBP
-      : plan === 'pro'
-      ? process.env.BILLING_PRICE_PRO_GBP
-      : plan === 'enterprise'
-      ? process.env.BILLING_PRICE_ENTERPRISE_GBP
-      : null
-
-    if (!priceId) {
-      throw new ConfigurationError(
-        `No price configured for plan: ${plan}`,
-        { plan, expectedEnv: `BILLING_PRICE_${plan.toUpperCase()}_GBP` }
-      )
     }
 
     // Import Stripe dynamically
@@ -126,12 +121,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Verify the price ID exists and is active in Stripe
+    const price = await stripe.prices.retrieve(priceId)
+    if (!price.active) {
+      throw new ValidationError(
+        'The selected price is no longer available',
+        { priceId }
+      )
+    }
+
     // Create Stripe checkout session
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const successUrl = returnUrl 
-      ? `${baseUrl}${returnUrl}?payment=success`
-      : `${baseUrl}/dashboard?payment=success`
-    const cancelUrl = `${baseUrl}/auth/payment-required?returnUrl=${encodeURIComponent(returnUrl || '/dashboard')}&canceled=true`
+      ? `${baseUrl}${returnUrl}?payment=success&tier=${tier}`
+      : `${baseUrl}/dashboard?payment=success&tier=${tier}`
+    const cancelUrl = `${baseUrl}/pricing?canceled=true`
 
     try {
       const checkoutSession = await stripe.checkout.sessions.create({
@@ -147,22 +151,27 @@ export async function POST(req: NextRequest) {
         mode: 'subscription',
         success_url: successUrl,
         cancel_url: cancelUrl,
+        allow_promotion_codes: true,
+        billing_address_collection: 'required',
         metadata: {
           organizationId: organization.id,
           userId: user.id,
-          plan: plan,
+          tier: tier,
+          billingInterval: billingInterval || 'monthly',
+          currency: currency || 'GBP',
         },
         subscription_data: {
           metadata: {
             organizationId: organization.id,
             userId: user.id,
-            tier: plan,
+            tier: tier,
+            plan: tier, // For backward compatibility
           },
         },
       })
 
       return NextResponse.json({
-        checkoutUrl: checkoutSession.url,
+        url: checkoutSession.url,
         sessionId: checkoutSession.id,
       })
     } catch (stripeError) {
