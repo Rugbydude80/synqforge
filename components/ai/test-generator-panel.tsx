@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   FileCode,
   FileJson,
@@ -31,7 +31,7 @@ interface GeneratedArtefact {
 
 interface TestGeneratorPanelProps {
   storyId: string
-  _storyTitle: string
+  storyTitle: string
   hasAcceptanceCriteria: boolean
   onGenerate?: (artefact: GeneratedArtefact) => void
   className?: string

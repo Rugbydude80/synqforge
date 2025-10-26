@@ -41,7 +41,7 @@ Sentry.init({
     if (event.request?.data) {
       const data = event.request.data;
       if (typeof data === 'object') {
-        const sanitized = { ...data };
+        const sanitized: Record<string, any> = { ...data as object };
         ['password', 'token', 'secret', 'apiKey', 'api_key'].forEach(key => {
           if (sanitized[key]) {
             sanitized[key] = '[Filtered]';

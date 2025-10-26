@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     // Import Stripe dynamically
     const { default: Stripe } = await import('stripe')
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
-      apiVersion: '2025-06-30.basil' as any 
+      apiVersion: '2025-09-30.clover'
     })
 
     // Check if organization already has a Stripe customer

@@ -215,7 +215,7 @@ export class StorySplitService {
           .limit(1);
 
         if (!parentStory) {
-          throw new NotFoundError('Story', parentStoryId, 'Parent story not found');
+          throw new NotFoundError('Story', 'Parent story not found', { parentStoryId });
         }
 
         // Convert parent to epic if requested
@@ -262,7 +262,8 @@ export class StorySplitService {
 
       throw new DatabaseError(
         'Story split transaction failed',
-        error instanceof Error ? error.message : 'Unknown error'
+        error instanceof Error ? error : undefined,
+        { originalError: error instanceof Error ? error.message : 'Unknown error' }
       );
     }
   }
