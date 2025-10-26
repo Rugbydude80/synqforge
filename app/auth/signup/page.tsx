@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils'
 import plansData from '@/config/plans.json'
 
 // Map plans from plans.json to signup format
+// Note: IDs must match backend API enum: 'free', 'solo', 'team', 'pro', 'enterprise'
 const plans = [
   {
-    id: 'starter',
+    id: 'free',
     name: 'Starter',
     price: 0,
     icon: Sparkles,
@@ -21,7 +22,7 @@ const plans = [
     features: plansData.tiers.starter.features.slice(0, 4), // First 4 features for display
   },
   {
-    id: 'core',
+    id: 'solo',
     name: 'Core',
     price: 10.99,
     icon: Zap,
@@ -59,7 +60,7 @@ const plans = [
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const planFromUrl = searchParams.get('plan') || 'starter'
+  const planFromUrl = searchParams.get('plan') || 'free'
 
   const [step, setStep] = useState<'plan' | 'account'>('plan')
   const [selectedPlan, setSelectedPlan] = useState(planFromUrl)
@@ -124,7 +125,7 @@ export default function SignUpPage() {
         setSuccess(true)
 
         // Step 2: If paid plan, redirect to Stripe checkout
-        if (selectedPlan !== 'starter' && selectedPlan !== 'free' && data.checkoutUrl) {
+        if (selectedPlan !== 'free' && data.checkoutUrl) {
           setTimeout(() => {
             window.location.href = data.checkoutUrl
           }, 1500)
@@ -159,7 +160,7 @@ export default function SignUpPage() {
             <div>
               <h2 className="text-2xl font-bold mb-2">Account created!</h2>
               <p className="text-muted-foreground">
-                {selectedPlan !== 'starter' && selectedPlan !== 'free'
+                {selectedPlan !== 'free'
                   ? 'Redirecting to payment...'
                   : 'Redirecting to sign in...'}
               </p>
