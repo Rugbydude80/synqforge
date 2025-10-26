@@ -222,23 +222,39 @@ async function createStory(req: NextRequest, context: { user: any }) {
   } catch (error: any) {
     console.error('Error creating story:', error);
 
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
     // Handle specific errors from repository
-    if (error.message.includes('not found')) {
-      return NextResponse.json(
-        { error: 'Not found', message: error.message },
-        { status: 404 }
-      );
+    if (error.message && error.message.includes('not found')) {
+      const notFoundError = new NotFoundError('Resource', 'unknown', error.message);
+      const response = formatErrorResponse(notFoundError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
-    if (error.message.includes('does not belong to')) {
-      return NextResponse.json(
-        { error: 'Forbidden', message: error.message },
-        { status: 403 }
-      );
+    if (error.message && error.message.includes('does not belong to')) {
+      const authError = new AuthorizationError(error.message);
+      const response = formatErrorResponse(authError);
+      return NextResponse.json(response.body, { status: response.status });
     }
 
+    // Handle database errors
+    if (error.message && (error.message.includes('database') || error.message.includes('insert'))) {
+      const dbError = new DatabaseError('Failed to create story', error.message);
+      const response = formatErrorResponse(dbError);
+      return NextResponse.json(response.body, { status: response.status });
+    }
+
+    // Unknown error
     return NextResponse.json(
-      { error: 'Internal server error', message: 'Failed to create story' },
+      { 
+        error: 'Internal server error', 
+        message: 'Failed to create story',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }

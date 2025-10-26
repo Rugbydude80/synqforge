@@ -4,30 +4,45 @@ import { authOptions } from '@/lib/auth/options'
 import { db } from '@/lib/db'
 import { organizations, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import {
+  ValidationError,
+  AuthenticationError,
+  NotFoundError,
+  ConfigurationError,
+  ExternalServiceError,
+  formatErrorResponse,
+  isApplicationError
+} from '@/lib/errors/custom-errors'
 
 /**
  * POST /api/billing/create-checkout
- * Create a Stripe checkout session for a plan
- * Used by the payment-required page to generate checkout URLs
+ * 
+ * Creates a Stripe checkout session for upgrading to a paid plan.
+ * Handles customer creation if needed and generates a secure checkout URL.
+ * 
+ * @param req - Next.js request with plan and optional returnUrl
+ * @returns Checkout URL and session ID
+ * @throws {AuthenticationError} Not authenticated
+ * @throws {ValidationError} Invalid plan
+ * @throws {NotFoundError} User or organization not found
+ * @throws {ConfigurationError} Missing price configuration
+ * @throws {ExternalServiceError} Stripe API failed
  */
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      throw new AuthenticationError('Authentication required to create checkout session')
     }
 
     const body = await req.json()
     const { plan, returnUrl } = body
 
     if (!plan || plan === 'free') {
-      return NextResponse.json(
-        { error: 'Invalid plan. Use /api/organizations/downgrade-to-free for free plan.' },
-        { status: 400 }
+      throw new ValidationError(
+        'Invalid plan. Use /api/organizations/downgrade-to-free for free plan.',
+        { plan }
       )
     }
 
@@ -39,10 +54,7 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      throw new NotFoundError('User', session.user.email)
     }
 
     // Get organization
@@ -53,10 +65,7 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (!organization) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      )
+      throw new NotFoundError('Organization', user.organizationId)
     }
 
     // Get price ID from environment
@@ -71,9 +80,9 @@ export async function POST(req: NextRequest) {
       : null
 
     if (!priceId) {
-      return NextResponse.json(
-        { error: `No price configured for plan: ${plan}` },
-        { status: 400 }
+      throw new ConfigurationError(
+        `No price configured for plan: ${plan}`,
+        { plan, expectedEnv: `BILLING_PRICE_${plan.toUpperCase()}_GBP` }
       )
     }
 
@@ -87,26 +96,34 @@ export async function POST(req: NextRequest) {
     let customerId = organization.stripeCustomerId
 
     if (!customerId) {
-      // Create Stripe customer
-      const customer = await stripe.customers.create({
-        email: session.user.email,
-        name: organization.name,
-        metadata: {
-          organizationId: organization.id,
-          organizationName: organization.name,
-        },
-      })
-
-      customerId = customer.id
-
-      // Update organization with customer ID
-      await db
-        .update(organizations)
-        .set({
-          stripeCustomerId: customerId,
-          updatedAt: new Date(),
+      try {
+        // Create Stripe customer
+        const customer = await stripe.customers.create({
+          email: session.user.email,
+          name: organization.name,
+          metadata: {
+            organizationId: organization.id,
+            organizationName: organization.name,
+          },
         })
-        .where(eq(organizations.id, organization.id))
+
+        customerId = customer.id
+
+        // Update organization with customer ID
+        await db
+          .update(organizations)
+          .set({
+            stripeCustomerId: customerId,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, organization.id))
+      } catch (stripeError) {
+        throw new ExternalServiceError(
+          'Failed to create Stripe customer',
+          'stripe',
+          { originalError: stripeError instanceof Error ? stripeError.message : 'Unknown error' }
+        )
+      }
     }
 
     // Create Stripe checkout session
@@ -116,49 +133,60 @@ export async function POST(req: NextRequest) {
       : `${baseUrl}/dashboard?payment=success`
     const cancelUrl = `${baseUrl}/auth/payment-required?returnUrl=${encodeURIComponent(returnUrl || '/dashboard')}&canceled=true`
 
-    const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: session.user.email,
-      client_reference_id: organization.id,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        organizationId: organization.id,
-        userId: user.id,
-        plan: plan,
-      },
-      subscription_data: {
+    try {
+      const checkoutSession = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: session.user.email,
+        client_reference_id: organization.id,
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         metadata: {
           organizationId: organization.id,
           userId: user.id,
-          tier: plan,
+          plan: plan,
         },
-      },
-    })
+        subscription_data: {
+          metadata: {
+            organizationId: organization.id,
+            userId: user.id,
+            tier: plan,
+          },
+        },
+      })
 
-    return NextResponse.json({
-      checkoutUrl: checkoutSession.url,
-      sessionId: checkoutSession.id,
-    })
+      return NextResponse.json({
+        checkoutUrl: checkoutSession.url,
+        sessionId: checkoutSession.id,
+      })
+    } catch (stripeError) {
+      throw new ExternalServiceError(
+        'Failed to create Stripe checkout session',
+        'stripe',
+        { originalError: stripeError instanceof Error ? stripeError.message : 'Unknown error' }
+      )
+    }
   } catch (error) {
     console.error('Error creating checkout session:', error)
 
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+    // Handle custom application errors
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      return NextResponse.json(response.body, { status: response.status })
     }
 
+    // Unknown error
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { 
+        error: 'Failed to create checkout session',
+        message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      },
       { status: 500 }
     )
   }
