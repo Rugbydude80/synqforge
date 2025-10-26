@@ -288,6 +288,22 @@ function NotificationSettings() {
 }
 
 function AppearanceSettings() {
+  const [selectedTheme, setSelectedTheme] = useState<string>('system')
+  const [selectedColorScheme, setSelectedColorScheme] = useState<string>('Purple & Emerald')
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Load saved preferences from localStorage
+    const savedTheme = localStorage.getItem('theme') || 'system'
+    const savedColorScheme = localStorage.getItem('colorScheme') || 'Purple & Emerald'
+    setSelectedTheme(savedTheme)
+    setSelectedColorScheme(savedColorScheme)
+
+    // Apply theme
+    applyTheme(savedTheme)
+  }, [])
+
   const themes = [
     { name: 'Light', value: 'light' },
     { name: 'Dark', value: 'dark' },
@@ -299,6 +315,44 @@ function AppearanceSettings() {
     { name: 'Blue & Orange', colors: ['bg-blue-500', 'bg-orange-500'] },
     { name: 'Green & Teal', colors: ['bg-green-500', 'bg-teal-500'] },
   ]
+
+  const applyTheme = (theme: string) => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else if (theme === 'light') {
+      root.classList.remove('dark')
+    } else {
+      // System theme
+      const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+      if (isDarkMode) {
+        root.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+      }
+    }
+  }
+
+  const handleSaveAppearance = () => {
+    setIsSaving(true)
+    setSaveMessage(null)
+
+    try {
+      // Save to localStorage
+      localStorage.setItem('theme', selectedTheme)
+      localStorage.setItem('colorScheme', selectedColorScheme)
+
+      // Apply the theme
+      applyTheme(selectedTheme)
+
+      setSaveMessage('Appearance settings saved successfully!')
+      setTimeout(() => setSaveMessage(null), 3000)
+    } catch {
+      setSaveMessage('Failed to save settings. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <Card>
@@ -315,7 +369,12 @@ function AppearanceSettings() {
                 <button
                   key={theme.value}
                   type="button"
-                  className="p-3 border border-border rounded-lg hover:border-primary transition-colors"
+                  onClick={() => setSelectedTheme(theme.value)}
+                  className={`p-3 border rounded-lg transition-all ${
+                    selectedTheme === theme.value
+                      ? 'border-primary bg-primary/10 shadow-md'
+                      : 'border-border hover:border-primary'
+                  }`}
                 >
                   {theme.name}
                 </button>
@@ -330,9 +389,14 @@ function AppearanceSettings() {
                 <button
                   key={scheme.name}
                   type="button"
-                  className="p-3 border border-border rounded-lg hover:border-primary transition-colors"
+                  onClick={() => setSelectedColorScheme(scheme.name)}
+                  className={`p-3 border rounded-lg transition-all ${
+                    selectedColorScheme === scheme.name
+                      ? 'border-primary bg-primary/10 shadow-md'
+                      : 'border-border hover:border-primary'
+                  }`}
                 >
-                  <div className="flex gap-2 mb-2">
+                  <div className="flex gap-2 mb-2 justify-center">
                     {scheme.colors.map((color) => (
                       <div key={color} className={`h-4 w-4 rounded-full ${color}`} />
                     ))}
@@ -344,7 +408,19 @@ function AppearanceSettings() {
           </div>
         </div>
 
-        <Button>Save Appearance</Button>
+        {saveMessage && (
+          <div className={`p-3 rounded-lg text-sm ${
+            saveMessage.includes('success')
+              ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+              : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+          }`}>
+            {saveMessage}
+          </div>
+        )}
+
+        <Button onClick={handleSaveAppearance} disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Save Appearance'}
+        </Button>
       </CardContent>
     </Card>
   )
