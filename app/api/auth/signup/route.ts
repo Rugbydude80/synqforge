@@ -224,25 +224,27 @@ export async function POST(req: NextRequest) {
     // Handle custom application errors
     if (isApplicationError(error)) {
       const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
       
       // For rate limit errors, add Retry-After header
       if (error instanceof RateLimitError && error.details?.retryAfter) {
-        return NextResponse.json(response.body, {
-          status: response.status,
+        return NextResponse.json(errorBody, {
+          status: statusCode,
           headers: {
             'Retry-After': error.details.retryAfter,
           },
         })
       }
       
-      return NextResponse.json(response.body, { status: response.status })
+      return NextResponse.json(errorBody, { status: statusCode })
     }
 
     // Handle database errors
     if (error instanceof Error && error.message.includes('database')) {
-      const dbError = new DatabaseError('Failed to create user account', error.message)
+      const dbError = new DatabaseError('Failed to create user account', error)
       const response = formatErrorResponse(dbError)
-      return NextResponse.json(response.body, { status: response.status })
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
 
     // Unknown error - log details and return generic error

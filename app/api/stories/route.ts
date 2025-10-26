@@ -133,15 +133,17 @@ async function getStories(req: NextRequest, context: { user: any }) {
 
     // Handle custom application errors
     if (isApplicationError(error)) {
-      const response = formatErrorResponse(error);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle database errors
     if (error instanceof Error && (error.message.includes('database') || error.message.includes('query'))) {
-      const dbError = new DatabaseError('Failed to fetch stories', error.message);
-      const response = formatErrorResponse(dbError);
-      return NextResponse.json(response.body, { status: response.status });
+      const dbError = new DatabaseError('Failed to fetch stories', error instanceof Error ? error : undefined);
+      const response = formatErrorResponse(dbError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Unknown error
@@ -224,28 +226,32 @@ async function createStory(req: NextRequest, context: { user: any }) {
 
     // Handle custom application errors
     if (isApplicationError(error)) {
-      const response = formatErrorResponse(error);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle specific errors from repository
     if (error.message && error.message.includes('not found')) {
       const notFoundError = new NotFoundError('Resource', 'unknown', error.message);
-      const response = formatErrorResponse(notFoundError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(notFoundError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     if (error.message && error.message.includes('does not belong to')) {
       const authError = new AuthorizationError(error.message);
-      const response = formatErrorResponse(authError);
-      return NextResponse.json(response.body, { status: response.status });
+      const response = formatErrorResponse(authError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Handle database errors
     if (error.message && (error.message.includes('database') || error.message.includes('insert'))) {
-      const dbError = new DatabaseError('Failed to create story', error.message);
-      const response = formatErrorResponse(dbError);
-      return NextResponse.json(response.body, { status: response.status });
+      const dbError = new DatabaseError('Failed to create story', error instanceof Error ? error : undefined);
+      const response = formatErrorResponse(dbError)
+      const { statusCode, ...errorBody } = response;
+      return NextResponse.json(errorBody, { status: statusCode });
     }
 
     // Unknown error
