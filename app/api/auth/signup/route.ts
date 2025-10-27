@@ -148,11 +148,13 @@ export async function POST(req: NextRequest) {
       switch (validatedData.plan) {
         case 'solo':
           // Solo plan uses the Pro monthly price (renamed from "Core" to "Solo")
-          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+          // TEMPORARY: Using _FIXED version while we fix the newline issue
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID_FIXED || process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID?.trim()
           break
         case 'pro':
           // Pro plan also uses the Pro monthly price (for compatibility)
-          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+          // TEMPORARY: Using _FIXED version while we fix the newline issue  
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID_FIXED || process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID?.trim()
           break
         case 'team':
           priceId = process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID
