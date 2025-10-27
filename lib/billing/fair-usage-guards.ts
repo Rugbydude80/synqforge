@@ -107,29 +107,40 @@ export async function canUseAI(
     }
   }
 
-  // HARD BLOCK: No tokens left
-  if (tokensRemaining <= 0) {
-    return {
-      allowed: false,
-      used: usage.tokensUsed,
-      limit: usage.tokensLimit,
-      percentage: 100,
-      isWarning: false,
-      reason: `AI token limit reached (${usage.tokensLimit.toLocaleString()} tokens/month). Upgrade your plan or wait until next month.`,
-      upgradeUrl: '/settings/billing',
-      manageUrl: '/settings/billing',
+  // Check if monthly tokens exhausted or insufficient
+  if (tokensRemaining <= 0 || tokensRemaining < tokensRequired) {
+    // Check if user has purchased tokens available
+    const { getTokenBalance } = await import('@/lib/services/ai-usage.service')
+    const purchasedBalance = await getTokenBalance(organizationId)
+    
+    if (purchasedBalance >= tokensRequired) {
+      // User has purchased tokens available - allow operation
+      console.log(`🎯 Using purchased tokens for org ${organizationId}: ${tokensRequired.toLocaleString()} tokens (${purchasedBalance.toLocaleString()} available)`)
+      
+      return {
+        allowed: true,
+        used: usage.tokensUsed,
+        limit: usage.tokensLimit,
+        percentage: 100,
+        isWarning: false,
+        reason: `Using purchased tokens (${purchasedBalance.toLocaleString()} available)`,
+        upgradeUrl: undefined,
+        manageUrl: '/settings/billing',
+      }
     }
-  }
-
-  // Check if there are enough tokens for this operation
-  if (tokensRemaining < tokensRequired) {
+    
+    // No monthly tokens AND no purchased tokens available
+    const totalAvailable = tokensRemaining + purchasedBalance
+    
     return {
       allowed: false,
       used: usage.tokensUsed,
       limit: usage.tokensLimit,
-      percentage: Math.round((usage.tokensUsed / usage.tokensLimit) * 100),
+      percentage: tokensRemaining <= 0 ? 100 : Math.round((usage.tokensUsed / usage.tokensLimit) * 100),
       isWarning: false,
-      reason: `Insufficient AI tokens. Required: ${tokensRequired.toLocaleString()}, Available: ${tokensRemaining.toLocaleString()}. Upgrade your plan.`,
+      reason: tokensRemaining <= 0
+        ? `AI token limit reached (${usage.tokensLimit.toLocaleString()} tokens/month). ${purchasedBalance > 0 ? `You have ${purchasedBalance.toLocaleString()} purchased tokens but need ${tokensRequired.toLocaleString()}.` : 'Purchase more tokens or upgrade your plan.'}`
+        : `Insufficient AI tokens. Required: ${tokensRequired.toLocaleString()}, Available: ${totalAvailable.toLocaleString()} (${tokensRemaining.toLocaleString()} monthly + ${purchasedBalance.toLocaleString()} purchased). ${purchasedBalance === 0 ? 'Purchase more tokens or upgrade your plan.' : ''}`,
       upgradeUrl: '/settings/billing',
       manageUrl: '/settings/billing',
     }
@@ -153,6 +164,7 @@ export async function canUseAI(
 /**
  * Increment AI token usage
  * Call this after successful AI operation
+ * Intelligently uses monthly tokens first, then purchased tokens
  */
 export async function incrementTokenUsage(
   organizationId: string,
@@ -160,6 +172,59 @@ export async function incrementTokenUsage(
 ): Promise<void> {
   const { start } = getCurrentBillingPeriod()
 
+  // Get current usage
+  const [usage] = await db
+    .select()
+    .from(workspaceUsage)
+    .where(
+      and(
+        eq(workspaceUsage.organizationId, organizationId),
+        eq(workspaceUsage.billingPeriodStart, start)
+      )
+    )
+    .limit(1)
+  
+  if (!usage) {
+    console.error(`No workspace usage found for org ${organizationId}`)
+    return
+  }
+
+  const tokensRemaining = usage.tokensLimit - usage.tokensUsed
+  
+  // Case 1: Already over monthly limit - use purchased tokens only
+  if (tokensRemaining <= 0) {
+    const { deductTokens } = await import('@/lib/services/ai-usage.service')
+    await deductTokens(organizationId, tokensUsed)
+    console.log(`💰 Deducted ${tokensUsed.toLocaleString()} tokens from purchased balance (org: ${organizationId})`)
+    return
+  }
+  
+  // Case 2: This operation would exceed monthly limit - split between monthly and purchased
+  if (tokensUsed > tokensRemaining) {
+    // Use remaining monthly tokens
+    await db
+      .update(workspaceUsage)
+      .set({
+        tokensUsed: usage.tokensLimit,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(workspaceUsage.organizationId, organizationId),
+          eq(workspaceUsage.billingPeriodStart, start)
+        )
+      )
+    
+    // Deduct overflow from purchased tokens
+    const overflow = tokensUsed - tokensRemaining
+    const { deductTokens } = await import('@/lib/services/ai-usage.service')
+    await deductTokens(organizationId, overflow)
+    
+    console.log(`🔄 Split token usage for org ${organizationId}: ${tokensRemaining.toLocaleString()} monthly + ${overflow.toLocaleString()} purchased`)
+    return
+  }
+  
+  // Case 3: Normal - under monthly limit, just increment monthly usage
   await db
     .update(workspaceUsage)
     .set({
@@ -172,6 +237,8 @@ export async function incrementTokenUsage(
         eq(workspaceUsage.billingPeriodStart, start)
       )
     )
+  
+  console.log(`✅ Incremented monthly usage for org ${organizationId}: +${tokensUsed.toLocaleString()} tokens`)
 }
 
 /**
