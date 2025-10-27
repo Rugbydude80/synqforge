@@ -245,13 +245,22 @@ export async function POST(req: NextRequest) {
           timestamp: new Date().toISOString(),
         })
         
-        // For paid plans, we already created the user account
-        // Return success but warn about payment issue
-        // They can try payment later via settings
-        console.warn('⚠️  User account created but Stripe checkout failed. User can upgrade later.')
-        
-        // Don't throw error - let them sign up as free and upgrade later
-        checkoutUrl = null
+        // For paid plans, we need Stripe checkout to work
+        // The user account was already created, but we must get payment
+        // Return error response with clear message
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'STRIPE_CHECKOUT_FAILED',
+            message: 'Account created, but unable to process payment. Please contact support or try again.',
+            details: {
+              plan: validatedData.plan,
+              error: stripeError instanceof Error ? stripeError.message : 'Unknown Stripe error',
+              note: 'Your account was created but payment setup failed. Support can help complete your registration.'
+            }
+          },
+          { status: 500 }
+        )
       }
     }
 
