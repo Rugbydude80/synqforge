@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { CreateProjectSchema } from '@/lib/types'
@@ -33,9 +33,17 @@ export const POST = withAuth(
       // Check project creation limit before proceeding
       const limitCheck = await checkFeatureLimit(user, 'project')
       if (!limitCheck.allowed) {
-        return errorResponse(
-          { message: limitCheck.error, code: 'PROJECT_LIMIT_REACHED', upgradeUrl: limitCheck.upgradeUrl },
-          402 // 402 Payment Required
+        // Return proper error response for limit exceeded
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'PROJECT_LIMIT_REACHED',
+              message: limitCheck.error || 'Project limit reached',
+              upgradeUrl: limitCheck.upgradeUrl,
+            },
+          },
+          { status: 402 }
         )
       }
 
