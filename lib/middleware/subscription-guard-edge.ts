@@ -216,33 +216,39 @@ export function getRequiredTierForFeature(featureKey: string): SubscriptionTier 
 
 /**
  * Check if route requires subscription based on path pattern
+ * Uses regex for more precise matching to avoid false positives
  */
 export function routeRequiresTier(pathname: string): { requiresTier: SubscriptionTier | null; feature?: string } {
   // Export routes (Core+)
-  if (pathname.includes('/export')) {
-    if (pathname.includes('/jira') || pathname.includes('/linear')) {
+  // Matches: /api/*/export or /api/*/*/export
+  if (/\/api\/[^\/]+\/export(\?|$)/.test(pathname) || /\/api\/[^\/]+\/[^\/]+\/export(\?|$)/.test(pathname)) {
+    if (/\/(jira|linear)/.test(pathname)) {
       return { requiresTier: 'pro', feature: 'export_jira' }
     }
     return { requiresTier: 'core', feature: 'export_basic' }
   }
 
   // Bulk operations (Pro+)
-  if (pathname.includes('/bulk') || pathname.includes('/batch')) {
+  // Matches: /api/*/bulk or /api/ai/batch-*
+  if (/\/api\/[^\/]+\/bulk(\?|$)/.test(pathname) || /\/api\/ai\/batch-[^\/]+/.test(pathname)) {
     return { requiresTier: 'pro', feature: 'bulk_operations' }
   }
 
   // Document analysis (Pro+)
-  if (pathname.includes('/analyze-document')) {
+  // Exact match: /api/ai/analyze-document
+  if (/^\/api\/ai\/analyze-document(\?|$)/.test(pathname)) {
     return { requiresTier: 'pro', feature: 'document_analysis' }
   }
 
   // Team features (Team+)
-  if (pathname.includes('/approval') || pathname.includes('/team/')) {
+  // Matches: /api/team/* or routes with /approval
+  if (/^\/api\/team\//.test(pathname) || /\/approval/.test(pathname)) {
     return { requiresTier: 'team', feature: 'approval_flows' }
   }
 
   // SSO (Enterprise)
-  if (pathname.includes('/sso') || pathname.includes('/saml')) {
+  // Matches: /api/sso/* or /api/saml/*
+  if (/^\/api\/(sso|saml)\//.test(pathname)) {
     return { requiresTier: 'enterprise', feature: 'sso' }
   }
 
