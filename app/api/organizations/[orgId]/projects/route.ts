@@ -30,9 +30,24 @@ export const GET = withAuth(
 export const POST = withAuth(
   async (req: NextRequest, { user }) => {
     try {
+      console.log('🚀 POST /api/organizations/[orgId]/projects - Start', {
+        organizationId: user.organizationId,
+        userId: user.id,
+        tier: user.tier,
+        timestamp: new Date().toISOString(),
+      })
+      
       // Check project creation limit before proceeding
       const limitCheck = await checkFeatureLimit(user, 'project')
+      
+      console.log('🔒 Limit check result:', {
+        allowed: limitCheck.allowed,
+        error: limitCheck.error,
+        upgradeUrl: limitCheck.upgradeUrl,
+      })
+      
       if (!limitCheck.allowed) {
+        console.error('❌ Project creation blocked - limit reached')
         // Return proper error response for limit exceeded
         return NextResponse.json(
           {
@@ -46,6 +61,8 @@ export const POST = withAuth(
           { status: 402 }
         )
       }
+      
+      console.log('✅ Limit check passed - proceeding with project creation')
 
       const body = await req.json()
       const data = CreateProjectSchema.parse(body)
