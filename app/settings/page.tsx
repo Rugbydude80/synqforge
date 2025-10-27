@@ -11,11 +11,13 @@ import {
   Palette,
   Database,
   Zap,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
+import { BillingContent } from '@/app/(dashboard)/settings/billing/BillingContent'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -48,6 +50,7 @@ export default function SettingsPage() {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'integrations', label: 'Integrations', icon: Database },
   ]
 
@@ -102,6 +105,7 @@ export default function SettingsPage() {
             {activeTab === 'security' && <SecuritySettings />}
             {activeTab === 'notifications' && <NotificationSettings />}
             {activeTab === 'appearance' && <AppearanceSettings />}
+            {activeTab === 'billing' && <BillingSettings />}
             {activeTab === 'integrations' && <IntegrationSettings />}
           </div>
         </div>
@@ -495,6 +499,27 @@ function LogoPreview({ colorScheme }: { colorScheme: string }) {
       </span>
     </div>
   )
+}
+
+function BillingSettings() {
+  const { data: session } = useSession()
+  const organizationId = session?.user?.organizationId
+  
+  if (!organizationId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing & Subscription</CardTitle>
+          <CardDescription>Manage your subscription and billing</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Unable to load billing information.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return <BillingContent organizationId={organizationId} />
 }
 
 function IntegrationSettings() {
