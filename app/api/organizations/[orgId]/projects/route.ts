@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { CreateProjectSchema } from '@/lib/types'
 import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
+import { checkFeatureLimit } from '@/lib/middleware/subscription'
 
 /**
  * GET /api/organizations/[orgId]/projects
