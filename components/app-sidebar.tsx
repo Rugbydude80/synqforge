@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { DynamicLogo } from '@/components/dynamic-logo'
+import { SynqForgeLogo } from '@/components/synqforge-logo'
 
 export interface NavItem {
   id: string
@@ -111,7 +111,7 @@ export function AppSidebar() {
         )}
       >
       <div className="flex h-16 items-center border-b border-border px-6">
-        <DynamicLogo size="md" showText={true} />
+        <SynqForgeLogo size="md" showText={true} width={180} height={45} />
       </div>
 
       <nav className="space-y-1 p-4">
