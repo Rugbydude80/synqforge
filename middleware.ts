@@ -22,14 +22,22 @@ const publicApiRoutes = [
 ]
 
 // Routes that don't require subscription check (authenticated but no payment needed)
+// These routes need to be accessible to allow users to upgrade their subscription
 const noSubscriptionCheckRoutes = [
   '/settings/billing',
   '/auth/payment-required',
   '/api/billing',
-  '/api/stripe',
+  '/api/stripe',  // Stripe API routes for checkout/billing
   '/dashboard',
   '/settings',
 ]
+
+// Helper function to check if path is in whitelist
+function isWhitelisted(pathname: string): boolean {
+  return noSubscriptionCheckRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  )
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -63,9 +71,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check if this route requires subscription validation
-    const needsSubscriptionCheck = !noSubscriptionCheckRoutes.some(route =>
-      pathname === route || pathname.startsWith(route)
-    )
+    const needsSubscriptionCheck = !isWhitelisted(pathname)
 
     // Check if specific route requires a subscription tier
     if (needsSubscriptionCheck && token.organizationId) {
@@ -80,12 +86,19 @@ export async function middleware(request: NextRequest) {
           )
 
           if (!result.hasAccess) {
-            console.log('🚫 Subscription gate blocked access:', {
+            // Log subscription gate block for monitoring and analytics
+            console.warn('🚫 Subscription gate blocked access:', {
               path: pathname,
               requiredTier: tierCheck.requiresTier,
               currentTier: result.currentTier,
               reason: result.reason,
+              userId: token.sub,
+              organizationId: token.organizationId,
+              timestamp: new Date().toISOString(),
             })
+            
+            // TODO: Send to monitoring system (Sentry, DataDog, etc.)
+            // Example: captureSecurityEvent('subscription_gate_block', { ... })
 
             // For API routes, return 402 Payment Required
             if (pathname.startsWith('/api/')) {
@@ -115,9 +128,26 @@ export async function middleware(request: NextRequest) {
           response.headers.set('x-subscription-status', result.subscriptionStatus || 'unknown')
           return response
         } catch (error) {
-          console.error('Error checking subscription in middleware:', error)
-          // On error, allow access but log for monitoring
-          // This prevents breaking the app if Neon is temporarily unavailable
+          console.error('🚨 SECURITY: Error checking subscription in middleware:', error)
+          
+          // SECURITY FIX: Deny access on error (fail closed, not open)
+          // This prevents security bypass if database is unavailable
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json(
+              {
+                error: 'Service Unavailable',
+                message: 'Unable to verify subscription. Please try again in a moment.',
+                code: 'SUBSCRIPTION_CHECK_FAILED',
+              },
+              { status: 503 }
+            )
+          }
+          
+          // For page routes, redirect to error page
+          const errorUrl = new URL('/auth/error', request.url)
+          errorUrl.searchParams.set('code', 'subscription_check_failed')
+          errorUrl.searchParams.set('returnUrl', pathname)
+          return NextResponse.redirect(errorUrl)
         }
       }
     }
