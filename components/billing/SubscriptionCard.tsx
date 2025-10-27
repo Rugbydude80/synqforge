@@ -105,10 +105,10 @@ export function SubscriptionCard({ plan, currentPlan, organizationId, onSubscrib
         <Button
           className="w-full"
           onClick={handleSubscribe}
-          disabled={loading || isCurrentPlan}
+          disabled={loading || isCurrentPlan || plan.price === null}
           variant={plan.popular ? 'default' : 'outline'}
         >
-          {loading ? 'Loading...' : isCurrentPlan ? 'Current Plan' : `Subscribe to ${plan.name}`}
+          {loading ? 'Loading...' : isCurrentPlan ? 'Current Plan' : plan.price === null ? 'Contact Sales' : `Subscribe to ${plan.name}`}
         </Button>
       </CardFooter>
     </Card>
