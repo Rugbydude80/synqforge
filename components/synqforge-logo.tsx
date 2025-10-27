@@ -75,9 +75,10 @@ export function SynqForgeLogo({
     return <div style={{ width: dimensions.width, height: dimensions.height }} className={className} />
   }
 
-  // Use PNG logos (or .svg if you convert them)
-  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo-light.png'
-  const iconSrc = '/logo-icon.png' // For icon-only mode
+  // Use PNG logos with SVG fallback
+  // Falls back to SVG if PNG files haven't been added yet
+  const logoSrc = theme === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'
+  const iconSrc = '/logo-icon-only.svg' // For icon-only mode
 
   return (
     <div className={`flex items-center ${className}`}>
