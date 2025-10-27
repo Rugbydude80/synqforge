@@ -35,7 +35,7 @@ export const POST = withAuth(
       if (!limitCheck.allowed) {
         return errorResponse(
           { message: limitCheck.error, code: 'PROJECT_LIMIT_REACHED', upgradeUrl: limitCheck.upgradeUrl },
-          { status: 402 } // 402 Payment Required
+          402 // 402 Payment Required
         )
       }
 
