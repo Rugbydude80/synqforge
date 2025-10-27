@@ -175,3 +175,4 @@ echo "   Query the 'organizations' table"
 echo "   Verify 'aiTokensIncluded', 'seatsIncluded', etc."
 echo ""
 
+

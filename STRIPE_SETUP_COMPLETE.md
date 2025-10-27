@@ -332,3 +332,4 @@ LIMIT 1;
 
 **Next Action**: Run the sync script to create products in Stripe, then test the complete checkout flow.
 
+
