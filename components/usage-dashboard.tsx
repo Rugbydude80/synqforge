@@ -193,6 +193,12 @@ export function UsageDashboard() {
                 <p className={`text-sm ${getUsageColor(usage.percentUsed)}`}>
                   {100 - usage.percentUsed}% remaining ({formatNumber(usage.remainingTokens)} tokens)
                 </p>
+                {usage.purchasedTokensAvailable !== undefined && usage.purchasedTokensAvailable > 0 && (
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
+                    <ShoppingCart className="h-3 w-3" />
+                    + {formatNumber(usage.purchasedTokensAvailable)} purchased tokens available
+                  </p>
+                )}
               </>
             )}
             {isUnlimited && (
