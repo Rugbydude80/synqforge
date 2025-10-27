@@ -142,6 +142,31 @@ export async function POST(req: NextRequest) {
     // Enterprise is a contact sales plan, so it doesn't go through Stripe checkout
     let checkoutUrl = null
     if (PAID_PLANS_WITH_CHECKOUT.includes(validatedData.plan as any)) {
+      // Get price ID for the selected plan (outside try block for error logging)
+      // Map plan names to environment variables
+      let priceId: string | undefined
+      switch (validatedData.plan) {
+        case 'solo':
+          // Solo plan uses the Pro monthly price (renamed from "Core" to "Solo")
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+          break
+        case 'pro':
+          // Pro plan also uses the Pro monthly price (for compatibility)
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+          break
+        case 'team':
+          priceId = process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID
+          break
+        case 'enterprise':
+          // Enterprise is a contact sales plan, not available via self-service signup
+          // This should not be reached if PAID_PLANS_WITH_CHECKOUT is properly configured
+          console.warn('Enterprise plan attempted in self-service signup')
+          priceId = undefined
+          break
+        default:
+          priceId = undefined
+      }
+      
       try {
         const { default: Stripe } = await import('stripe')
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
@@ -149,31 +174,6 @@ export async function POST(req: NextRequest) {
           timeout: 10000, // 10 second timeout
           maxNetworkRetries: 2,
         })
-        
-        // Get price ID for the selected plan
-        // Map plan names to environment variables
-        let priceId: string | undefined
-        switch (validatedData.plan) {
-          case 'solo':
-            // Solo plan uses the Pro monthly price (renamed from "Core" to "Solo")
-            priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
-            break
-          case 'pro':
-            // Pro plan also uses the Pro monthly price (for compatibility)
-            priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
-            break
-          case 'team':
-            priceId = process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID
-            break
-          case 'enterprise':
-            // Enterprise is a contact sales plan, not available via self-service signup
-            // This should not be reached if PAID_PLANS_WITH_CHECKOUT is properly configured
-            console.warn('Enterprise plan attempted in self-service signup')
-            priceId = undefined
-            break
-          default:
-            priceId = undefined
-        }
 
         if (!priceId) {
           console.error('❌ Missing price ID for plan:', validatedData.plan)
