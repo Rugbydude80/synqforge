@@ -29,6 +29,15 @@ export const GET = withAuth(
 export const POST = withAuth(
   async (req: NextRequest, { user }) => {
     try {
+      // Check project creation limit before proceeding
+      const limitCheck = await checkFeatureLimit(user, 'project')
+      if (!limitCheck.allowed) {
+        return errorResponse(
+          { message: limitCheck.error, code: 'PROJECT_LIMIT_REACHED', upgradeUrl: limitCheck.upgradeUrl },
+          { status: 402 } // 402 Payment Required
+        )
+      }
+
       const body = await req.json()
       const data = CreateProjectSchema.parse(body)
 
