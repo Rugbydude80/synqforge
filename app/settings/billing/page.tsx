@@ -601,7 +601,7 @@ function BillingPageContent() {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-brand-emerald-500" />
-                      <span>Up to 50 stories</span>
+                      <span>Unlimited manual stories</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-brand-emerald-500" />

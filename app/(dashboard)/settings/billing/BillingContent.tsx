@@ -9,11 +9,11 @@ interface BillingContentProps {
   organizationId: string
 }
 
-// Plan definitions - using correct NEXT_PUBLIC_STRIPE_* environment variables
+// Plan definitions - synced with plans.json pricing
 const PLANS = [
   {
     name: 'Core',
-    price: 9.99,
+    price: 10.99, // FIXED: was 9.99, should match plans.json
     interval: 'monthly' as const,
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID_FIXED || process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID || '',
     features: [
@@ -198,15 +198,6 @@ export function BillingContent({ organizationId }: BillingContentProps) {
               warn={usage.usage.projects.warn}
             />
             <UsageCard
-              title="Stories This Month"
-              used={usage.usage.stories.used}
-              limit={usage.usage.stories.limit}
-              percentage={usage.usage.stories.percentage}
-              message={usage.usage.stories.message}
-              upgradeUrl={usage.usage.stories.upgradeUrl}
-              warn={usage.usage.stories.warn}
-            />
-            <UsageCard
               title="AI Tokens This Month"
               used={usage.usage.tokens.used}
               limit={usage.usage.tokens.limit}
@@ -264,11 +255,11 @@ export function BillingContent({ organizationId }: BillingContentProps) {
                 <td className="text-center p-4">50</td>
               </tr>
               <tr className="border-b">
-                <td className="p-4">Stories/Month</td>
-                <td className="text-center p-4">200</td>
-                <td className="text-center p-4">2,000</td>
-                <td className="text-center p-4">10,000</td>
-                <td className="text-center p-4">50,000</td>
+                <td className="p-4">Manual Stories</td>
+                <td className="text-center p-4">Unlimited</td>
+                <td className="text-center p-4">Unlimited</td>
+                <td className="text-center p-4">Unlimited</td>
+                <td className="text-center p-4">Unlimited</td>
               </tr>
               <tr className="border-b">
                 <td className="p-4">AI Tokens/Month</td>

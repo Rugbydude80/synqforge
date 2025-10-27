@@ -6,7 +6,6 @@ import { EpicsRepository } from '@/lib/repositories/epics';
 import { batchCreateStoriesSchema } from '@/lib/validations/ai';
 import { z } from 'zod';
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit';
-import { checkFeatureLimit } from '@/lib/middleware/subscription';
 
 async function batchCreateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -36,17 +35,8 @@ async function batchCreateStories(req: NextRequest, context: AuthContext) {
       );
     }
 
-    // Check story creation limit before batch creating
-    const storyLimitCheck = await checkFeatureLimit(context.user, 'story', validatedData.projectId);
-    if (!storyLimitCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: storyLimitCheck.error,
-          upgradeUrl: storyLimitCheck.upgradeUrl,
-        },
-        { status: 402 }
-      );
-    }
+    // NOTE: Manual story creation (even batch) is UNLIMITED
+    // No story count checks needed - only AI operations are limited
 
     // Verify user has access to the project
     const project = await projectsRepo.getProjectById(validatedData.projectId);
