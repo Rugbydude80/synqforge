@@ -8,8 +8,8 @@ import {
   StoryFilters
 } from '@/lib/validations/story';
 import { db } from '@/lib/db';
-import { projects, stories } from '@/lib/db/schema';
-import { eq, count } from 'drizzle-orm';
+import { projects } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import {
   ValidationError,
   NotFoundError,
@@ -18,7 +18,6 @@ import {
   formatErrorResponse,
   isApplicationError
 } from '@/lib/errors/custom-errors';
-import { canCreateStory, getSubscriptionLimits } from '@/lib/middleware/subscription';
 
 /**
  * GET /api/stories - List stories with filtering and pagination
@@ -215,42 +214,9 @@ async function createStory(req: NextRequest, context: { user: any }) {
       );
     }
 
-    // Check story limit before creating
-    const canCreate = await canCreateStory(context.user, storyData.projectId)
-    if (!canCreate) {
-      const limits = await getSubscriptionLimits(context.user)
-      
-      // Get current story count for this project
-      const [result] = await db
-        .select({ count: count() })
-        .from(stories)
-        .where(eq(stories.projectId, storyData.projectId))
-      const currentCount = result?.count || 0
-      
-      console.warn('🚫 Story creation blocked - limit reached:', {
-        userId: context.user.id,
-        organizationId: context.user.organizationId,
-        projectId: storyData.projectId,
-        currentCount,
-        maxAllowed: limits.maxStoriesPerProject,
-        tier: limits.displayName,
-      })
-      
-      return NextResponse.json(
-        {
-          error: 'Story limit reached',
-          message: `You've reached the story limit for this project (${currentCount}/${limits.maxStoriesPerProject}). Upgrade for unlimited stories.`,
-          currentTier: limits.displayName,
-          currentCount,
-          maxAllowed: limits.maxStoriesPerProject,
-          projectId: storyData.projectId,
-          upgradeUrl: '/pricing',
-          code: 'STORY_LIMIT_REACHED',
-        },
-        { status: 402 }
-      )
-    }
-
+    // NOTE: Manual story creation is UNLIMITED - no checks needed
+    // AI story generation is limited by AI tokens/actions, not story count
+    
     // Create the story
     const story = await storiesRepository.create(storyData, context.user.id);
 
