@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress'
 
 interface Plan {
   name: string
-  price: number
+  price: number | null
   interval: 'monthly' | 'annual'
   priceId: string
   features: string[]
@@ -71,8 +71,14 @@ export function SubscriptionCard({ plan, currentPlan, organizationId, onSubscrib
           {isCurrentPlan && <Badge variant="secondary">Current Plan</Badge>}
         </CardTitle>
         <CardDescription>
-          <span className="text-3xl font-bold">£{plan.price}</span>
-          <span className="text-muted-foreground">/{plan.interval === 'annual' ? 'year' : 'month'}</span>
+          {plan.price !== null ? (
+            <>
+              <span className="text-3xl font-bold">£{plan.price}</span>
+              <span className="text-muted-foreground">/{plan.interval === 'annual' ? 'year' : 'month'}</span>
+            </>
+          ) : (
+            <span className="text-3xl font-bold">Contact Sales</span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
