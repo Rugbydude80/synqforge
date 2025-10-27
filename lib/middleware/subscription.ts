@@ -68,15 +68,21 @@ export async function getSubscriptionLimits(
 export async function canCreateProject(user: UserContext): Promise<boolean> {
   const limits = await getSubscriptionLimits(user)
   
+  // Get org tier for logging
+  const [org] = await db
+    .select({ subscriptionTier: organizations.subscriptionTier })
+    .from(organizations)
+    .where(eq(organizations.id, user.organizationId))
+  
   console.log('🔍 canCreateProject check:', {
     organizationId: user.organizationId,
-    tier: user.tier,
+    tier: org?.subscriptionTier || 'unknown',
     maxProjects: limits.maxProjects,
     timestamp: new Date().toISOString(),
   })
 
   if (limits.maxProjects === Infinity) {
-    console.log('✅ Unlimited projects allowed for tier:', user.tier)
+    console.log('✅ Unlimited projects allowed for tier:', org?.subscriptionTier || 'unknown')
     return true
   }
 
@@ -92,7 +98,7 @@ export async function canCreateProject(user: UserContext): Promise<boolean> {
     currentCount,
     maxProjects: limits.maxProjects,
     allowed,
-    tier: user.tier,
+    tier: org?.subscriptionTier || 'unknown',
   })
 
   return allowed

@@ -33,7 +33,6 @@ export const POST = withAuth(
       console.log('🚀 POST /api/organizations/[orgId]/projects - Start', {
         organizationId: user.organizationId,
         userId: user.id,
-        tier: user.tier,
         timestamp: new Date().toISOString(),
       })
       
