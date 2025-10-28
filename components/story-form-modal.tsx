@@ -79,8 +79,9 @@ export function StoryFormModal({
 
   const fetchEpics = async () => {
     try {
-      const response = await api.epics.list({ projectId })
-      setEpics(response.data)
+      // Only fetch published epics (draft epics shouldn't be available for story assignment)
+      const response = await api.epics.list({ projectId, status: 'published' })
+      setEpics(response.data || [])
     } catch (err) {
       console.error('Failed to load epics:', err)
     }
