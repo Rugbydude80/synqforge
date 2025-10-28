@@ -59,19 +59,35 @@ export class ContextAccessService {
     contextLevel: ContextLevel,
     userTier: UserTier,
     actionsUsedThisMonth: number
-  ): { allowed: boolean; reason?: string } {
+  ): { 
+    allowed: boolean; 
+    reason?: string;
+    actionsRequired: number;
+    actionsRemaining: number;
+    nearLimit?: boolean;
+  } {
     const actionsRequired = this.getActionsRequired(contextLevel);
     const limit = TIER_MONTHLY_LIMITS[userTier];
     const remaining = limit - actionsUsedThisMonth;
+    const usagePercentage = (actionsUsedThisMonth / limit) * 100;
+    const nearLimit = usagePercentage >= 90;
 
     if (remaining < actionsRequired) {
       return {
         allowed: false,
         reason: `Insufficient AI actions. Need ${actionsRequired}, have ${remaining} remaining.`,
+        actionsRequired,
+        actionsRemaining: remaining,
+        nearLimit,
       };
     }
 
-    return { allowed: true };
+    return { 
+      allowed: true,
+      actionsRequired,
+      actionsRemaining: remaining,
+      nearLimit,
+    };
   }
 
   /**
