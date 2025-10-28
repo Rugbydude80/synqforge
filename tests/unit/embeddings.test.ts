@@ -3,7 +3,7 @@
  * Tests embedding generation, similarity search, and health checks
  */
 
-import { describe, it, beforeAll, afterAll } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { EmbeddingsService } from '../../lib/services/embeddings.service';
 import * as dotenv from 'dotenv';
@@ -12,18 +12,14 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 describe('EmbeddingsService', () => {
-  let service: EmbeddingsService;
-
-  beforeAll(() => {
-    service = new EmbeddingsService();
-  });
+  const service = new EmbeddingsService();
 
   describe('Health Check', () => {
     it('should return health status with all checks', async () => {
       const health = await service.healthCheck();
       
       assert.ok(health.database !== undefined, 'Database check should be present');
-      assert.ok(health.qwenApi !== undefined, 'Qwen API check should be present');
+      assert.ok(health.openrouterApi !== undefined, 'OpenRouter API check should be present');
       assert.ok(health.indexExists !== undefined, 'Index check should be present');
       
       console.log('Health status:', health);
@@ -174,7 +170,7 @@ describe('EmbeddingsService', () => {
         });
         
         console.log(`High threshold (0.9): ${highThreshold.length} results`);
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠️  Threshold test skipped - database may not have data');
       }
     });
@@ -194,7 +190,7 @@ describe('EmbeddingsService', () => {
         );
         
         console.log('✅ Epic filtering works correctly');
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠️  Epic filter test skipped');
       }
     });
@@ -214,7 +210,7 @@ describe('EmbeddingsService', () => {
         );
         
         console.log(`✅ Limit respected: requested ${limit}, got ${results.length}`);
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠️  Limit test skipped');
       }
     });
@@ -293,7 +289,7 @@ describe('EmbeddingsService', () => {
         } else {
           console.log('⚠️  Performance needs optimization');
         }
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠️  Performance test skipped - database may not have data');
       }
     });

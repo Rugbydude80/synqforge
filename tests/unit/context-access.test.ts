@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { ContextAccessService } from '../../lib/services/context-access.service';
-import { UserTier, ContextLevel, TIER_MONTHLY_LIMITS } from '../../lib/types/context.types';
+import { UserTier, ContextLevel } from '../../lib/types/context.types';
 
 describe('ContextAccessService', () => {
   describe('Tier Access Control', () => {
