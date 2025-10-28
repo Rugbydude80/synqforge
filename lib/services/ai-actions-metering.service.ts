@@ -243,6 +243,19 @@ export class AIActionsMetering {
     }
 
     const tier = org.subscriptionTier || 'starter';
+    
+    // Admin tier bypass - always allow
+    if (tier === 'admin') {
+      return {
+        allowed: true,
+        used: 0,
+        limit: Infinity,
+        percentage: 0,
+        remaining: Infinity,
+        resetDate: new Date(),
+      };
+    }
+    
     const limits = SUBSCRIPTION_LIMITS[tier];
     const actionCost = AI_ACTION_COSTS[actionType];
     const usage = await this.getCurrentUsage(organizationId, userId);

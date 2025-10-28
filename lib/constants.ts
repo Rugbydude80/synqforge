@@ -566,6 +566,93 @@ export const SUBSCRIPTION_LIMITS = {
     displayName: 'Enterprise',
     displayPrice: 'Custom',
   },
+  admin: {
+    // Projects & Stories
+    maxProjects: Infinity,
+    maxStoriesPerProject: Infinity,
+    maxSeats: Infinity,
+    includedSeats: Infinity,
+    seatPrice: 0,
+
+    // AI Actions (unlimited for admin)
+    monthlyAIActions: Infinity,
+    aiActionsPerSeat: Infinity,
+    aiActionsPoolingEnabled: true,
+    aiActionsRolloverPercent: 100,
+    aiActionsBudgetCeiling: false,
+    aiActionsConcurrencyReservations: true,
+    softPerUserCap: Infinity,
+    maxChildrenPerSplit: Infinity,
+    
+    // Legacy token tracking
+    monthlyAITokens: Infinity,
+    monthlyAIGenerations: Infinity,
+    maxStoriesPerGeneration: Infinity,
+
+    // Advanced AI Modules (All enabled)
+    canUseBacklogAutopilot: true,
+    canUseACValidator: true,
+    canUseTestGeneration: true,
+    canUsePlanningForecast: true,
+    canUseEffortScoring: true,
+    canUseKnowledgeSearch: true,
+    canUseInboxParsing: true,
+    canUseRepoAwareness: true,
+    canUseWorkflowAgents: true,
+    canUseGovernance: true,
+    canUseModelControls: true,
+    canUseAnalytics: true,
+
+    // Story Split Features (All enabled)
+    canUseSingleStorySplit: true,
+    canUseStorySplitINVEST: true,
+    canUseStorySplitSPIDR: true,
+    canUseStorySplitPlaybooks: true,
+    canUseStoryUpdate: true,
+    canUseStoryUpdateDiff: true,
+    canUseStoryUpdateSectionAccept: true,
+    canUseStoryUpdateStructuredPatching: true,
+    canUseBulkSplit: true,
+    canUseBulkUpdate: true,
+    canUseBulkOperationsAtScale: true,
+    canUseSplitPreflightEstimates: true,
+    canUseSplitApprovals: true,
+    canUsePolicyRules: true,
+    canUseAuditTrail: true,
+    canUseOrgWideTemplates: true,
+    canUseEnforcedINVEST: true,
+    canUseAdminCostPolicies: true,
+    canUseDepartmentAllocations: true,
+
+    // Features (All enabled)
+    canExport: true,
+    canUseTemplates: true,
+    canUseAPI: true,
+    canUseCustomFields: true,
+    canUseAdvancedAnalytics: true,
+    canUseSSO: true,
+    canUseSCIM: true,
+    canUseDataResidency: true,
+    canUseDLP: true,
+
+    // Rate Limits (No limits)
+    aiActionsPerMinute: Infinity,
+    heavyJobsPerMinute: Infinity,
+
+    // Support
+    supportLevel: 'dedicated',
+
+    // Billing
+    price: 0,
+    currency: 'GBP',
+    billingInterval: 'monthly',
+    trialDays: 0,
+    perUser: false,
+
+    // Display name
+    displayName: 'Admin (Internal)',
+    displayPrice: 'Internal Use Only',
+  },
 } as const
 
 /**

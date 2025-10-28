@@ -8,10 +8,10 @@
  */
 
 // Main type - matches database schema
-export type SubscriptionTier = 'free' | 'starter' | 'solo' | 'core' | 'pro' | 'team' | 'business' | 'enterprise'
+export type SubscriptionTier = 'starter' | 'core' | 'pro' | 'team' | 'enterprise' | 'admin'
 
 // New 2025 pricing tiers (subset of all tiers)
-export type New2025Tier = 'starter' | 'pro' | 'team' | 'enterprise'
+export type New2025Tier = 'starter' | 'core' | 'pro' | 'team' | 'enterprise'
 
 export type AddOnType = 'ai_actions' | 'ai_booster' | 'priority_support'
 
@@ -108,6 +108,45 @@ export const TIER_CONFIGS: Record<New2025Tier, TierConfig> = {
     },
     addOns: {
       availableAddOns: ['ai_booster'],
+    },
+  },
+  core: {
+    id: 'prod_core',
+    name: 'Core',
+    displayName: 'Core',
+    tier: 'core',
+    pricing: {
+      monthly: 1099, // $10.99
+      yearly: 10500, // $105/year (20% discount)
+      yearlyDiscount: 20,
+    },
+    limits: {
+      minSeats: 1,
+      maxSeats: 1,
+      aiActionsBase: 400,
+      pooling: false,
+      rolloverPercentage: 20,
+      maxRollover: 80, // 20% of 400
+    },
+    features: {
+      maxSplitChildren: 3,
+      bulkSplitLimit: 1,
+      bulkOperationLimit: 1,
+      updateEnabled: true,
+      approvalsRequired: false,
+      gherkinTemplates: 'advanced',
+      auditLogRetention: 30,
+      supportTier: 'email_48h',
+      advancedFeatures: {
+        sso: false,
+        saml: false,
+        rbac: false,
+        dataResidency: false,
+        complianceExports: false,
+      },
+    },
+    addOns: {
+      availableAddOns: ['ai_actions', 'priority_support'],
     },
   },
   pro: {
@@ -321,24 +360,64 @@ export const ADD_ON_CONFIGS: Record<AddOnType, AddOnConfig> = {
 // HELPER FUNCTIONS
 // ============================================
 
+// Admin tier configuration (not in TIER_CONFIGS as it's internal use only)
+export const ADMIN_TIER_CONFIG: TierConfig = {
+  id: 'admin',
+  name: 'Admin',
+  displayName: 'Admin (Internal)',
+  tier: 'admin',
+  pricing: {
+    monthly: 0,
+  },
+  limits: {
+    minSeats: 1,
+    maxSeats: null, // unlimited
+    aiActionsBase: -1, // unlimited
+    pooling: true,
+    rolloverPercentage: -1, // unlimited
+    maxRollover: null, // unlimited
+  },
+  features: {
+    maxSplitChildren: -1, // unlimited
+    bulkSplitLimit: -1, // unlimited
+    bulkOperationLimit: -1, // unlimited
+    updateEnabled: true,
+    approvalsRequired: false,
+    gherkinTemplates: 'enterprise_library',
+    auditLogRetention: -1, // unlimited
+    supportTier: '24_7_dedicated',
+    advancedFeatures: {
+      sso: true,
+      saml: true,
+      rbac: true,
+      dataResidency: true,
+      complianceExports: true,
+    },
+  },
+  addOns: {
+    availableAddOns: [],
+  },
+}
+
 // Helper to check if a tier is in the New2025Tier set
 function is2025Tier(tier: SubscriptionTier): tier is New2025Tier {
   return tier in TIER_CONFIGS
 }
 
-// Map legacy tiers to closest 2025 tier
-function mapToNew2025Tier(tier: SubscriptionTier): New2025Tier {
-  if (is2025Tier(tier)) return tier
-  // Map legacy tiers to closest equivalent
-  if (tier === 'free' || tier === 'solo' || tier === 'core' || tier === 'business') {
-    return 'starter' // Default fallback
-  }
-  return 'starter'
-}
-
 export function getTierConfig(tier: SubscriptionTier): TierConfig {
-  const mappedTier = mapToNew2025Tier(tier)
-  return TIER_CONFIGS[mappedTier]
+  // Admin tier bypass - return unlimited config
+  if (tier === 'admin') {
+    return ADMIN_TIER_CONFIG
+  }
+  
+  // All other tiers should be valid New2025Tier values
+  if (is2025Tier(tier)) {
+    return TIER_CONFIGS[tier]
+  }
+  
+  // Fallback to starter for safety
+  console.warn(`Unknown tier: ${tier}, falling back to starter`)
+  return TIER_CONFIGS.starter
 }
 
 export function getAddOnConfig(type: AddOnType): AddOnConfig {
@@ -360,18 +439,20 @@ export function isAddOnAvailableForTier(addOnType: AddOnType, tier: Subscription
 }
 
 export function getMaxSeatsForTier(tier: SubscriptionTier): number | null {
-  const mappedTier = mapToNew2025Tier(tier)
-  return TIER_CONFIGS[mappedTier].limits.maxSeats
+  const config = getTierConfig(tier)
+  return config.limits.maxSeats
 }
 
 export function getMinSeatsForTier(tier: SubscriptionTier): number {
-  const mappedTier = mapToNew2025Tier(tier)
-  return TIER_CONFIGS[mappedTier].limits.minSeats
+  const config = getTierConfig(tier)
+  return config.limits.minSeats
 }
 
 export function isFeatureEnabled(tier: SubscriptionTier, feature: keyof TierConfig['features']): boolean {
-  const mappedTier = mapToNew2025Tier(tier)
-  const config = TIER_CONFIGS[mappedTier]
+  // Admin tier has all features enabled
+  if (tier === 'admin') return true
+  
+  const config = getTierConfig(tier)
   const featureValue = config.features[feature]
   
   if (typeof featureValue === 'boolean') {
@@ -382,8 +463,7 @@ export function isFeatureEnabled(tier: SubscriptionTier, feature: keyof TierConf
 }
 
 export function getFeatureLimit(tier: SubscriptionTier, limit: keyof TierConfig['limits']): number | null {
-  const mappedTier = mapToNew2025Tier(tier)
-  const config = TIER_CONFIGS[mappedTier]
+  const config = getTierConfig(tier)
   return config.limits[limit] as number | null
 }
 
@@ -405,8 +485,7 @@ export function getUpgradePrompt(
   currentTier: SubscriptionTier,
   requiredTier: SubscriptionTier
 ): UpgradePrompt {
-  const mappedRequired = mapToNew2025Tier(requiredTier)
-  const requiredConfig = TIER_CONFIGS[mappedRequired]
+  const requiredConfig = getTierConfig(requiredTier)
   
   return {
     feature,
@@ -492,8 +571,12 @@ export function validateSeatCount(tier: SubscriptionTier, seats: number): {
   valid: boolean
   error?: string
 } {
-  const mappedTier = mapToNew2025Tier(tier)
-  const config = TIER_CONFIGS[mappedTier]
+  // Admin tier has no seat restrictions
+  if (tier === 'admin') {
+    return { valid: true }
+  }
+  
+  const config = getTierConfig(tier)
   
   if (seats < config.limits.minSeats) {
     return {
@@ -544,6 +627,7 @@ export function validateAddOnPurchase(
 
 export default {
   TIER_CONFIGS,
+  ADMIN_TIER_CONFIG,
   ADD_ON_CONFIGS,
   AI_ACTION_COSTS,
   getTierConfig,
