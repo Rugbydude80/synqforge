@@ -10,8 +10,7 @@ import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
 import { EmbeddingsService } from '@/lib/services/embeddings.service';
-import { ContextAccessService } from '@/lib/services/context-access.service';
-import { ContextLevel, UserTier } from '@/lib/types/context.types';
+import { ContextLevel } from '@/lib/types/context.types';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);

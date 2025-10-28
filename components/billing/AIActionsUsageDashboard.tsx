@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Brain, Zap, TrendingUp, AlertTriangle, Calendar, Info } from 'lucide-react';
 import { ContextAccessService } from '@/lib/services/context-access.service';
 import { UserTier, ContextLevel } from '@/lib/types/context.types';
@@ -116,8 +115,11 @@ export function AIActionsUsageDashboard({ organizationId }: AIActionsUsageDashbo
           </div>
           <div className="flex items-center gap-2">
             <Badge
-              variant={isAtLimit ? 'destructive' : isNearLimit ? 'warning' : 'outline'}
-              className="text-sm font-mono"
+              variant={isAtLimit ? 'destructive' : 'outline'}
+              className={cn(
+                "text-sm font-mono",
+                isNearLimit && !isAtLimit && "border-amber-500 text-amber-600 dark:text-amber-400"
+              )}
             >
               {usagePercentage.toFixed(1)}% used
             </Badge>

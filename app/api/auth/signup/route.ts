@@ -22,6 +22,18 @@ const signupSchema = z.object({
   plan: z.enum(['free', 'solo', 'team', 'pro', 'enterprise']).default('free'),
 })
 
+// Map signup plan names to database tier names
+function mapPlanToTier(plan: 'free' | 'solo' | 'team' | 'pro' | 'enterprise'): 'starter' | 'core' | 'pro' | 'team' | 'enterprise' {
+  const tierMap = {
+    'free': 'starter',
+    'solo': 'core',
+    'pro': 'pro',
+    'team': 'team',
+    'enterprise': 'enterprise',
+  } as const;
+  return tierMap[plan];
+}
+
 // Plans that require Stripe checkout (enterprise is contact sales)
 const PAID_PLANS_WITH_CHECKOUT = ['solo', 'pro', 'team'] as const
 
@@ -99,30 +111,30 @@ export async function POST(req: NextRequest) {
     const baseSlug = validatedData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
     const slug = `${baseSlug}-${timestamp}`
 
-    // SECURITY FIX: Always start with free tier until payment is confirmed
+    // SECURITY FIX: Always start with starter tier until payment is confirmed
     // Paid plans will be upgraded via Stripe webhook after successful payment
     // This prevents users from getting paid access without paying
-    const actualTier = validatedData.plan === 'free' ? 'free' : 'free' // Start as free, upgrade via webhook
+    const actualTier = 'starter'; // Always start as starter (free tier), upgrade via webhook
     
-    // Store the intended plan for later use (if user didn't complete payment)
-    const intendedPlan = validatedData.plan
+    // Store the intended plan (mapped to database tier name)
+    const intendedTier = mapPlanToTier(validatedData.plan);
     
-    // For free plan, give 7 day trial. For paid plans, no trial until they pay
+    // For free/starter plan, give 7 day trial. For paid plans, no trial until they pay
     const trialEndDate = validatedData.plan === 'free'
-      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days for free
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days for free/starter
       : null
 
     await db.transaction(async (tx) => {
-      // Create organization - always starts as free tier
+      // Create organization - always starts as starter tier
       // Paid tier will be activated via Stripe webhook upon successful payment
-      // Store intended plan so we can direct them to payment if they haven't paid
+      // Store intended tier so we can direct them to payment if they haven't paid
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
         slug: slug,
-        subscriptionTier: actualTier, // Always free until payment confirmed
-        plan: intendedPlan, // Store what they signed up for
-        subscriptionStatus: intendedPlan === 'free' ? 'active' : 'inactive', // Inactive until they pay
+        subscriptionTier: actualTier, // Always starter until payment confirmed
+        plan: intendedTier, // Store what they signed up for (as database tier name)
+        subscriptionStatus: validatedData.plan === 'free' ? 'active' : 'inactive', // Inactive until they pay
         trialEndsAt: trialEndDate,
       })
 

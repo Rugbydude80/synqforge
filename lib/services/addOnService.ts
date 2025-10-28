@@ -360,11 +360,13 @@ export async function handleSubscriptionCancelled(
   }
 }
 
-export default {
+const addOnService = {
   purchaseAddOn,
   applyAddOnFromCheckout,
   listActiveAddOns,
   cancelAddOn,
   handleSubscriptionCancelled,
 }
+
+export default addOnService;
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
-import { UserTier, ContextLevel } from '@/lib/types/context.types';
+import { UserTier } from '@/lib/types/context.types';
 
 /**
  * GET /api/billing/ai-actions-usage

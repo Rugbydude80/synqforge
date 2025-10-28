@@ -119,12 +119,15 @@ async function updateOrCreateSubscription(
 /**
  * Maps plan name to legacy tier for backward compatibility
  */
-function getLegacyTier(planName: string): 'free' | 'team' | 'business' | 'enterprise' {
-  if (planName === 'solo') return 'free'
+function getLegacyTier(planName: string): 'starter' | 'core' | 'pro' | 'team' | 'enterprise' {
+  // Map plan names to database tier names
+  if (planName === 'free') return 'starter'
+  if (planName === 'solo') return 'core'  
+  if (planName === 'core') return 'core'
+  if (planName === 'pro') return 'pro'
   if (planName === 'team') return 'team'
-  if (planName === 'pro') return 'business'
   if (planName === 'enterprise') return 'enterprise'
-  return 'free'
+  return 'starter' // Default to starter (free tier)
 }
 
 /**
@@ -316,11 +319,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
   const freeEntitlements = getFreeTierEntitlements()
   const dbValues = entitlementsToDbValues(freeEntitlements)
 
-  // Downgrade organization to free tier
+  // Downgrade organization to starter tier (free tier)
   await db
     .update(organizations)
     .set({
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter', // Free tier is called 'starter' in database
       ...dbValues,
       stripeSubscriptionId: null,
       stripePriceId: null,
@@ -330,7 +333,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     })
     .where(eq(organizations.id, existingSubscription.organizationId))
 
-  console.log('Subscription canceled, org downgraded to free tier')
+  console.log('Subscription canceled, org downgraded to starter tier')
 }
 
 /**

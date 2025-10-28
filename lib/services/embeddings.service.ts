@@ -21,7 +21,8 @@ interface SimilarStory extends Story {
 }
 
 // OpenRouter returns OpenAI-compatible embedding format
-interface OpenRouterEmbeddingResponse {
+// Prefixed with _ as it's defined for future use but not currently used
+interface _OpenRouterEmbeddingResponse {
   data: Array<{
     embedding: number[];
     index: number;
