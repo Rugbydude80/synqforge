@@ -8,6 +8,7 @@ export const generateStoriesSchema = z.object({
   targetUsers: z.string().optional(),
   businessGoals: z.string().optional(),
   model: z.string().optional(),
+  promptTemplate: z.string().optional(), // Template selection
 });
 
 export const generateEpicSchema = z.object({

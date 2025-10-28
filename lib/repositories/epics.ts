@@ -31,7 +31,7 @@ export class EpicsRepository {
     }
     
     if (status) {
-      conditions.push(eq(epics.status, status))
+      conditions.push(eq(epics.status, status as 'draft' | 'published' | 'planned' | 'in_progress' | 'completed' | 'archived'))
     }
 
     const query = db

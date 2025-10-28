@@ -2,6 +2,7 @@ import { openai, MODEL } from '@/lib/ai/client';
 import { db } from '@/lib/db';
 import { aiGenerations } from '@/lib/db/schema';
 import { generateId } from '@/lib/db';
+import { getSystemPromptForTemplate, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 
 export interface AIGenerationRequest {
   model: string;
@@ -144,9 +145,10 @@ export class AIService {
     requirements: string,
     context?: string,
     count: number = 5,
-    model: string = MODEL
+    model: string = MODEL,
+    promptTemplate?: string
   ): Promise<StoryGenerationResponse> {
-    const prompt = this.buildStoryGenerationPrompt(requirements, context, count);
+    const prompt = this.buildStoryGenerationPrompt(requirements, context, count, promptTemplate);
 
     const response = await this.generate({
       model,
@@ -339,13 +341,15 @@ export class AIService {
     const costPerToken = 0.00001; // $0.01 per 1000 tokens
     const cost = usage.totalTokens * costPerToken;
 
+    // SECURITY: Never include the full system prompt in tracked data
+    // Only track the requirements text provided by the user
     await db.insert(aiGenerations).values({
       id: generateId(),
       userId,
       organizationId,
       type: requestType,
       model,
-      promptText,
+      promptText, // This should only contain user input, not system prompts
       responseText,
       tokensUsed: usage.totalTokens,
       costUsd: cost.toString(),
@@ -357,33 +361,25 @@ export class AIService {
   /**
    * Build story generation prompt
    */
-  private buildStoryGenerationPrompt(requirements: string, context?: string, count: number = 5): string {
-    return `You are an expert product manager and agile coach. Generate ${count} well-written user stories based on the following requirements.
+  private buildStoryGenerationPrompt(
+    requirements: string, 
+    context?: string, 
+    count: number = 5,
+    promptTemplate?: string
+  ): string {
+    // Get the system prompt for the selected template (server-side only)
+    const templateKey = promptTemplate || getDefaultTemplateKey();
+    const systemPrompt = getSystemPromptForTemplate(templateKey);
+    
+    // Inject requirements and context into the template
+    const contextSection = context ? `Context: ${context}\n\n` : '';
+    
+    return `${systemPrompt}
 
-${context ? `Context: ${context}\n\n` : ''}Requirements:
+${contextSection}Requirements:
 ${requirements}
 
-For each story, provide:
-1. A clear, user-focused title
-2. A detailed description
-3. Specific acceptance criteria (3-5 items)
-4. Priority level (low, medium, high, critical)
-5. Story points estimate (1-13)
-6. Brief reasoning for the story
-
-Format the response as JSON with this structure:
-{
-  "stories": [
-    {
-      "title": "As a [user type], I want [goal] so that [benefit]",
-      "description": "Detailed description of the story...",
-      "acceptanceCriteria": ["Criteria 1", "Criteria 2", "Criteria 3"],
-      "priority": "medium",
-      "storyPoints": 5,
-      "reasoning": "Why this story is important..."
-    }
-  ]
-}`;
+Generate exactly ${count} user stories based on the requirements above.`;
   }
 
   /**

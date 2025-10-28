@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sparkles, X, AlertCircle } from 'lucide-react'
 import { ContextSelector } from '@/components/story-generation/ContextSelector'
 import { ContextLevel, UserTier } from '@/lib/types/context.types'
+import { PromptTemplateSelector } from '@/components/ai/prompt-template-selector'
 
 interface StoryFormModalProps {
   open: boolean
@@ -44,6 +45,7 @@ export function StoryFormModal({
   const [showAIInput, setShowAIInput] = React.useState(false)
   const [aiRequirement, setAiRequirement] = React.useState('')
   const [showEpicPrompt, setShowEpicPrompt] = React.useState(false)
+  const [promptTemplate, setPromptTemplate] = React.useState<string>('standard')
   
   const [formData, setFormData] = React.useState({
     title: '',
@@ -212,6 +214,7 @@ export function StoryFormModal({
           projectId,
           epicId: formData.epicId || undefined,
           contextLevel: selectedContextLevel,
+          promptTemplate: promptTemplate, // Include selected template
         }),
       })
 
@@ -296,6 +299,14 @@ export function StoryFormModal({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
+                
+                {/* Template Selector */}
+                <PromptTemplateSelector
+                  value={promptTemplate}
+                  onChange={setPromptTemplate}
+                  disabled={isGenerating}
+                />
+                
                 <Textarea
                   placeholder="Describe what you want this story to accomplish... (e.g., 'Allow users to reset their password via email')"
                   value={aiRequirement}
