@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Sparkles, FileText, Sheet, FileCheck } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 export function Hero() {
   return (

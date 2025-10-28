@@ -625,7 +625,7 @@ export function validateAddOnPurchase(
   return { valid: true }
 }
 
-export default {
+const tierConfig = {
   TIER_CONFIGS,
   ADMIN_TIER_CONFIG,
   ADD_ON_CONFIGS,
@@ -645,3 +645,4 @@ export default {
   validateAddOnPurchase,
 }
 
+export default tierConfig;

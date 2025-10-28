@@ -74,7 +74,7 @@ export async function checkFeatureAccess(
       }
     }
 
-    const tier = organization.subscriptionTier || 'free'
+    const tier = organization.subscriptionTier || 'starter'
     const features = getSubscriptionFeatures(tier)
 
     const context: FeatureGateContext = {
@@ -258,7 +258,7 @@ export async function getFeatureGateContext(): Promise<FeatureGateContext | null
       return null
     }
 
-    const tier = organization.subscriptionTier || 'free'
+    const tier = organization.subscriptionTier || 'starter'
     const features = getSubscriptionFeatures(tier)
 
     return {

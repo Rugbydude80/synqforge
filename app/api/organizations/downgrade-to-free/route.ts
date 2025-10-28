@@ -69,9 +69,9 @@ export async function POST(_req: NextRequest) {
     await db
       .update(organizations)
       .set({
-        subscriptionTier: 'free',
+        subscriptionTier: 'starter', // Free tier is called 'starter' in database
         ...dbValues,
-        subscriptionStatus: 'active', // Free plan is always active
+        subscriptionStatus: 'active', // Starter plan is always active
         trialEndsAt,
         updatedAt: new Date(),
       })

@@ -21,7 +21,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sparkles, X, AlertCircle } from 'lucide-react'
 import { ContextSelector } from '@/components/story-generation/ContextSelector'
 import { ContextLevel, UserTier } from '@/lib/types/context.types'
-import { useSession } from 'next-auth/react'
 
 interface StoryFormModalProps {
   open: boolean
@@ -45,8 +44,6 @@ export function StoryFormModal({
   const [showAIInput, setShowAIInput] = React.useState(false)
   const [aiRequirement, setAiRequirement] = React.useState('')
   const [showEpicPrompt, setShowEpicPrompt] = React.useState(false)
-
-  const { data: session } = useSession()
   
   const [formData, setFormData] = React.useState({
     title: '',
@@ -455,11 +452,13 @@ export function StoryFormModal({
               <div className="grid gap-2">
                 <Label>AI Context Level</Label>
                 <ContextSelector
-                  value={selectedContextLevel}
-                  onChange={setSelectedContextLevel}
-                  userTier={(session?.user?.tier as UserTier) || UserTier.STARTER}
+                  selectedLevel={selectedContextLevel}
+                  onLevelChange={setSelectedContextLevel}
+                  userTier={UserTier.PRO} // TODO: Get from user's session/organization
                   actionsUsed={0} // TODO: Get from user's actual usage
-                  disabled={isGenerating}
+                  monthlyLimit={800} // TODO: Get from user's tier config
+                  projectId={projectId}
+                  epicId={formData.epicId || undefined}
                 />
               </div>
             )}

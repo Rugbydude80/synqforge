@@ -1,4 +1,4 @@
-import { Zap, Layers, Settings, Users } from 'lucide-react'
+import { Zap, Layers, Settings } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 
 export function WhySynqForge() {
