@@ -186,7 +186,7 @@ export async function reserveSeat(organizationId: string): Promise<SeatUpdateRes
 
   const tier = org.subscriptionTier || 'free'
 
-  if (tier === 'free') {
+  if (tier === 'starter') {
     return {
       success: false,
       message: `Free plan is limited to ${seatInfo.includedSeats} seats. Please upgrade to add more users.`,
@@ -220,7 +220,7 @@ export async function addAddonSeats(
 
     const tier = org.subscriptionTier || 'free'
 
-    if (tier === 'free') {
+    if (tier === 'starter') {
       return {
         success: false,
         message: 'Cannot add addon seats to free plan',

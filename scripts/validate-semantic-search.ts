@@ -186,11 +186,11 @@ async function validateServices() {
   try {
     const health = await embeddingsService.healthCheck();
     
-    const allHealthy = health.database && health.qwenApi && health.indexExists;
+    const allHealthy = health.database && health.openrouterApi && health.indexExists;
     
     console.log('🏥 Health Check:');
     console.log(`   Database: ${health.database ? '✅' : '❌'}`);
-    console.log(`   Qwen API: ${health.qwenApi ? '✅' : '❌'}`);
+    console.log(`   Qwen API: ${health.openrouterApi ? '✅' : '❌'}`);
     console.log(`   Index: ${health.indexExists ? '✅' : '❌'}`);
     
     if (allHealthy) {

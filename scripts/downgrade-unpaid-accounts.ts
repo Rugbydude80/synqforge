@@ -30,9 +30,9 @@ if (!connectionString) {
 const client = postgres(connectionString)
 const db = drizzle(client)
 
-// Free tier entitlements
+// Free tier entitlements ('free' tier is now 'starter' in the database)
 const FREE_TIER_ENTITLEMENTS = {
-  subscriptionTier: 'free' as const,
+  subscriptionTier: 'starter' as const, // Free tier is 'starter' in database
   subscriptionStatus: 'inactive' as const,
   stripeSubscriptionId: null,
   stripePriceId: null,
@@ -58,7 +58,7 @@ async function downgradeUnpaidAccounts() {
     const paidTierOrgs = await db
       .select()
       .from(organizations)
-      .where(inArray(organizations.subscriptionTier, ['solo', 'team', 'pro', 'business', 'enterprise']))
+      .where(inArray(organizations.subscriptionTier, ['core', 'team', 'pro', 'enterprise'])) // Updated to match current tier names ('business' and 'solo' tiers were removed)
 
     console.log(`📊 Found ${paidTierOrgs.length} organizations with paid subscription tiers\n`)
 

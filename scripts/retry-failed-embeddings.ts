@@ -60,7 +60,7 @@ async function retryFailedEmbeddings() {
   console.log('🔄 Processing...\n');
   const startTime = Date.now();
   const result = await embeddingsService.batchEmbedStories(
-    storiesNeedingEmbedding,
+    storiesNeedingEmbedding as any[], // Type assertion for script compatibility
     5, // batch size
     1000 // 1 second delay
   );

@@ -56,12 +56,14 @@ export async function semanticSearch(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier || 'free'
-    if (!['business', 'enterprise'].includes(tier)) {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (!['business', 'enterprise', 'admin'].includes(tier)) { // Include admin in allowed tiers
       throw new Error('Knowledge Search requires Business plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`
