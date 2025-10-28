@@ -28,8 +28,8 @@ async function listEpics(req: NextRequest, context: any) {
   }
 
   try {
-    // projectId is now optional - if not provided, returns all epics for the organization
-    const epics = await epicsRepo.getEpics(filters.projectId)
+    // projectId and status are now optional - if not provided, returns all epics for the organization
+    const epics = await epicsRepo.getEpics(filters.projectId, filters.status)
 
     return NextResponse.json({
       data: epics,

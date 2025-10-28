@@ -13,12 +13,25 @@ export class EpicsRepository {
   constructor(private userContext: UserContext) {}
 
   /**
-   * Get all epics for the organization (optionally filtered by project)
+   * Get all epics for the organization (optionally filtered by project and/or status)
    */
-  async getEpics(projectId?: string) {
+  async getEpics(projectId?: string, status?: string) {
     // If projectId is provided, verify access to that specific project
     if (projectId) {
       await this.verifyProjectAccess(projectId)
+    }
+
+    // Build where conditions
+    const conditions = []
+    
+    if (projectId) {
+      conditions.push(eq(epics.projectId, projectId))
+    } else {
+      conditions.push(eq(epics.organizationId, this.userContext.organizationId))
+    }
+    
+    if (status) {
+      conditions.push(eq(epics.status, status))
     }
 
     const query = db
@@ -62,11 +75,7 @@ export class EpicsRepository {
       })
       .from(epics)
       .leftJoin(users, eq(epics.createdBy, users.id))
-      .where(
-        projectId
-          ? eq(epics.projectId, projectId)
-          : eq(epics.organizationId, this.userContext.organizationId)
-      )
+      .where(and(...conditions))
       .orderBy(desc(epics.createdAt))
 
     const result = await query

@@ -77,7 +77,8 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
 
   const fetchEpics = async () => {
     try {
-      const response = await api.epics.list({ projectId: story.projectId })
+      // Only fetch published epics (draft epics shouldn't be available for story assignment)
+      const response = await api.epics.list({ projectId: story.projectId, status: 'published' })
       setEpics(response.data || [])
     } catch (error) {
       console.error('Failed to load epics:', error)
