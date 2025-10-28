@@ -3,7 +3,7 @@
  * Tests that tier restrictions are properly enforced at the API level
  */
 
-import { describe, it, before } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { ContextAccessService } from '@/lib/services/context-access.service';
 import { UserTier, ContextLevel } from '@/lib/types/context.types';
@@ -175,7 +175,6 @@ describe('Context Access API Integration', () => {
       const userTier = UserTier.STARTER;
       const requestedContext = ContextLevel.COMPREHENSIVE;
       
-      const canAccess = ContextAccessService.canAccessContextLevel(userTier, requestedContext);
       const upgradeMessage = ContextAccessService.getUpgradeMessage(userTier, requestedContext);
       
       // Simulate API response
@@ -227,12 +226,6 @@ describe('Context Access API Integration', () => {
       const userTier = UserTier.PRO;
       const actionsUsed = 100;
       
-      const canAccess = ContextAccessService.canAccessContextLevel(userTier, contextLevel);
-      const affordability = ContextAccessService.canAffordGeneration(
-        contextLevel,
-        userTier,
-        actionsUsed
-      );
       const actionsDeducted = ContextAccessService.getActionsRequired(contextLevel);
       const monthlyLimit = ContextAccessService.getMonthlyLimit(userTier);
       

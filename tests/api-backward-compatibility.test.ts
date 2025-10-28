@@ -5,7 +5,8 @@
  * continue to work without any breaking changes.
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 
 describe('Story Generation API - Backward Compatibility', () => {
   describe('Request Format', () => {
@@ -18,14 +19,12 @@ describe('Story Generation API - Backward Compatibility', () => {
       };
       
       // Should not throw when validating
-      expect(() => {
-        // This simulates the schema validation
-        const hasRequiredFields = 
-          legacyRequest.requirement &&
-          legacyRequest.projectId;
-        
-        expect(hasRequiredFields).toBe(true);
-      }).not.toThrow();
+      // This simulates the schema validation
+      const hasRequiredFields = 
+        legacyRequest.requirement &&
+        legacyRequest.projectId;
+      
+      assert.strictEqual(hasRequiredFields, true);
     });
 
     it('should accept requests WITH promptTemplate parameter', () => {
@@ -37,13 +36,13 @@ describe('Story Generation API - Backward Compatibility', () => {
         promptTemplate: 'lean-agile'
       };
       
-      expect(newRequest.promptTemplate).toBe('lean-agile');
-      expect(newRequest.requirement).toBeDefined();
-      expect(newRequest.projectId).toBeDefined();
+      assert.strictEqual(newRequest.promptTemplate, 'lean-agile');
+      assert.ok(newRequest.requirement);
+      assert.ok(newRequest.projectId);
     });
 
     it('should treat missing promptTemplate as standard template', () => {
-      const requestWithoutTemplate = {
+      const requestWithoutTemplate: { requirement: string; projectId: string; promptTemplate?: string } = {
         requirement: 'Test requirement',
         projectId: 'test-123'
       };
@@ -51,7 +50,7 @@ describe('Story Generation API - Backward Compatibility', () => {
       // Simulate the default value assignment in the API
       const effectiveTemplate = requestWithoutTemplate.promptTemplate || 'standard';
       
-      expect(effectiveTemplate).toBe('standard');
+      assert.strictEqual(effectiveTemplate, 'standard');
     });
 
     it('should treat empty string promptTemplate as standard template', () => {
@@ -64,7 +63,7 @@ describe('Story Generation API - Backward Compatibility', () => {
       // Simulate the default value assignment in the API
       const effectiveTemplate = requestWithEmptyTemplate.promptTemplate || 'standard';
       
-      expect(effectiveTemplate).toBe('standard');
+      assert.strictEqual(effectiveTemplate, 'standard');
     });
   });
 
@@ -84,15 +83,15 @@ describe('Story Generation API - Backward Compatibility', () => {
       };
       
       // Verify structure
-      expect(expectedResponseStructure).toHaveProperty('success');
-      expect(expectedResponseStructure).toHaveProperty('story');
-      expect(expectedResponseStructure.story).toHaveProperty('title');
-      expect(expectedResponseStructure.story).toHaveProperty('description');
-      expect(expectedResponseStructure.story).toHaveProperty('acceptanceCriteria');
+      assert.ok('success' in expectedResponseStructure);
+      assert.ok('story' in expectedResponseStructure);
+      assert.ok('title' in expectedResponseStructure.story);
+      assert.ok('description' in expectedResponseStructure.story);
+      assert.ok('acceptanceCriteria' in expectedResponseStructure.story);
       
       // Should NOT contain promptTemplate or system prompt in response
-      expect(expectedResponseStructure).not.toHaveProperty('promptTemplate');
-      expect(expectedResponseStructure).not.toHaveProperty('systemPrompt');
+      assert.ok(!('promptTemplate' in expectedResponseStructure));
+      assert.ok(!('systemPrompt' in expectedResponseStructure));
     });
 
     it('should never include system prompts in response', () => {
@@ -111,9 +110,9 @@ describe('Story Generation API - Backward Compatibility', () => {
       const responseStr = JSON.stringify(mockResponse);
       
       // Verify no prompt leakage
-      expect(responseStr).not.toContain('You are an expert');
-      expect(responseStr).not.toContain('Generate stories');
-      expect(responseStr).not.toContain('systemPrompt');
+      assert.ok(!responseStr.includes('You are an expert'));
+      assert.ok(!responseStr.includes('Generate stories'));
+      assert.ok(!responseStr.includes('systemPrompt'));
     });
 
     it('should maintain backward compatible error responses', () => {
@@ -122,22 +121,22 @@ describe('Story Generation API - Backward Compatibility', () => {
         details: []
       };
       
-      expect(errorResponse).toHaveProperty('error');
-      expect(typeof errorResponse.error).toBe('string');
+      assert.ok('error' in errorResponse);
+      assert.strictEqual(typeof errorResponse.error, 'string');
     });
   });
 
   describe('Bulk Story Generation', () => {
     it('should accept legacy requests without promptTemplate', () => {
-      const legacyBulkRequest = {
+      const legacyBulkRequest: { requirements: string; projectId: string; projectContext: string; promptTemplate?: string } = {
         requirements: 'Build a user management system',
         projectId: 'test-project-456',
         projectContext: 'Admin dashboard'
       };
       
-      expect(legacyBulkRequest.requirements).toBeDefined();
-      expect(legacyBulkRequest.projectId).toBeDefined();
-      expect(legacyBulkRequest.promptTemplate).toBeUndefined();
+      assert.ok(legacyBulkRequest.requirements);
+      assert.ok(legacyBulkRequest.projectId);
+      assert.strictEqual(legacyBulkRequest.promptTemplate, undefined);
     });
 
     it('should accept new requests with promptTemplate', () => {
@@ -148,9 +147,9 @@ describe('Story Generation API - Backward Compatibility', () => {
         promptTemplate: 'bdd-compliance'
       };
       
-      expect(newBulkRequest.requirements).toBeDefined();
-      expect(newBulkRequest.projectId).toBeDefined();
-      expect(newBulkRequest.promptTemplate).toBe('bdd-compliance');
+      assert.ok(newBulkRequest.requirements);
+      assert.ok(newBulkRequest.projectId);
+      assert.strictEqual(newBulkRequest.promptTemplate, 'bdd-compliance');
     });
   });
 
@@ -170,12 +169,12 @@ describe('Story Generation API - Backward Compatibility', () => {
       const request = legacyGenerateStory('Add login', 'proj-123');
       const body = JSON.parse(request.body);
       
-      expect(body.requirement).toBe('Add login');
-      expect(body.projectId).toBe('proj-123');
-      expect(body.promptTemplate).toBeUndefined();
+      assert.strictEqual(body.requirement, 'Add login');
+      assert.strictEqual(body.projectId, 'proj-123');
+      assert.strictEqual(body.promptTemplate, undefined);
       
       // This should still work with the API
-      expect(request.method).toBe('POST');
+      assert.strictEqual(request.method, 'POST');
     });
 
     it('should support new client code with templates', () => {
@@ -185,7 +184,7 @@ describe('Story Generation API - Backward Compatibility', () => {
         projectId: string, 
         template?: string
       ) {
-        const body: any = {
+        const body: Record<string, string> = {
           requirement,
           projectId
         };
@@ -203,12 +202,12 @@ describe('Story Generation API - Backward Compatibility', () => {
       const requestWithTemplate = newGenerateStory('Add login', 'proj-123', 'lean-agile');
       const bodyWithTemplate = JSON.parse(requestWithTemplate.body);
       
-      expect(bodyWithTemplate.promptTemplate).toBe('lean-agile');
+      assert.strictEqual(bodyWithTemplate.promptTemplate, 'lean-agile');
       
       const requestWithoutTemplate = newGenerateStory('Add login', 'proj-123');
       const bodyWithoutTemplate = JSON.parse(requestWithoutTemplate.body);
       
-      expect(bodyWithoutTemplate.promptTemplate).toBeUndefined();
+      assert.strictEqual(bodyWithoutTemplate.promptTemplate, undefined);
     });
   });
 
@@ -233,12 +232,12 @@ describe('Story Generation API - Backward Compatibility', () => {
       };
       
       // Valid request
-      expect(validRequest.requirement.length).toBeGreaterThanOrEqual(10);
-      expect(validRequest.projectId.length).toBeGreaterThan(0);
+      assert.ok(validRequest.requirement.length >= 10);
+      assert.ok(validRequest.projectId.length > 0);
       
       // Invalid requests
-      expect(invalidRequest1.requirement.length).toBeLessThan(10);
-      expect(invalidRequest2.projectId.length).toBe(0);
+      assert.ok(invalidRequest1.requirement.length < 10);
+      assert.strictEqual(invalidRequest2.projectId.length, 0);
     });
 
     it('should maintain existing rate limiting behavior', () => {
@@ -251,8 +250,8 @@ describe('Story Generation API - Backward Compatibility', () => {
       
       // All requests should be subject to the same rate limiting
       requests.forEach(req => {
-        expect(req.requirement).toBeDefined();
-        expect(req.projectId).toBe('proj-1');
+        assert.ok(req.requirement);
+        assert.strictEqual(req.projectId, 'proj-1');
       });
     });
   });
@@ -282,14 +281,14 @@ describe('Template Metadata API', () => {
       const responseStr = JSON.stringify(mockResponse);
       
       // Verify no prompt leakage
-      expect(responseStr).not.toContain('systemPrompt');
-      expect(responseStr).not.toContain('You are an expert');
-      expect(responseStr).not.toContain('Generate stories');
+      assert.ok(!responseStr.includes('systemPrompt'));
+      assert.ok(!responseStr.includes('You are an expert'));
+      assert.ok(!responseStr.includes('Generate stories'));
       
       // Verify expected fields are present
-      expect(mockResponse.templates[0]).toHaveProperty('key');
-      expect(mockResponse.templates[0]).toHaveProperty('displayName');
-      expect(mockResponse.templates[0]).toHaveProperty('description');
+      assert.ok('key' in mockResponse.templates[0]);
+      assert.ok('displayName' in mockResponse.templates[0]);
+      assert.ok('description' in mockResponse.templates[0]);
     });
   });
 
@@ -312,9 +311,9 @@ describe('Template Metadata API', () => {
       const responseStr = JSON.stringify(mockAdminResponse);
       
       // Even admin endpoint should not leak prompts
-      expect(responseStr).not.toContain('systemPrompt');
-      expect(responseStr).not.toContain('You are an expert');
-      expect(mockAdminResponse.note).toContain('server-side only');
+      assert.ok(!responseStr.includes('systemPrompt'));
+      assert.ok(!responseStr.includes('You are an expert'));
+      assert.ok(mockAdminResponse.note.includes('server-side only'));
     });
 
     it('should require authentication', () => {
@@ -325,9 +324,8 @@ describe('Template Metadata API', () => {
         status: 403
       };
       
-      expect(unauthorizedResponse.status).toBe(403);
-      expect(unauthorizedResponse.error).toContain('Admin');
+      assert.strictEqual(unauthorizedResponse.status, 403);
+      assert.ok(unauthorizedResponse.error.includes('Admin'));
     });
   });
 });
-
