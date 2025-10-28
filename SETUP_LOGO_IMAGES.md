@@ -98,3 +98,4 @@ If the images don't load after saving:
 3. Verify images are in `/Users/chrisrobertson/Desktop/synqforge/public/`
 4. Check Next.js console for image loading errors
 
+
