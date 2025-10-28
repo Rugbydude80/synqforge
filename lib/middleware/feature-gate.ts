@@ -75,7 +75,9 @@ export async function checkFeatureAccess(
     }
 
     const tier = organization.subscriptionTier || 'starter'
-    const features = getSubscriptionFeatures(tier)
+    // Admin users get enterprise features
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const features = getSubscriptionFeatures(effectiveTier)
 
     const context: FeatureGateContext = {
       user: {
@@ -259,7 +261,9 @@ export async function getFeatureGateContext(): Promise<FeatureGateContext | null
     }
 
     const tier = organization.subscriptionTier || 'starter'
-    const features = getSubscriptionFeatures(tier)
+    // Admin users get enterprise features
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const features = getSubscriptionFeatures(effectiveTier)
 
     return {
       user: {
