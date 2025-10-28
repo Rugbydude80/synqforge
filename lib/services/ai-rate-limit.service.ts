@@ -72,6 +72,20 @@ const rateLimiters = {
       prefix: 'ratelimit:ai_heavy:core',
     }),
   },
+  admin: {
+    standard: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(1000, '60 s'), // Effectively unlimited
+      analytics: true,
+      prefix: 'ratelimit:ai:admin',
+    }),
+    heavy: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(100, '60 s'), // Effectively unlimited
+      analytics: true,
+      prefix: 'ratelimit:ai_heavy:admin',
+    }),
+  },
   team: {
     standard: new Ratelimit({
       redis,
@@ -173,8 +187,18 @@ export async function checkAIRateLimit(
  */
 export async function checkHeavyJobRateLimit(
   organizationId: string,
-  tier: 'free' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise' | 'admin' | 'starter'
 ): Promise<RateLimitResult> {
+  // Admin tier bypass
+  if (tier === 'admin') {
+    return {
+      success: true,
+      limit: Infinity,
+      remaining: Infinity,
+      reset: new Date(Date.now() + 60000),
+    }
+  }
+  
   try {
     const limiter = rateLimiters[tier].heavy
     const result = await limiter.limit(organizationId)
@@ -203,11 +227,27 @@ export async function checkHeavyJobRateLimit(
  */
 export async function getAIQuota(
   organizationId: string,
-  tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
+  tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise' | 'admin'
 ): Promise<{
   standard: { limit: number; remaining: number; reset: Date }
   heavy: { limit: number; remaining: number; reset: Date }
 }> {
+  // Admin tier bypass
+  if (tier === 'admin') {
+    return {
+      standard: {
+        limit: Infinity,
+        remaining: Infinity,
+        reset: new Date(Date.now() + 60000),
+      },
+      heavy: {
+        limit: Infinity,
+        remaining: Infinity,
+        reset: new Date(Date.now() + 60000),
+      },
+    }
+  }
+  
   const limits = SUBSCRIPTION_LIMITS[tier]
 
   // Get current usage from rate limiters
@@ -257,7 +297,7 @@ export async function getAIQuota(
  * Reset rate limits for an organization (admin function)
  */
 export async function resetRateLimits(organizationId: string): Promise<void> {
-  const tiers = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise'] as const
+  const tiers = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise', 'admin'] as const
 
   try {
     const keys = tiers.flatMap(tier => [
