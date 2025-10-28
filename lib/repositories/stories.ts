@@ -207,10 +207,17 @@ export class StoriesRepository {
 
   /**
    * Create new story
+   * @deprecated This method requires epicId. Use StoriesRepository from stories.repository.ts instead.
    */
   async createStory(data: CreateStoryInput) {
     if (!this.canModify()) {
       throw new ForbiddenError('Cannot create stories')
+    }
+
+    // NOTE: This old repository requires epicId to get project info
+    // For stories without epics, use the newer StoriesRepository from stories.repository.ts
+    if (!data.epicId) {
+      throw new ForbiddenError('Epic ID is required for story creation in this repository. Use StoriesRepository from stories.repository.ts for stories without epics.')
     }
 
     // Verify epic access and get project info

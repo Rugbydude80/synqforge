@@ -5,7 +5,7 @@ import { z } from 'zod'
 // ============================================
 
 export const CreateStorySchema = z.object({
-  epicId: z.string().uuid(),
+  epicId: z.union([z.string().uuid(), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   acceptanceCriteria: z.string().optional(),
@@ -31,7 +31,7 @@ export const UpdateStorySchema = z.object({
 export const StoryFiltersSchema = z.object({
   status: z.enum(['backlog', 'ready', 'in_progress', 'review', 'done', 'archived']).optional(),
   assignedTo: z.string().uuid().optional(),
-  epicId: z.string().uuid().optional(),
+  epicId: z.union([z.string().uuid(), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   storyType: z.enum(['feature', 'bug', 'task', 'spike']).optional(),
   labels: z.array(z.string()).optional(),
 })
@@ -150,7 +150,7 @@ export const StoryGenerationInputSchema = z.object({
   projectContext: z.string().optional(),
   targetUsers: z.string().optional(),
   businessGoals: z.string().optional(),
-  epicId: z.string().uuid().optional(),
+  epicId: z.union([z.string().uuid(), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   projectId: z.string().uuid(),
   model: z.string().optional(),
 })

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const generateStoriesSchema = z.object({
   requirements: z.string().min(10, 'Requirements must be at least 10 characters'),
   projectId: z.string().min(1, 'Project ID is required'),
-  epicId: z.string().optional(),
+  epicId: z.union([z.string().min(1), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   projectContext: z.string().optional(),
   targetUsers: z.string().optional(),
   businessGoals: z.string().optional(),
@@ -56,7 +56,7 @@ export const analyzeDocumentSchema = z.object({
 
 export const batchCreateStoriesSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
-  epicId: z.string().optional(),
+  epicId: z.union([z.string().min(1), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   stories: z.array(
     z.object({
       title: z.string().min(1),

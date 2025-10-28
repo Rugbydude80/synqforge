@@ -21,14 +21,14 @@ const baseStorySchema = {
 // Create story validation schema
 export const createStorySchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
-  epicId: z.string().min(1, 'Epic ID is required').optional(),
+  epicId: z.union([z.string().min(1), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   ...baseStorySchema,
 });
 
 // Update story validation schema (all fields optional)
 export const updateStorySchema = z.object({
   projectId: z.string().min(1, 'Project ID is required').optional(),
-  epicId: z.string().min(1, 'Epic ID must be valid').optional().nullable(),
+  epicId: z.union([z.string().min(1), z.literal(''), z.null(), z.undefined()]).optional().transform(val => val === '' ? null : val),
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters').optional(),
   description: z.string().max(2000, 'Description must be less than 2000 characters').optional(),
   acceptanceCriteria: z.array(z.string().max(500, 'Each criterion must be less than 500 characters')).max(20, 'Maximum 20 acceptance criteria').optional(),
