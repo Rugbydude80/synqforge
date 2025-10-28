@@ -12,70 +12,36 @@ export function Hero() {
         <div className="text-center space-y-8">
           {/* Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
-            Turn Ideas into Sprint-Ready
+            From messy notes to
             <br />
-            <span className="gradient-text">User Stories — Instantly</span>
+            <span className="gradient-text">sprint-ready user stories — in minutes.</span>
           </h1>
 
           {/* Description */}
           <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Paste your requirements or notes. SynqForge turns them into clear user stories 
-            with acceptance criteria and estimates — ready to export.
+            SynqForge turns raw requirements into consistent stories with acceptance criteria and estimates.
+            <br />
+            Built by analysts for teams that need to move fast and stay accurate.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Link href="/ai-generate" className="w-full sm:w-auto">
+            <Link href="/auth/signup" className="w-full sm:w-auto">
               <Button 
                 size="lg" 
                 className="group w-full sm:w-auto text-base px-8 py-6 h-auto"
-                data-cta="try-generation"
-                aria-label="Try AI Story Generation"
+                data-cta="try-synqforge-free"
+                aria-label="Try SynqForge Free"
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Try AI Story Generation
-              </Button>
-            </Link>
-            <Link href="#example-output" className="w-full sm:w-auto">
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="w-full sm:w-auto text-base px-8 py-6 h-auto"
-                data-cta="see-example"
-                aria-label="See example output"
-              >
-                See Example Output
+                Try SynqForge Free — no credit card, no setup
               </Button>
             </Link>
           </div>
 
-          {/* Mini Metrics */}
-          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 pt-8 text-sm sm:text-base text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-brand-purple-400">95% Time Saved</span>
-            </div>
-            <div className="hidden sm:block text-muted-foreground/50">•</div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-brand-emerald-400">100% AI Powered</span>
-            </div>
-            <div className="hidden sm:block text-muted-foreground/50">•</div>
-            <div className="flex items-center gap-2 flex-wrap justify-center">
-              <span className="font-medium">Exports:</span>
-              <span className="inline-flex items-center gap-1">
-                <FileText className="h-4 w-4" aria-hidden="true" />
-                <span>Word</span>
-              </span>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="inline-flex items-center gap-1">
-                <Sheet className="h-4 w-4" aria-hidden="true" />
-                <span>Excel</span>
-              </span>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="inline-flex items-center gap-1">
-                <FileCheck className="h-4 w-4" aria-hidden="true" />
-                <span>PDF</span>
-              </span>
-            </div>
+          {/* Proof Points */}
+          <div className="pt-8 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Deliver quality stories, faster</p>
           </div>
         </div>
       </div>

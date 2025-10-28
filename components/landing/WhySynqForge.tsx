@@ -5,23 +5,18 @@ export function WhySynqForge() {
   const benefits = [
     {
       icon: Zap,
-      title: 'Fast & consistent',
-      description: 'Standardised user stories in seconds.',
+      title: 'Generate analyst-grade stories',
+      description: 'Directly from your meeting notes.',
     },
     {
       icon: Layers,
-      title: 'Simple to use',
-      description: 'No setup or templates.',
+      title: '100% consistent output',
+      description: 'Every story follows INVEST and Gherkin standards.',
     },
     {
       icon: Settings,
-      title: 'Works your way',
-      description: 'Export files for your tools and workflows.',
-    },
-    {
-      icon: Users,
-      title: 'Built for delivery',
-      description: 'Designed by business analysts and product people.',
+      title: 'Export instantly',
+      description: 'Word, Excel, or PDF.',
     },
   ]
 
@@ -30,11 +25,11 @@ export function WhySynqForge() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Why Teams Use SynqForge
+            Deliver quality stories, faster
           </h2>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {benefits.map((benefit, index) => (
             <Card
               key={index}

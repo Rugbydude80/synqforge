@@ -5,23 +5,23 @@ export function WhoFor() {
   const audiences = [
     {
       icon: Briefcase,
-      title: 'Freelance Business Analysts',
-      description: 'Create consistent deliverables faster for your clients',
+      title: 'Business Analysts',
+      description: 'Generate stories and acceptance criteria in seconds.',
     },
     {
       icon: TrendingUp,
-      title: 'Fractional Product Managers',
-      description: 'Scale your impact across multiple projects',
+      title: 'Product Managers',
+      description: 'Clarify scope without writing specs by hand.',
     },
     {
       icon: Rocket,
-      title: 'Startup Founders',
-      description: 'Write specs without getting bogged down in details',
+      title: 'Founders',
+      description: 'Document features without learning Jira.',
     },
     {
       icon: Users,
-      title: 'Agile Delivery Teams',
-      description: 'Speed up sprint prep and focus on what matters',
+      title: 'Delivery Teams',
+      description: 'Prepare sprints faster and reduce backlog chaos.',
     },
   ]
 
@@ -29,11 +29,8 @@ export function WhoFor() {
     <section className="max-w-7xl mx-auto px-6 py-16 sm:py-24">
       <div className="text-center mb-12 sm:mb-16">
         <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-          Who It&apos;s For
+          Who Uses SynqForge
         </h2>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Built for professionals who need to move fast without sacrificing quality
-        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-6">

@@ -5,20 +5,20 @@ export function HowItWorks() {
   const steps = [
     {
       icon: Upload,
-      title: 'Paste your input',
-      description: 'Add requirements, meeting notes, or feature ideas.',
+      title: 'Paste your notes',
+      description: 'Meeting minutes, ideas, or requirements.',
       color: 'purple' as const,
     },
     {
       icon: Sparkles,
       title: 'Generate with AI',
-      description: 'SynqForge structures them into sprint-ready user stories with acceptance criteria and estimates.',
+      description: 'SynqForge structures them into sprint-ready user stories.',
       color: 'emerald' as const,
     },
     {
       icon: Download,
       title: 'Export anywhere',
-      description: 'Download your stories as Word (.docx), Excel (.xlsx), or PDF for planning.',
+      description: 'Download or share for planning.',
       color: 'purple' as const,
     },
   ]
@@ -27,10 +27,10 @@ export function HowItWorks() {
     <section className="max-w-7xl mx-auto px-6 py-16 sm:py-24">
       <div className="text-center mb-12 sm:mb-16">
         <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-          From Raw Requirements to Ready-to-Plan Stories
+          How It Works
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Three simple steps to transform your ideas into structured user stories
+          No templates. No learning curve. Just stories ready for delivery.
         </p>
       </div>
 

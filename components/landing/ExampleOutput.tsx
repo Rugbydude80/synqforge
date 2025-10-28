@@ -7,10 +7,10 @@ export function ExampleOutput() {
     <section id="example-output" className="max-w-7xl mx-auto px-6 py-16 sm:py-24 scroll-mt-20">
       <div className="text-center mb-12">
         <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-          Example Output
+          See the difference
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Preview a real export before you try it.
+          Every export includes role-based context, atomic acceptance criteria, and estimated story points.
         </p>
       </div>
 
@@ -105,7 +105,7 @@ export function ExampleOutput() {
               </Button>
             </a>
             <p className="text-xs text-muted-foreground mt-4">
-              See how SynqForge formats your stories for export
+              [Download Example in Word]
             </p>
           </div>
         </Card>

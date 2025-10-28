@@ -14,7 +14,7 @@
         "EUR": { "monthly": 0, "annual": 0 },
         "USD": { "monthly": 0, "annual": 0 }
       },
-      "description": "For individuals trying SynqForge",
+      "description": "Individuals exploring SynqForge",
       "minSeats": 1,
       "maxSeats": 1,
       "trial": 7,
@@ -53,7 +53,7 @@
         "EUR": { "monthly": 11.99, "annual": 119.90 },
         "USD": { "monthly": 12.00, "annual": 120.00 }
       },
-      "description": "For independent makers and freelancers",
+      "description": "Freelancers & solo analysts",
       "minSeats": 1,
       "maxSeats": 1,
       "actions": 400,
@@ -91,7 +91,7 @@
         "EUR": { "monthly": 21.99, "annual": 219.90 },
         "USD": { "monthly": 22.00, "annual": 220.00 }
       },
-      "description": "For small teams collaborating on stories",
+      "description": "Small delivery teams",
       "minSeats": 1,
       "maxSeats": 4,
       "actions": 800,
@@ -132,7 +132,7 @@
         "EUR": { "monthly": 18.99, "annual": 189.90 },
         "USD": { "monthly": 20.00, "annual": 200.00 }
       },
-      "description": "For larger teams needing pooled AI actions",
+      "description": "Larger agile teams",
       "minSeats": 5,
       "maxSeats": null,
       "actionsBase": 10000,
@@ -177,7 +177,7 @@
         "EUR": { "monthly": "custom", "annual": "custom" },
         "USD": { "monthly": "custom", "annual": "custom" }
       },
-      "description": "For orgs needing compliance & SLAs",
+      "description": "Scaled organisations",
       "minSeats": 10,
       "maxSeats": null,
       "actionsBase": "custom",

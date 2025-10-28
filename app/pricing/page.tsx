@@ -192,16 +192,13 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
-          <div className="inline-block">
-            <Badge variant="secondary" className="mb-4">
-              2025 Pricing • Updated January
-            </Badge>
-          </div>
           <h1 className="text-5xl font-bold tracking-tight mb-4">
-            Simple, transparent pricing
+            Simple plans. Built for how you work.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Per-user pricing that scales with your team. Pay only for what you use, with flexible add-ons and no hidden fees.
+            Every plan includes AI-powered story generation, structured exports, and secure storage.
+            <br />
+            Upgrade only when you need more capacity.
           </p>
 
           {/* Currency & Billing Toggle */}
@@ -326,18 +323,16 @@ export default function PricingPage() {
 
         {/* Footer CTA */}
         <div className="text-center space-y-4">
-          <h2 className="text-3xl font-bold">Questions about pricing?</h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Contact our team to discuss Enterprise plans, custom requirements, or volume discounts.
-          </p>
-          <div className="flex gap-4 justify-center mt-6">
-            <Button size="lg" onClick={() => router.push('/contact')}>
-              Contact Sales
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => router.push('/auth/signup')}>
-              Start Free Trial
+          <div className="flex gap-4 justify-center mb-8">
+            <Button size="lg" onClick={() => router.push('/auth/signup')}>
+              Start Free — Upgrade Anytime
             </Button>
           </div>
+          
+          {/* Footer reassurance */}
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+            Every plan includes full data security, export access, and cancellation at any time.
+          </p>
         </div>
 
         {/* Disclaimer */}
