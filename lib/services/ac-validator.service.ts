@@ -185,13 +185,15 @@ export async function validateStoryAC(
     }
 
     // Check if organization has access to AC Validator
-    const tier = organization.subscriptionTier || 'free'
-    if (tier === 'free') {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (tier === 'starter') {
       throw new Error('AC Validator requires Team plan or higher. Please upgrade to continue.')
     }
 
     // Check rate limit
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`

@@ -251,8 +251,6 @@ export class AIActionsMetering {
         used: 0,
         limit: Infinity,
         percentage: 0,
-        remaining: Infinity,
-        resetDate: new Date(),
       };
     }
     

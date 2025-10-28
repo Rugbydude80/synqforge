@@ -90,7 +90,7 @@ export async function checkFeatureAccess(
       organization: {
         id: organization.id,
         name: organization.name,
-        tier,
+        tier: effectiveTier, // Use effective tier (admin -> enterprise)
       },
       features,
     }
@@ -276,7 +276,7 @@ export async function getFeatureGateContext(): Promise<FeatureGateContext | null
       organization: {
         id: organization.id,
         name: organization.name,
-        tier,
+        tier: effectiveTier, // Use effective tier (admin -> enterprise)
       },
       features,
     }
