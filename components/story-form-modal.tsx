@@ -19,6 +19,9 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sparkles, X, AlertCircle } from 'lucide-react'
+import { ContextSelector } from '@/components/story-generation/ContextSelector'
+import { ContextLevel, UserTier } from '@/lib/types/context.types'
+import { useSession } from 'next-auth/react'
 
 interface StoryFormModalProps {
   open: boolean
@@ -43,6 +46,8 @@ export function StoryFormModal({
   const [aiRequirement, setAiRequirement] = React.useState('')
   const [showEpicPrompt, setShowEpicPrompt] = React.useState(false)
 
+  const { data: session } = useSession()
+  
   const [formData, setFormData] = React.useState({
     title: '',
     description: '',
@@ -51,6 +56,8 @@ export function StoryFormModal({
     epicId: '',
     acceptanceCriteria: [''],
   })
+  
+  const [selectedContextLevel, setSelectedContextLevel] = React.useState<ContextLevel>(ContextLevel.STANDARD)
 
   // Load epics for dropdown
   React.useEffect(() => {
@@ -205,6 +212,8 @@ export function StoryFormModal({
         body: JSON.stringify({
           requirement: aiRequirement.trim(),
           projectId,
+          epicId: formData.epicId || undefined,
+          contextLevel: selectedContextLevel,
         }),
       })
 
@@ -378,14 +387,15 @@ export function StoryFormModal({
 
             <div className="grid gap-2">
               <Label htmlFor="epic">Epic (optional)</Label>
-              <Select
+              <select
                 id="epic"
                 value={formData.epicId}
                 onChange={(e) => {
                   setFormData(prev => ({ ...prev, epicId: e.target.value }))
                   setShowEpicPrompt(false) // Hide prompt if epic is selected
                 }}
-                disabled={isLoading}
+                disabled={isLoading || epics.length === 0}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">No Epic</option>
                 {epics.map((epic) => (
@@ -393,10 +403,16 @@ export function StoryFormModal({
                     {epic.title}
                   </option>
                 ))}
-              </Select>
+              </select>
+              
+              {epics.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No epics available. Create an epic first to organize your stories.
+                </p>
+              )}
 
               {/* Epic prompt when user hasn't selected an epic */}
-              {showEpicPrompt && (
+              {showEpicPrompt && epics.length > 0 && (
                 <Alert className="border-amber-500/50 bg-amber-500/10 mt-2">
                   <AlertCircle className="h-4 w-4 text-amber-500" />
                   <AlertDescription className="text-sm">
@@ -433,6 +449,20 @@ export function StoryFormModal({
                 </Alert>
               )}
             </div>
+
+            {/* Context Level Selector - Only show when using AI generation */}
+            {!story && showAIInput && (
+              <div className="grid gap-2">
+                <Label>AI Context Level</Label>
+                <ContextSelector
+                  value={selectedContextLevel}
+                  onChange={setSelectedContextLevel}
+                  userTier={(session?.user?.tier as UserTier) || UserTier.STARTER}
+                  actionsUsed={0} // TODO: Get from user's actual usage
+                  disabled={isGenerating}
+                />
+              </div>
+            )}
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
