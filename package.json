@@ -20,7 +20,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "setup": "npm run db:migrate"
+    "setup": "npm run db:migrate",
+    "embeddings:backfill": "tsx scripts/backfill-embeddings.ts",
+    "embeddings:retry": "tsx scripts/retry-failed-embeddings.ts",
+    "embeddings:validate": "tsx scripts/validate-semantic-search.ts",
+    "test:embeddings": "node --import tsx --test --test-reporter spec tests/unit/embeddings.test.ts",
+    "test:context-access": "node --import tsx --test --test-reporter spec tests/unit/context-access.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",

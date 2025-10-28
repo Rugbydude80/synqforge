@@ -9,6 +9,9 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
+import { EmbeddingsService } from '@/lib/services/embeddings.service';
+import { ContextAccessService } from '@/lib/services/context-access.service';
+import { ContextLevel, UserTier } from '@/lib/types/context.types';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -113,10 +116,74 @@ async function generateStories(req: NextRequest, context: AuthContext) {
       }
     }
 
+    // Initialize embeddings service for semantic context
+    const embeddingsService = new EmbeddingsService();
+    let semanticContext = '';
+    let semanticSearchUsed = false;
+
+    // Add semantic context for COMPREHENSIVE context levels
+    const contextLevel = (validatedData as any).contextLevel as ContextLevel | undefined;
+    if (
+      (contextLevel === ContextLevel.COMPREHENSIVE || 
+       contextLevel === ContextLevel.COMPREHENSIVE_THINKING) &&
+      validatedData.epicId &&
+      embeddingsService.isEnabled()
+    ) {
+      console.log('🔍 Fetching semantic context for epic:', validatedData.epicId);
+
+      const startTime = Date.now();
+      try {
+        const similarStories = await embeddingsService.findSimilarStories({
+          queryText: validatedData.requirements,
+          epicId: validatedData.epicId,
+          limit: 5,
+          minSimilarity: 0.7,
+        });
+        const searchTime = Date.now() - startTime;
+
+        console.log(`⏱️  Semantic search completed in ${searchTime}ms`);
+
+        if (similarStories.length > 0) {
+          semanticSearchUsed = true;
+          semanticContext += `\n\n# SEMANTICALLY SIMILAR STORIES IN THIS EPIC\n\n`;
+          semanticContext += 'Consider these related stories for consistency:\n\n';
+          semanticContext += similarStories
+            .map(
+              (s, idx) => `
+${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
+   - Priority: ${s.priority}
+   - Status: ${s.status}
+   - Description: ${s.description?.substring(0, 150) || 'N/A'}
+   - Key AC: ${
+              Array.isArray(s.acceptance_criteria)
+                ? s.acceptance_criteria.slice(0, 2).join('; ')
+                : 'None'
+            }
+          `.trim()
+            )
+            .join('\n\n');
+
+          console.log(
+            `✅ Added ${similarStories.length} similar stories to context (${semanticContext.length} chars)`
+          );
+        } else {
+          console.log('ℹ️  No similar stories found above similarity threshold');
+        }
+      } catch (error) {
+        console.error('❌ Semantic search failed, continuing without it:', error);
+        // Continue generation without semantic context if search fails
+      }
+    }
+
+    // Combine project context with semantic context
+    const enhancedContext = validatedData.projectContext 
+      ? `${validatedData.projectContext}\n${semanticContext}`
+      : semanticContext;
+
     // Generate stories using AI
     const response = await aiService.generateStories(
       validatedData.requirements,
-      validatedData.projectContext,
+      enhancedContext,
       5
     );
 
@@ -135,12 +202,34 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
     await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
 
+    // Generate embeddings for new stories (async, don't block response)
+    if (response.stories && Array.isArray(response.stories)) {
+      response.stories.forEach((story: any) => {
+        if (story.id && story.title) {
+          embeddingsService
+            .embedStory(story.id, {
+              title: story.title,
+              description: story.description,
+              acceptance_criteria: story.acceptanceCriteria || story.acceptance_criteria,
+            })
+            .catch((err) => {
+              console.error(`Failed to embed story ${story.id}:`, err);
+              // Don't fail the request if embedding fails
+            });
+        }
+      });
+    }
+
     return NextResponse.json({
       success: true,
       stories: response.stories,
       count: response.stories.length,
       usage: response.usage,
       fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
+      meta: {
+        semanticSearchUsed,
+        contextLength: enhancedContext.length,
+      },
     });
 
   } catch (error) {
