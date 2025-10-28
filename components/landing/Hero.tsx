@@ -21,6 +21,8 @@ export function Hero() {
           <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             SynqForge turns raw requirements into consistent stories with acceptance criteria and estimates.
             <br />
+            <span className="font-semibold text-foreground">NEW:</span> AI that learns from your similar stories for 75% better context.
+            <br />
             Built by analysts for teams that need to move fast and stay accurate.
           </p>
 

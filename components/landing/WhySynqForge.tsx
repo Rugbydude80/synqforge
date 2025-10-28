@@ -5,8 +5,8 @@ export function WhySynqForge() {
   const benefits = [
     {
       icon: Zap,
-      title: 'Generate analyst-grade stories',
-      description: 'Directly from your meeting notes.',
+      title: 'AI that learns from your stories',
+      description: 'Smart Context finds similar stories automatically — 75% more relevant context.',
     },
     {
       icon: Layers,
