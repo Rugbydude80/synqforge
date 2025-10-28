@@ -93,12 +93,14 @@ export async function generateRICEScore(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier || 'free'
-    if (tier === 'free') {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (tier === 'starter') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
@@ -271,12 +273,14 @@ export async function generateWSJFScore(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier || 'free'
-    if (tier === 'free') {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (tier === 'starter') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher. Please upgrade to continue.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`
@@ -442,12 +446,14 @@ export async function suggestEffortEstimate(
       throw new Error('Organization not found')
     }
 
-    const tier = organization.subscriptionTier || 'free'
-    if (tier === 'free') {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (tier === 'starter') {
       throw new Error('Effort & Impact Scoring requires Team plan or higher.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier)
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds.`

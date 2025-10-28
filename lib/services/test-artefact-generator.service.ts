@@ -61,13 +61,15 @@ export async function generateTestArtefact(
     }
 
     // Check if organization has access to Test Generation
-    const tier = organization.subscriptionTier
-    if (tier === 'free') {
+    const tier = organization.subscriptionTier || 'starter'
+    if (tier === 'starter') { // Free tier is 'starter' in database
       throw new Error('Test & Artefact Generation requires Team plan or higher. Please upgrade to continue.')
     }
 
     // Check rate limit
-    const rateLimitCheck = await checkAIRateLimit(organizationId, tier || 'free')
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(
         `Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)} seconds before trying again.`

@@ -180,7 +180,7 @@ export async function checkTokenAvailability(
     const tier = org?.subscriptionTier || 'free'
 
     // Free tier cannot use tokens in overage
-    if (tier === 'free' && usage.tokensRemaining < estimatedTokens) {
+    if (tier === 'starter' && usage.tokensRemaining < estimatedTokens) {
       return {
         allowed: false,
         reason: 'Token pool exhausted. Upgrade to Team or Business for more tokens.',

@@ -25,10 +25,10 @@ async function backfillEmbeddings() {
   const health = await embeddingsService.healthCheck();
   console.log('Health status:', health);
 
-  if (!health.database || !health.qwenApi || !health.indexExists) {
+  if (!health.database || !health.openrouterApi || !health.indexExists) {
     console.error('\n❌ Health check failed. Please fix issues before proceeding:');
     if (!health.database) console.error('  - Database connection failed');
-    if (!health.qwenApi) console.error('  - Qwen API not accessible (check QWEN_API_KEY)');
+    if (!health.openrouterApi) console.error('  - OpenRouter API not accessible (check OPENROUTER_API_KEY)');
     if (!health.indexExists) console.error('  - Vector index not found (run migration first)');
     process.exit(1);
   }
@@ -108,7 +108,7 @@ async function backfillEmbeddings() {
   console.log('🔄 Processing stories...\n');
   const startTime = Date.now();
   const result = await embeddingsService.batchEmbedStories(
-    stories,
+    stories as any[], // Type assertion for script compatibility
     5, // batch size
     1000 // 1 second delay between batches
   );

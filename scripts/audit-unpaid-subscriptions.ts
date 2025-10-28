@@ -31,7 +31,7 @@ async function auditUnpaidSubscriptions() {
     const paidTierOrgs = await db
       .select()
       .from(organizations)
-      .where(inArray(organizations.subscriptionTier, ['solo', 'team', 'pro', 'business', 'enterprise']))
+      .where(inArray(organizations.subscriptionTier, ['core', 'team', 'pro', 'enterprise'])) // Updated to match current tier names ('business' tier was removed)
 
     console.log(`📊 Found ${paidTierOrgs.length} organizations with paid subscription tiers\n`)
 

@@ -20,19 +20,8 @@ interface SimilarStory extends Story {
   similarity: number;
 }
 
-// OpenRouter returns OpenAI-compatible embedding format
-// Prefixed with _ as it's defined for future use but not currently used
-interface _OpenRouterEmbeddingResponse {
-  data: Array<{
-    embedding: number[];
-    index: number;
-  }>;
-  model: string;
-  usage: {
-    prompt_tokens: number;
-    total_tokens: number;
-  };
-}
+// OpenRouter returns OpenAI-compatible embedding format via the OpenAI SDK
+// We use the official OpenAI SDK which handles the response format internally
 
 export class EmbeddingsService {
   private sql;

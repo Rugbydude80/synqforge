@@ -33,11 +33,14 @@ export async function parseInboxContent(
       .where(eq(organizations.id, organizationId))
       .limit(1)
 
-    if (!organization || organization.subscriptionTier === 'free') {
+    if (!organization || organization.subscriptionTier === 'starter') { // Free tier is 'starter' in database
       throw new Error('Inbox to Backlog requires Team plan or higher.')
     }
 
-    const rateLimitCheck = await checkAIRateLimit(organizationId, organization.subscriptionTier || 'free')
+    const tier = organization.subscriptionTier || 'starter'
+    // Admin users get enterprise rate limits
+    const effectiveTier = tier === 'admin' ? 'enterprise' : tier
+    const rateLimitCheck = await checkAIRateLimit(organizationId, effectiveTier)
     if (!rateLimitCheck.success) {
       throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitCheck.retryAfter || 60)}s.`)
     }

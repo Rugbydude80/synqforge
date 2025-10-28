@@ -88,8 +88,8 @@ export async function createAutopilotJob(
     }
 
     // Check if organization has access to Backlog Autopilot
-    const tier = organization.subscriptionTier || 'free'
-    if (tier === 'free' || tier === 'starter') {
+    const tier = organization.subscriptionTier || 'starter' // Free tier is 'starter' in database
+    if (tier === 'starter') {
       throw new Error('Backlog Autopilot requires Team plan or higher. Please upgrade to continue.')
     }
 
