@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import { UsageWarningBanner } from '@/components/billing/UsageWarningBanner'
+import { AIActionsUsageDashboard } from '@/components/billing/AIActionsUsageDashboard'
 
 function BillingPageContent() {
   const { status } = useSession()
@@ -19,6 +20,7 @@ function BillingPageContent() {
   const [subscription, setSubscription] = useState<any>(null)
   const [usageData, setUsageData] = useState<any>(null)
   const [purchasingTokens, setPurchasingTokens] = useState<string | null>(null)
+  const [organizationId, setOrganizationId] = useState<string | null>(null)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -30,6 +32,8 @@ function BillingPageContent() {
       const orgId = userData.organizationId
 
       if (!orgId) return
+      
+      setOrganizationId(orgId)
 
       const response = await fetch(`/api/billing/usage?organizationId=${orgId}`, {
         credentials: 'include',
@@ -221,7 +225,12 @@ function BillingPageContent() {
           </div>
         </header>
 
-        <div className="p-8 space-y-6 max-w-4xl">
+        <div className="p-8 space-y-6 max-w-5xl">
+          {/* AI Actions Usage Dashboard */}
+          {organizationId && (
+            <AIActionsUsageDashboard organizationId={organizationId} />
+          )}
+
           {/* Fair-Usage Warnings */}
           {usageData?.fairUsage && (
             <>
