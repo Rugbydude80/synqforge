@@ -153,6 +153,7 @@ export const StoryGenerationInputSchema = z.object({
   epicId: z.union([z.string().uuid(), z.literal(''), z.undefined()]).optional().transform(val => val === '' ? undefined : val),
   projectId: z.string().uuid(),
   model: z.string().optional(),
+  promptTemplate: z.string().optional(),
 })
 
 export type AIGenerationRequest = z.infer<typeof AIGenerationRequestSchema>

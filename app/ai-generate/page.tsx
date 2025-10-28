@@ -26,6 +26,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { PromptTemplateSelector } from '@/components/ai/prompt-template-selector'
 
 interface GeneratedStory {
   id: string
@@ -60,6 +61,7 @@ export default function AIGeneratePage() {
   const [creating, setCreating] = useState(false)
   const [generatedStories, setGeneratedStories] = useState<GeneratedStory[]>([])
   const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [promptTemplate, setPromptTemplate] = useState<string>('standard')
 
   // Fetch projects on mount
   useEffect(() => {
@@ -184,11 +186,12 @@ export default function AIGeneratePage() {
         requirements = analysisResult?.summary || 'Document requirements'
       }
 
-      // Generate stories using AI
+      // Generate stories using AI with selected template
       const response = await api.ai.generateStories({
         projectId,
         requirements,
         projectContext: `Project ID: ${projectId}`,
+        promptTemplate: promptTemplate,
       })
 
       // Map AI response to our story format
@@ -365,6 +368,11 @@ export default function AIGeneratePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <PromptTemplateSelector
+                value={promptTemplate}
+                onChange={setPromptTemplate}
+                disabled={processing || analyzing}
+              />
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

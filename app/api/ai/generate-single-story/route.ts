@@ -8,6 +8,7 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
+import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 
 const generateSingleStorySchema = z.object({
   requirement: z
@@ -19,6 +20,7 @@ const generateSingleStorySchema = z.object({
     .string()
     .max(2000, 'Project context must be under 2,000 characters')
     .optional(),
+  promptTemplate: z.string().optional(), // Optional template selection
 });
 
 async function generateSingleStory(req: NextRequest, context: AuthContext) {
@@ -97,6 +99,18 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       throw error;
     }
 
+    // Validate and sanitize template selection
+    const templateKey = validatedData.promptTemplate || getDefaultTemplateKey();
+    const isAdmin = context.user.role === 'admin' || context.user.role === 'owner';
+    const templateValidation = validateTemplateAccess(templateKey, isAdmin);
+    
+    if (!templateValidation.valid) {
+      return NextResponse.json(
+        { error: templateValidation.error },
+        { status: 403 }
+      );
+    }
+
     // Generate a single story using AI
     let response;
     try {
@@ -104,7 +118,8 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
         validatedData.requirement,
         validatedData.projectContext,
         1, // Generate only 1 story
-        'claude-sonnet-4-5-20250929'
+        'claude-sonnet-4-5-20250929',
+        templateKey
       );
     } catch (aiError) {
       console.error('AI generation error:', aiError);
@@ -130,7 +145,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
 
     const story = response.stories[0];
 
-    // Track AI usage with real token data
+    // Track AI usage with real token data and template selection
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
@@ -138,7 +153,11 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       response.usage,
       'story_generation',
       validatedData.requirement,
-      JSON.stringify(story)
+      JSON.stringify(story),
+      {
+        promptTemplate: templateKey, // Track which template was used
+        singleStory: true
+      }
     );
 
     // Track fair-usage token consumption

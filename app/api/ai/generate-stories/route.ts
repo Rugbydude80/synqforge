@@ -11,6 +11,7 @@ import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
 import { EmbeddingsService } from '@/lib/services/embeddings.service';
 import { ContextLevel } from '@/lib/types/context.types';
+import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -174,19 +175,33 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       }
     }
 
+    // Validate and sanitize template selection
+    const templateKey = validatedData.promptTemplate || getDefaultTemplateKey();
+    const isAdmin = context.user.role === 'admin' || context.user.role === 'owner';
+    const templateValidation = validateTemplateAccess(templateKey, isAdmin);
+    
+    if (!templateValidation.valid) {
+      return NextResponse.json(
+        { error: templateValidation.error },
+        { status: 403 }
+      );
+    }
+
     // Combine project context with semantic context
     const enhancedContext = validatedData.projectContext 
       ? `${validatedData.projectContext}\n${semanticContext}`
       : semanticContext;
 
-    // Generate stories using AI
+    // Generate stories using AI with selected template
     const response = await aiService.generateStories(
       validatedData.requirements,
       enhancedContext,
-      5
+      5,
+      undefined, // Use default model
+      templateKey
     );
 
-    // Track AI usage with real token data
+    // Track AI usage with real token data and template selection
     await aiService.trackUsage(
       context.user.id,
       context.user.organizationId,
@@ -194,7 +209,12 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       response.usage,
       'story_generation',
       validatedData.requirements,
-      JSON.stringify(response.stories)
+      JSON.stringify(response.stories),
+      {
+        promptTemplate: templateKey,
+        storiesCount: response.stories.length,
+        semanticSearchUsed
+      }
     );
 
     // NEW: Track fair-usage token consumption
