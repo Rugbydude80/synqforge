@@ -9,6 +9,7 @@ import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
+import { MODEL } from '@/lib/ai/client';
 
 const generateSingleStorySchema = z.object({
   requirement: z
@@ -118,7 +119,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
         validatedData.requirement,
         validatedData.projectContext,
         1, // Generate only 1 story
-        'claude-sonnet-4-5-20250929',
+        MODEL,
         templateKey
       );
     } catch (aiError) {
