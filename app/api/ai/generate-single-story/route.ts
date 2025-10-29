@@ -10,6 +10,7 @@ import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 import { MODEL } from '@/lib/ai/client';
+import { piiDetectionService } from '@/lib/services/pii-detection.service';
 
 const generateSingleStorySchema = z.object({
   requirement: z
@@ -72,6 +73,38 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     // Show 90% warning if approaching limit
     if (aiCheck.isWarning && aiCheck.reason) {
       console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // ✅ CRITICAL: PII Detection - Block prompts with sensitive data
+    try {
+      const piiCheck = await piiDetectionService.scanForPII(
+        validatedData.requirement,
+        context.user.organizationId,
+        { userId: context.user.id, feature: 'story_generation' }
+      );
+
+      if (piiCheck.hasPII && piiCheck.severity !== 'low') {
+        console.warn(`PII detected in story generation for org ${context.user.organizationId}:`, piiCheck.detectedTypes);
+        return NextResponse.json(
+          {
+            error: 'PII_DETECTED',
+            message: 'Your prompt contains sensitive personal information that cannot be processed',
+            detectedTypes: piiCheck.detectedTypes,
+            severity: piiCheck.severity,
+            recommendations: piiCheck.recommendations,
+            redactedPreview: piiCheck.redactedText?.substring(0, 200),
+          },
+          { status: 400 }
+        );
+      }
+
+      // Low severity PII (addresses, postal codes) - log warning but allow
+      if (piiCheck.hasPII && piiCheck.severity === 'low') {
+        console.warn(`Low-severity PII detected (${piiCheck.detectedTypes.join(', ')}), allowing request for org ${context.user.organizationId}`);
+      }
+    } catch (piiError) {
+      // Don't block request if PII detection fails - log error and continue
+      console.error('PII detection failed:', piiError);
     }
 
     // Legacy usage check (keep for backward compatibility)

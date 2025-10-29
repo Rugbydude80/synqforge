@@ -134,6 +134,10 @@ export const organizations = pgTable(
     subscriptionStatus: text('subscription_status').notNull().default('inactive'),
     subscriptionRenewalAt: timestamp('subscription_renewal_at'),
     trialEndsAt: timestamp('trial_ends_at'),
+    subscriptionStatusUpdatedAt: timestamp('subscription_status_updated_at'),
+    lastStripeSync: timestamp('last_stripe_sync'),
+    gracePeriodRemindersSent: integer('grace_period_reminders_sent').default(0),
+    billingAnniversary: date('billing_anniversary'),
   },
   (table) => ({
     slugIdx: uniqueIndex('idx_org_slug').on(table.slug),
@@ -497,6 +501,7 @@ export const aiGenerations = pgTable(
   {
     id: varchar('id', { length: 36 }).primaryKey(),
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    department: varchar('department', { length: 100 }),
     userId: varchar('user_id', { length: 36 }).notNull(),
     type: aiGenerationTypeEnum('type').notNull(),
     model: varchar('model', { length: 100 }).notNull(),
@@ -1127,6 +1132,11 @@ export const workspaceUsage = pgTable(
     // Token usage (primary fair-usage metric)
     tokensUsed: integer('tokens_used').notNull().default(0),
     tokensLimit: integer('tokens_limit').notNull().default(50000),
+
+    // Rollover tracking (Core/Pro plans)
+    rolloverEnabled: boolean('rollover_enabled').default(false),
+    rolloverPercentage: decimal('rollover_percentage', { precision: 3, scale: 2 }).default('0.00'),
+    rolloverBalance: integer('rollover_balance').default(0),
 
     // Document ingestion
     docsIngested: integer('docs_ingested').notNull().default(0),
@@ -1833,6 +1843,7 @@ export const workspaceUsageHistory = pgTable(
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
     billingPeriodStart: timestamp('billing_period_start').notNull(),
     billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    billingPeriod: varchar('billing_period', { length: 7 }), // Format: YYYY-MM
     
     // Token usage
     tokensUsed: integer('tokens_used').notNull().default(0),
@@ -1855,6 +1866,7 @@ export const workspaceUsageHistory = pgTable(
   (table) => ({
     orgIdx: index('idx_usage_history_org').on(table.organizationId),
     periodIdx: index('idx_usage_history_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    billingPeriodIdx: index('idx_usage_history_billing_period').on(table.organizationId, table.billingPeriod),
     archivedIdx: index('idx_usage_history_archived').on(table.archivedAt),
   })
 )
@@ -1954,5 +1966,53 @@ export const subscriptionAlerts = pgTable(
     statusIdx: index('idx_alerts_status').on(table.status),
     typeIdx: index('idx_alerts_type').on(table.alertType),
     createdIdx: index('idx_alerts_created').on(table.createdAt),
+  })
+)
+
+// ============================================
+// DEPARTMENT BUDGETS (Enterprise Feature)
+// ============================================
+
+export const departmentBudgets = pgTable(
+  'department_budgets',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    departmentName: varchar('department_name', { length: 100 }).notNull(),
+    actionsLimit: integer('actions_limit').notNull().default(0),
+    actionsUsed: integer('actions_used').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_dept_budgets_org').on(table.organizationId),
+    deptIdx: index('idx_dept_budgets_dept').on(table.departmentName),
+    usageIdx: index('idx_dept_budgets_usage').on(table.organizationId, table.actionsUsed),
+    uniqueOrgDept: uniqueIndex('unique_org_department').on(table.organizationId, table.departmentName),
+  })
+)
+
+// ============================================
+// BUDGET REALLOCATION LOG (Enterprise Audit Trail)
+// ============================================
+
+export const budgetReallocationLog = pgTable(
+  'budget_reallocation_log',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    fromDepartment: varchar('from_department', { length: 100 }).notNull(),
+    toDepartment: varchar('to_department', { length: 100 }).notNull(),
+    amount: integer('amount').notNull(),
+    reason: text('reason'),
+    approvedBy: varchar('approved_by', { length: 36 }).notNull(),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_realloc_org').on(table.organizationId),
+    fromIdx: index('idx_realloc_from').on(table.fromDepartment),
+    toIdx: index('idx_realloc_to').on(table.toDepartment),
+    createdIdx: index('idx_realloc_created').on(table.createdAt),
   })
 )
