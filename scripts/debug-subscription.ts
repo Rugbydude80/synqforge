@@ -89,7 +89,7 @@ async function debugSubscription() {
       if (wsUsage) {
         console.log(`      - Tokens Limit: ${wsUsage.tokensLimit}`)
         console.log(`      - Tokens Used: ${wsUsage.tokensUsed}`)
-        console.log(`      - Purchased Token Balance: ${wsUsage.purchasedTokenBalance}`)
+        console.log(`      - Docs Ingested: ${wsUsage.docsIngested}/${wsUsage.docsLimit}`)
         console.log(`      - Billing Period: ${wsUsage.billingPeriodStart} to ${wsUsage.billingPeriodEnd}`)
       } else {
         console.log(`      ⚠️  No workspace usage record found for current month!`)

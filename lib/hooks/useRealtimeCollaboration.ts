@@ -206,7 +206,8 @@ export function useRealtimeCollaboration(options: UseRealtimeOptions) {
         ablyRef.current.close()
       }
     }
-  }, [session?.user?.id, channelName])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, session?.user?.email, session?.user?.name, channelName])
 
   // Update presence data
   const updatePresence = useCallback(
