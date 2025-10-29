@@ -150,6 +150,16 @@ export async function POST(req: NextRequest) {
       })
     })
 
+    // Initialize usage tracking for the new organization
+    try {
+      const { getOrCreateWorkspaceUsage } = await import('@/lib/billing/fair-usage-guards')
+      await getOrCreateWorkspaceUsage(orgId)
+      console.log(`✅ Initialized usage tracking for new org: ${orgId}`)
+    } catch (error) {
+      console.error('Failed to initialize usage tracking for new org:', error)
+      // Don't fail signup if usage tracking fails - it can be initialized later
+    }
+
     // If paid plan (not enterprise), create Stripe checkout session
     // Enterprise is a contact sales plan, so it doesn't go through Stripe checkout
     let checkoutUrl = null
