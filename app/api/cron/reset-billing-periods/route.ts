@@ -20,8 +20,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { organizations, workspaceUsage } from '@/lib/db/schema'
-import { sql, lte } from 'drizzle-orm'
+import { workspaceUsage } from '@/lib/db/schema'
+import { lte } from 'drizzle-orm'
 import { handleBillingPeriodReset } from '@/lib/services/subscription-tier.service'
 
 export const runtime = 'nodejs'
