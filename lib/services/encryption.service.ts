@@ -5,9 +5,9 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
-import { db } from '@/lib/db';
-import { encryptionAuditLog } from '@/lib/db/schema';
-import { generateId } from '@/lib/utils';
+// import { db, generateId } from '@/lib/db';
+// TODO: Re-enable when encryptionAuditLog table is created
+// import { encryptionAuditLog } from '@/lib/db/schema';
 
 interface EncryptionResult {
   encrypted: Buffer;
@@ -27,7 +27,7 @@ export class EncryptionService {
   private readonly algorithm = 'aes-256-gcm';
   private readonly keyVersion = 'key_v1';
   private readonly ivLength = 16; // 128 bits
-  private readonly authTagLength = 16; // 128 bits
+  // private readonly authTagLength = 16; // 128 bits - GCM mode handles this
 
   /**
    * Get encryption key from environment
@@ -176,15 +176,21 @@ export class EncryptionService {
         return;
       }
 
-      await db.insert(encryptionAuditLog).values({
-        id: generateId(),
+      // TODO: Re-enable when encryptionAuditLog table is created
+      // await db.insert(encryptionAuditLog).values({
+      //   id: generateId(),
+      //   organizationId: data.organizationId,
+      //   action: data.action,
+      //   keyVersion: data.keyVersion,
+      //   resourceType: data.resourceType || 'unknown',
+      //   resourceId: data.resourceId,
+      //   userId: data.userId,
+      //   createdAt: new Date(),
+      // });
+      console.log('[Encryption Audit]', {
         organizationId: data.organizationId,
         action: data.action,
         keyVersion: data.keyVersion,
-        resourceType: data.resourceType || 'unknown',
-        resourceId: data.resourceId,
-        userId: data.userId,
-        createdAt: new Date(),
       });
     } catch (error) {
       // Don't fail encryption if audit logging fails
