@@ -6,10 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, organizations, organizationMembers, aiGenerations, auditLogs } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { users, organizations, aiGenerations, auditLogs } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import JSZip from 'jszip';
-import { encryptionService } from '@/lib/services/encryption.service';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -38,18 +37,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Organization Memberships
-    const memberships = await db
-      .select({
-        organizationId: organizations.id,
-        organizationName: organizations.name,
-        role: organizationMembers.role,
-        joinedAt: organizationMembers.createdAt,
-        subscriptionTier: organizations.subscriptionTier,
-      })
-      .from(organizationMembers)
-      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
-      .where(eq(organizationMembers.userId, userId));
+    // 2. Organization Membership
+    let memberships: any[] = [];
+    if (user.organizationId) {
+      const [org] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, user.organizationId))
+        .limit(1);
+      
+      if (org) {
+        memberships = [{
+          organizationId: org.id,
+          organizationName: org.name,
+          role: user.role,
+          joinedAt: user.createdAt,
+          subscriptionTier: org.subscriptionTier,
+        }];
+      }
+    }
 
     // 3. AI Generation History (decrypt if encrypted)
     const generations = await db
@@ -58,50 +64,16 @@ export async function POST(req: NextRequest) {
       .where(eq(aiGenerations.userId, userId))
       .limit(1000); // Limit for performance
 
-    const decryptedGenerations = await Promise.all(
-      generations.map(async (gen) => {
-        let prompt = gen.prompt || '';
-        let output = '';
-
-        // Decrypt if fields exist
-        if (gen.prompt_encrypted && gen.prompt_iv && gen.prompt_auth_tag) {
-          try {
-            prompt = await encryptionService.decrypt({
-              encrypted: gen.prompt_encrypted,
-              iv: gen.prompt_iv,
-              authTag: gen.prompt_auth_tag,
-              keyVersion: gen.encryption_key_id || 'key_v1',
-            });
-          } catch (error) {
-            console.error(`Failed to decrypt prompt for generation ${gen.id}:`, error);
-            prompt = '[Encrypted - decryption failed]';
-          }
-        }
-
-        if (gen.output_encrypted && gen.output_iv && gen.output_auth_tag) {
-          try {
-            output = await encryptionService.decrypt({
-              encrypted: gen.output_encrypted,
-              iv: gen.output_iv,
-              authTag: gen.output_auth_tag,
-              keyVersion: gen.encryption_key_id || 'key_v1',
-            });
-          } catch (error) {
-            console.error(`Failed to decrypt output for generation ${gen.id}:`, error);
-            output = '[Encrypted - decryption failed]';
-          }
-        }
-
-        return {
-          id: gen.id,
-          createdAt: gen.createdAt,
-          prompt,
-          output,
-          tokensUsed: gen.tokensUsed,
-          status: gen.status,
-        };
-      })
-    );
+    const decryptedGenerations = generations.map((gen) => ({
+      id: gen.id,
+      type: gen.type,
+      model: gen.model,
+      prompt: gen.promptText,
+      output: gen.responseText || '',
+      tokensUsed: gen.tokensUsed,
+      status: gen.status,
+      createdAt: gen.createdAt,
+    }));
 
     // 4. Audit Logs (last 90 days)
     const recentAuditLogs = await db
@@ -198,7 +170,7 @@ Support: https://synqforge.com/support
       createdAt: new Date(),
     });
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(new Uint8Array(zipBuffer), {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="synqforge-data-export-${userId}.zip"`,
