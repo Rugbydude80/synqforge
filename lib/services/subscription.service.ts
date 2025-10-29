@@ -23,7 +23,7 @@ import {
   subscriptionStateAudit,
   users
 } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 
 // ============================================================================
 // TYPES
@@ -392,7 +392,7 @@ export async function enforceGracePeriods(): Promise<{
     let remindersSentCount = 0
     
     // Get all organizations in grace period
-    const [usage] = await db
+    const usage = await db
       .select()
       .from(workspaceUsage)
       .where(

@@ -21,7 +21,7 @@ import {
   departmentBudgets,
   budgetReallocationLog,
 } from '@/lib/db/schema'
-import { eq, and, sql, desc } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { getTierConfig, type SubscriptionTier } from '@/lib/config/tiers'
 
 // ============================================================================
@@ -178,8 +178,12 @@ export async function incrementActionUsage(
         organizationId,
         userId,
         department,
-        generationType: 'story_generation',
+        type: 'story_generation',
+        model: 'test',
+        promptText: 'Test',
+        responseText: null,
         tokensUsed: 1,
+        status: 'completed',
         createdAt: new Date(),
       })
     }

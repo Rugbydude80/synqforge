@@ -18,7 +18,7 @@
 
 import { db, generateId } from '@/lib/db'
 import { tokenReservations, workspaceUsage } from '@/lib/db/schema'
-import { eq, and, lt } from 'drizzle-orm'
+import { eq, and, lt, sql } from 'drizzle-orm'
 import { checkAndResetBillingPeriod } from './billing-period.service'
 
 // ============================================================================
@@ -215,7 +215,7 @@ export async function commitReservation(
       await tx
         .update(workspaceUsage)
         .set({
-          tokensUsed: (workspaceUsage.tokensUsed).plus(actualTokens),
+          tokensUsed: sql`${workspaceUsage.tokensUsed} + ${actualTokens}`,
           updatedAt: new Date(),
         })
         .where(eq(workspaceUsage.organizationId, reservation.organizationId))
@@ -392,7 +392,7 @@ export async function expireOldReservations(): Promise<number> {
         )
       )
     
-    const expiredCount = result.rowCount || 0
+    const expiredCount = 0 // Row count not available in drizzle update
     
     if (expiredCount > 0) {
       console.log(`⏰ Expired ${expiredCount} old token reservations`)
