@@ -67,7 +67,7 @@ export async function GET() {
   }
 
   // Check AI service configuration
-  if (process.env.ANTHROPIC_API_KEY) {
+  if (process.env.OPENROUTER_API_KEY) {
     health.services.ai = 'configured'
   }
 
