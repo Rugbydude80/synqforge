@@ -2,6 +2,7 @@
  * Centralized error handling with Sentry integration
  */
 
+import * as Sentry from '@sentry/nextjs'
 import { logger } from '@/lib/observability/logger'
 import { metrics, METRICS } from '@/lib/observability/metrics'
 
@@ -76,7 +77,22 @@ export function handleError(error: Error | AppError, context?: Record<string, an
 
   // Send to Sentry in production
   if (process.env.NODE_ENV === 'production') {
-    // Sentry.captureException(error, { extra: context })
+    Sentry.captureException(error, {
+      extra: context,
+      tags: {
+        error_code: error instanceof AppError ? error.code : 'UNKNOWN',
+        is_operational: error instanceof AppError ? error.isOperational : false,
+        status_code: error instanceof AppError ? error.statusCode : 500,
+      },
+      level: error instanceof AppError && !error.isOperational ? 'fatal' : 'error',
+      contexts: {
+        app: {
+          organizationId: context?.organizationId,
+          userId: context?.userId,
+          feature: context?.feature,
+        },
+      },
+    })
   }
 
   // Alert for critical errors
