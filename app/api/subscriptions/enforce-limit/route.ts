@@ -8,7 +8,6 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { workspaceUsage, organizations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getCurrentBillingPeriod } from '@/lib/billing/fair-usage-guards';
 
 interface ActionLimitResponse {
   allowed: boolean;
@@ -56,9 +55,6 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-
-    // Get current billing period
-    const { start } = getCurrentBillingPeriod();
 
     // Get usage for current period
     const [usage] = await db

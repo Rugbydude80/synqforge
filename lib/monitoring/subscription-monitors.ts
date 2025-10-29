@@ -21,7 +21,7 @@ import {
   tokenReservations,
   stripeWebhookLogs,
 } from '@/lib/db/schema'
-import { eq, and, lt, gt, gte, isNull, sql } from 'drizzle-orm'
+import { eq, and, lt, gte, isNull, sql } from 'drizzle-orm'
 
 // ============================================================================
 // TYPES

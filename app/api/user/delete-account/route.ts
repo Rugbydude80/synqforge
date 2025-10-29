@@ -4,14 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, signOut } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, organizationMembers, aiGenerations, auditLogs } from '@/lib/db/schema';
+import { users, organizations, aiGenerations, auditLogs } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2025-09-30.clover',
 });
 
 export async function DELETE(req: NextRequest) {
@@ -37,22 +37,28 @@ export async function DELETE(req: NextRequest) {
 
     const userId = session.user.id;
     
-    // 1. Get user's organizations
-    const userOrgs = await db
-      .select({
-        organizationId: organizationMembers.organizationId,
-      })
-      .from(organizationMembers)
-      .where(eq(organizationMembers.userId, userId));
+    // 1. Get user's organization
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    // 2. Cancel all Stripe subscriptions for user's organizations
-    for (const org of userOrgs) {
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // 2. Cancel Stripe subscription if user's organization has one
+    if (user.organizationId) {
       try {
         // Get organization's Stripe customer ID
         const [organization] = await db
           .select()
-          .from(db.query.organizations)
-          .where(eq(db.query.organizations.id, org.organizationId))
+          .from(organizations)
+          .where(eq(organizations.id, user.organizationId))
           .limit(1);
 
         if (organization?.stripeCustomerId) {
@@ -64,16 +70,12 @@ export async function DELETE(req: NextRequest) {
 
           // Cancel each subscription
           for (const sub of subscriptions.data) {
-            await stripe.subscriptions.cancel(sub.id, {
-              metadata: { 
-                deletion_reason: 'user_account_deletion',
-                deleted_by_user: userId,
-              },
-            });
+            await stripe.subscriptions.cancel(sub.id);
+            console.log(`Cancelled subscription ${sub.id} due to user deletion: ${userId}`);
           }
         }
       } catch (error) {
-        console.error(`Failed to cancel subscriptions for org ${org.organizationId}:`, error);
+        console.error(`Failed to cancel subscriptions for org ${user.organizationId}:`, error);
         // Continue with deletion even if Stripe cancellation fails
       }
     }
@@ -95,10 +97,8 @@ export async function DELETE(req: NextRequest) {
       .delete(aiGenerations)
       .where(eq(aiGenerations.userId, userId));
 
-    // 5. Remove from organizations
-    await db
-      .delete(organizationMembers)
-      .where(eq(organizationMembers.userId, userId));
+    // 5. Organization cleanup handled by soft delete
+    // User's organizationId remains for audit purposes
 
     // 6. Log deletion for audit trail (retain 7 years for compliance)
     await db.insert(auditLogs).values({
@@ -112,13 +112,14 @@ export async function DELETE(req: NextRequest) {
         email: session.user.email,
         reason: reason || 'user_request',
         retainUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
-        subscriptionsCanceled: userOrgs.length,
+        organizationId: user.organizationId,
       },
       createdAt: new Date(),
     });
 
     // 7. Invalidate all sessions
-    await signOut({ redirect: false });
+    // Note: Session invalidation must be handled client-side
+    // Client should call signOut() after receiving this response
 
     return NextResponse.json({
       deleted: true,

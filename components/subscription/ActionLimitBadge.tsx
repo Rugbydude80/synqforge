@@ -80,7 +80,6 @@ export function ActionLimitBadge({ organizationId }: ActionLimitBadgeProps) {
 
   // Choose colors
   const badgeVariant = isCritical ? 'destructive' : isWarning ? 'default' : 'secondary'
-  const progressColor = isCritical ? 'bg-red-500' : isWarning ? 'bg-yellow-500' : 'bg-green-500'
 
   return (
     <div className="fixed bottom-4 right-4 w-80 bg-card rounded-lg shadow-lg border p-4 z-50">
@@ -101,7 +100,6 @@ export function ActionLimitBadge({ organizationId }: ActionLimitBadgeProps) {
         <Progress 
           value={Math.min(usage.percentUsed, 100)} 
           className="h-2"
-          indicatorClassName={progressColor}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{usage.percentUsed}% used</span>

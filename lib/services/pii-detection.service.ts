@@ -4,9 +4,8 @@
  * Blocks requests containing sensitive data before AI processing
  */
 
-import { db } from '@/lib/db';
-import { piiDetectionLog } from '@/lib/db/schema';
-import { generateId } from '@/lib/utils';
+// TODO: Re-enable when piiDetectionLog table is created
+// import { db, generateId } from '@/lib/db';
 
 export interface PIIPattern {
   regex: RegExp;
@@ -256,15 +255,23 @@ export class PIIDetectionService {
     feature?: string;
   }): Promise<void> {
     try {
-      await db.insert(piiDetectionLog).values({
-        id: generateId(),
+      // TODO: Implement PII detection logging when table is created
+      // await db.insert(piiDetectionLog).values({
+      //   id: generateId(),
+      //   organizationId: data.organizationId,
+      //   detectedTypes: data.detectedTypes,
+      //   severity: data.severity,
+      //   matchCount: data.matchCount,
+      //   userId: data.userId,
+      //   feature: data.feature || 'unknown',
+      //   detectedAt: new Date(),
+      // });
+      console.log('[PII Detection]', {
         organizationId: data.organizationId,
         detectedTypes: data.detectedTypes,
         severity: data.severity,
         matchCount: data.matchCount,
-        userId: data.userId,
         feature: data.feature || 'unknown',
-        detectedAt: new Date(),
       });
     } catch (error) {
       // Don't fail PII detection if logging fails
@@ -275,7 +282,7 @@ export class PIIDetectionService {
   /**
    * Get PII detection statistics for organization
    */
-  async getStatistics(organizationId: string, days: number = 30): Promise<{
+  async getStatistics(organizationId: string, _days: number = 30): Promise<{
     totalDetections: number;
     bySeverity: Record<string, number>;
     byType: Record<string, number>;

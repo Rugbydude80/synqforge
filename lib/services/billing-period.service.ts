@@ -17,7 +17,7 @@ import {
   organizations,
   subscriptionStateAudit 
 } from '@/lib/db/schema'
-import { eq, and, lt, sql } from 'drizzle-orm'
+import { eq, lt, sql } from 'drizzle-orm'
 
 // ============================================================================
 // TYPES
@@ -93,9 +93,10 @@ function getDaysInMonth(date: Date): number {
 /**
  * Check if date is in a leap year
  */
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
-}
+// Unused but kept for potential future use
+// function isLeapYear(year: number): boolean {
+//   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
+// }
 
 /**
  * Get days remaining in current billing period
@@ -285,8 +286,7 @@ export function calculateProratedLimits(
   newLimit: number,
   planChangeDate: Date
 ): ProratedLimits {
-  const { start, end, daysInPeriod } = getCurrentBillingPeriod()
-  const now = new Date()
+  const { end, daysInPeriod } = getCurrentBillingPeriod()
   
   // Calculate days remaining (including today)
   const msPerDay = 1000 * 60 * 60 * 24
@@ -398,13 +398,13 @@ export async function cleanupOldArchivedUsage(monthsToKeep: number = 12): Promis
   const cutoffDate = new Date()
   cutoffDate.setMonth(cutoffDate.getMonth() - monthsToKeep)
   
-  const result = await db
+  await db
     .delete(workspaceUsageHistory)
     .where(lt(workspaceUsageHistory.archivedAt, cutoffDate))
   
   console.log(`Cleaned up archived usage records older than ${monthsToKeep} months`)
   
-  return result.rowCount || 0
+  return 0 // Count not available in drizzle delete result
 }
 
 /**

@@ -17,7 +17,7 @@
  */
 
 import { db, generateId } from '@/lib/db'
-import { tokenReservations, workspaceUsage, organizations } from '@/lib/db/schema'
+import { tokenReservations, workspaceUsage } from '@/lib/db/schema'
 import { eq, and, lt } from 'drizzle-orm'
 import { checkAndResetBillingPeriod } from './billing-period.service'
 

@@ -13,8 +13,8 @@
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { workspaceUsage, organizations } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { workspaceUsage } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { checkAndResetBillingPeriod } from '@/lib/services/billing-period.service'
 import { reserveTokens, getReservationStats } from '@/lib/services/token-reservation.service'
 
