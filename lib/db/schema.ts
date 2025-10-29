@@ -1132,6 +1132,11 @@ export const workspaceUsage = pgTable(
     docsIngested: integer('docs_ingested').notNull().default(0),
     docsLimit: integer('docs_limit').notNull().default(10),
 
+    // Grace period tracking
+    gracePeriodActive: boolean('grace_period_active').default(false),
+    gracePeriodExpiresAt: timestamp('grace_period_expires_at'),
+    gracePeriodStartedAt: timestamp('grace_period_started_at'),
+
     // Timestamps
     lastResetAt: timestamp('last_reset_at').defaultNow(),
     createdAt: timestamp('created_at').defaultNow(),
@@ -1791,3 +1796,163 @@ export const templateStoriesRelations = relations(templateStories, ({ one }) => 
     references: [storyTemplates.id],
   }),
 }))
+
+// ============================================
+// STRIPE WEBHOOK LOGS (Idempotency & Audit Trail)
+// ============================================
+
+export const stripeWebhookLogs = pgTable(
+  'stripe_webhook_logs',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    eventId: varchar('event_id', { length: 255 }).notNull().unique(),
+    eventType: varchar('event_type', { length: 100 }).notNull(),
+    processedAt: timestamp('processed_at').defaultNow(),
+    status: varchar('status', { length: 20 }).notNull(), // 'success', 'failed', 'pending', 'retrying'
+    errorMessage: text('error_message'),
+    retryCount: integer('retry_count').default(0),
+    payload: json('payload'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    eventIdIdx: index('idx_webhook_event_id').on(table.eventId),
+    statusIdx: index('idx_webhook_status').on(table.status),
+    createdAtIdx: index('idx_webhook_created_at').on(table.createdAt),
+  })
+)
+
+// ============================================
+// WORKSPACE USAGE HISTORY (Archive Previous Billing Periods)
+// ============================================
+
+export const workspaceUsageHistory = pgTable(
+  'workspace_usage_history',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    billingPeriodStart: timestamp('billing_period_start').notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    
+    // Token usage
+    tokensUsed: integer('tokens_used').notNull().default(0),
+    tokensLimit: integer('tokens_limit').notNull().default(50000),
+    
+    // Document ingestion
+    docsIngested: integer('docs_ingested').notNull().default(0),
+    docsLimit: integer('docs_limit').notNull().default(10),
+    
+    // Grace period tracking
+    gracePeriodActive: boolean('grace_period_active').default(false),
+    gracePeriodExpiresAt: timestamp('grace_period_expires_at'),
+    
+    // Archival metadata
+    archivedAt: timestamp('archived_at').defaultNow(),
+    lastResetAt: timestamp('last_reset_at'),
+    createdAt: timestamp('created_at'),
+    updatedAt: timestamp('updated_at'),
+  },
+  (table) => ({
+    orgIdx: index('idx_usage_history_org').on(table.organizationId),
+    periodIdx: index('idx_usage_history_period').on(table.billingPeriodStart, table.billingPeriodEnd),
+    archivedIdx: index('idx_usage_history_archived').on(table.archivedAt),
+  })
+)
+
+// ============================================
+// TOKEN RESERVATIONS (Pessimistic Locking for Concurrent Requests)
+// ============================================
+
+export const tokenReservations = pgTable(
+  'token_reservations',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    
+    // Reservation details
+    estimatedTokens: integer('estimated_tokens').notNull(),
+    actualTokens: integer('actual_tokens'),
+    status: varchar('status', { length: 20 }).notNull(), // 'reserved', 'committed', 'released', 'expired'
+    
+    // Associated generation
+    generationType: varchar('generation_type', { length: 50 }),
+    generationId: varchar('generation_id', { length: 36 }),
+    
+    // Timestamps
+    reservedAt: timestamp('reserved_at').defaultNow(),
+    committedAt: timestamp('committed_at'),
+    releasedAt: timestamp('released_at'),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  (table) => ({
+    orgIdx: index('idx_token_res_org').on(table.organizationId),
+    statusIdx: index('idx_token_res_status').on(table.status),
+    expiresIdx: index('idx_token_res_expires').on(table.expiresAt),
+    userIdx: index('idx_token_res_user').on(table.userId),
+  })
+)
+
+// ============================================
+// SUBSCRIPTION STATE AUDIT LOG
+// ============================================
+
+export const subscriptionStateAudit = pgTable(
+  'subscription_state_audit',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    
+    // State change tracking
+    previousStatus: varchar('previous_status', { length: 20 }),
+    newStatus: varchar('new_status', { length: 20 }).notNull(),
+    previousPlan: varchar('previous_plan', { length: 50 }),
+    newPlan: varchar('new_plan', { length: 50 }),
+    
+    // Change metadata
+    changeReason: varchar('change_reason', { length: 100 }), // 'webhook', 'admin_update', 'payment_failed', 'reconciliation'
+    changedBy: varchar('changed_by', { length: 36 }), // user_id or 'system'
+    stripeEventId: varchar('stripe_event_id', { length: 255 }),
+    
+    // Timestamps
+    changedAt: timestamp('changed_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_audit_org').on(table.organizationId),
+    changedAtIdx: index('idx_audit_changed_at').on(table.changedAt),
+    newStatusIdx: index('idx_audit_new_status').on(table.newStatus),
+  })
+)
+
+// ============================================
+// MONITORING ALERTS TABLE
+// ============================================
+
+export const subscriptionAlerts = pgTable(
+  'subscription_alerts',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }),
+    
+    // Alert details
+    alertType: varchar('alert_type', { length: 50 }).notNull(), // 'zero_usage', 'negative_balance', 'stale_subscription', 'orphaned_usage'
+    severity: varchar('severity', { length: 20 }).notNull(), // 'info', 'warning', 'error', 'critical'
+    message: text('message').notNull(),
+    metadata: json('metadata'),
+    
+    // Resolution tracking
+    status: varchar('status', { length: 20 }).default('open'), // 'open', 'acknowledged', 'resolved', 'ignored'
+    resolvedAt: timestamp('resolved_at'),
+    resolvedBy: varchar('resolved_by', { length: 36 }),
+    
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_alerts_org').on(table.organizationId),
+    statusIdx: index('idx_alerts_status').on(table.status),
+    typeIdx: index('idx_alerts_type').on(table.alertType),
+    createdIdx: index('idx_alerts_created').on(table.createdAt),
+  })
+)
