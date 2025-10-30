@@ -42,7 +42,9 @@ export async function GET(req: NextRequest) {
 
     let successCount = 0
     let errorCount = 0
+    const errors: Array<{ sprintId: string; sprintName: string; error: string }> = []
 
+    // CRITICAL FIX: Process each sprint individually with error recovery
     for (const sprint of activeSprints) {
       try {
         // Get sprint stories
@@ -95,8 +97,16 @@ export async function GET(req: NextRequest) {
 
         successCount++
       } catch (error) {
-        console.error(`[Cron] Error processing sprint ${sprint.id}:`, error)
+        // CRITICAL FIX: Log error but continue processing remaining sprints
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error(`[Cron] Error processing sprint ${sprint.id} (${sprint.name}):`, errorMessage)
         errorCount++
+        errors.push({
+          sprintId: sprint.id,
+          sprintName: sprint.name || 'Unknown',
+          error: errorMessage,
+        })
+        // Continue to next sprint - don't let one failure stop the entire job
       }
     }
 
@@ -109,6 +119,7 @@ export async function GET(req: NextRequest) {
       message: `Processed ${activeSprints.length} sprints`,
       successCount,
       errorCount,
+      errors: errors.length > 0 ? errors : undefined, // CRITICAL FIX: Include error details
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
