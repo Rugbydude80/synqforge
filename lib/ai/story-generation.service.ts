@@ -14,6 +14,7 @@ import { validationService } from './validation.service';
 import { piiRedactionService } from './pii-redaction.service';
 import { logger } from '@/lib/observability/logger';
 import { metrics } from '@/lib/observability/metrics';
+import { callAIWithRetry } from '@/lib/utils/ai-retry';
 
 export class StoryGenerationService {
   private anthropic: Anthropic;
@@ -45,17 +46,24 @@ export class StoryGenerationService {
     // Audit log (1% sample with PII redaction)
     piiRedactionService.auditLog('story-generation.prompt', { prompt }, { requestId });
 
-    // Call AI
+    // Call AI with retry logic
     const startTime = Date.now();
-    const response = await this.anthropic.messages.create({
-      model: request.model,
-      max_tokens: 3000,
-      temperature: 0.7,
-      messages: [{
-        role: 'user',
-        content: prompt,
-      }],
-    });
+    const response = await callAIWithRetry(
+      () => this.anthropic.messages.create({
+        model: request.model,
+        max_tokens: 3000,
+        temperature: 0.7,
+        messages: [{
+          role: 'user',
+          content: prompt,
+        }],
+      }),
+      {
+        maxRetries: 3,
+        initialDelayMs: 1000,
+        retryableErrors: ['rate_limit', 'rate limit', 'timeout', '429', '500', '502', '503', '504'],
+      }
+    );
 
     const latency = Date.now() - startTime;
     metrics.timing('ai.latency', latency, { operation: 'story-generation' });
