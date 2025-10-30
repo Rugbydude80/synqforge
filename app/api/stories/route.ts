@@ -51,7 +51,13 @@ async function getStories(req: NextRequest, context: { user: any }) {
       } else {
         // Convert numeric params
         if (key === 'limit' || key === 'offset') {
-          queryParams[key] = parseInt(value, 10);
+          const parsed = parseInt(value, 10);
+          if (isNaN(parsed)) {
+            // Invalid numeric value - let Zod validation handle the error
+            queryParams[key] = value;
+          } else {
+            queryParams[key] = parsed;
+          }
         } else if (key === 'aiGenerated') {
           queryParams[key] = value === 'true';
         } else {
@@ -64,6 +70,12 @@ async function getStories(req: NextRequest, context: { user: any }) {
     const validationResult = safeValidateStoryFilters(queryParams);
 
     if (!validationResult.success) {
+      console.error('Story filters validation failed:', {
+        queryParams,
+        issues: validationResult.error.issues,
+        user: context.user?.id,
+        organizationId: context.user?.organizationId
+      });
       throw new ValidationError(
         'Invalid query parameters',
         { issues: validationResult.error.issues }
