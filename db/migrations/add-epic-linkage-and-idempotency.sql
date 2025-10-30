@@ -26,12 +26,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_stories_correlation_key ON stories(correla
 CREATE INDEX IF NOT EXISTS idx_stories_request_id ON stories(request_id);
 CREATE INDEX IF NOT EXISTS idx_stories_capability_key ON stories(capability_key);
 
--- Add foreign key constraint for parent epic
-ALTER TABLE epics 
-  ADD CONSTRAINT fk_epics_parent 
-  FOREIGN KEY (parent_epic_id) 
-  REFERENCES epics(id) 
-  ON DELETE SET NULL;
+-- Add foreign key constraint for parent epic (only if it doesn't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_epics_parent'
+  ) THEN
+    ALTER TABLE epics 
+      ADD CONSTRAINT fk_epics_parent 
+      FOREIGN KEY (parent_epic_id) 
+      REFERENCES epics(id) 
+      ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Comments for documentation
 COMMENT ON COLUMN epics.parent_epic_id IS 'Parent epic ID if this epic was split from another';

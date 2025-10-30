@@ -22,14 +22,25 @@ CREATE INDEX IF NOT EXISTS idx_ai_action_usage_user ON ai_action_usage(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_action_usage_period ON ai_action_usage(billing_period_start, billing_period_end);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_action_usage_unique ON ai_action_usage(organization_id, user_id, billing_period_start);
 
--- Add foreign key constraints
-ALTER TABLE ai_action_usage 
-  ADD CONSTRAINT fk_ai_action_usage_org 
-  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-ALTER TABLE ai_action_usage 
-  ADD CONSTRAINT fk_ai_action_usage_user 
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+-- Add foreign key constraints (only if they don't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_ai_action_usage_org'
+  ) THEN
+    ALTER TABLE ai_action_usage 
+      ADD CONSTRAINT fk_ai_action_usage_org 
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_ai_action_usage_user'
+  ) THEN
+    ALTER TABLE ai_action_usage 
+      ADD CONSTRAINT fk_ai_action_usage_user 
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- Create AI action rollover tracking table (for Pro tier 20% rollover)
 CREATE TABLE IF NOT EXISTS ai_action_rollover (
@@ -50,14 +61,25 @@ CREATE INDEX IF NOT EXISTS idx_ai_action_rollover_org ON ai_action_rollover(orga
 CREATE INDEX IF NOT EXISTS idx_ai_action_rollover_user ON ai_action_rollover(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_action_rollover_applied_period ON ai_action_rollover(applied_to_period_start);
 
--- Add foreign key constraints for rollover table
-ALTER TABLE ai_action_rollover 
-  ADD CONSTRAINT fk_ai_action_rollover_org 
-  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-ALTER TABLE ai_action_rollover 
-  ADD CONSTRAINT fk_ai_action_rollover_user 
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+-- Add foreign key constraints for rollover table (only if they don't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_ai_action_rollover_org'
+  ) THEN
+    ALTER TABLE ai_action_rollover 
+      ADD CONSTRAINT fk_ai_action_rollover_org 
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_ai_action_rollover_user'
+  ) THEN
+    ALTER TABLE ai_action_rollover 
+      ADD CONSTRAINT fk_ai_action_rollover_user 
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- Update subscription_tier enum to include new 'starter' tier
 -- Note: This is an ALTER TYPE which requires special handling in production

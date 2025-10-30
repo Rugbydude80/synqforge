@@ -36,6 +36,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS stories_embedding_update ON stories;
 CREATE TRIGGER stories_embedding_update
 BEFORE UPDATE ON stories
 FOR EACH ROW

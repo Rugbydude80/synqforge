@@ -212,9 +212,22 @@ CREATE TRIGGER update_subscription_alerts_updated_at
 -- ============================================================================
 
 -- Ensure tokens_used never exceeds tokens_limit by more than 10% (with grace)
-ALTER TABLE workspace_usage
-  ADD CONSTRAINT check_token_usage_reasonable
-  CHECK (tokens_used <= tokens_limit * 1.1);
+-- First, fix any existing data that violates the constraint
+UPDATE workspace_usage
+SET tokens_used = tokens_limit * 1.1
+WHERE tokens_used > tokens_limit * 1.1;
+
+-- Then add the constraint (only if it doesn't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_token_usage_reasonable'
+  ) THEN
+    ALTER TABLE workspace_usage
+      ADD CONSTRAINT check_token_usage_reasonable
+      CHECK (tokens_used <= tokens_limit * 1.1);
+  END IF;
+END $$;
 
 -- Ensure reservation expiry is reasonable (max 10 minutes from creation)
 ALTER TABLE token_reservations
