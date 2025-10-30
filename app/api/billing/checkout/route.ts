@@ -87,16 +87,41 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get organization
-    const [organization] = await db
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, organizationId))
-      .limit(1)
+    // CRITICAL FIX: Poll for organization with retry logic to handle race condition
+    // If user signs up and immediately clicks checkout, organization might not be immediately queryable
+    const MAX_RETRIES = 3
+    const RETRY_DELAY_MS = 500
+    let organization = null
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const [org] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1)
+
+      if (org) {
+        organization = org
+        break
+      }
+
+      // If not found and not last attempt, wait before retrying
+      if (attempt < MAX_RETRIES - 1) {
+        console.log(
+          `Organization ${organizationId} not found, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+        )
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS))
+      }
+    }
 
     if (!organization) {
+      console.error(`Organization ${organizationId} not found after ${MAX_RETRIES} attempts`)
       return NextResponse.json(
-        { error: 'Organization not found' },
+        {
+          error: 'Organization not found',
+          message: 'Your organization is still being created. Please wait a moment and try again.',
+          retryAfter: RETRY_DELAY_MS / 1000, // seconds
+        },
         { status: 404 }
       )
     }

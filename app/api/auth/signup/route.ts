@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
       ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days for free/starter
       : null
 
+    // CRITICAL FIX: Ensure organization creation is synchronous and fully committed
     await db.transaction(async (tx) => {
       // Create organization - always starts as starter tier
       // Paid tier will be activated via Stripe webhook upon successful payment
@@ -149,6 +150,24 @@ export async function POST(req: NextRequest) {
         isActive: true,
       })
     })
+
+    // CRITICAL FIX: Verify organization was created before proceeding
+    // This ensures the transaction is fully committed and organization is queryable
+    const [verifiedOrg] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1)
+
+    if (!verifiedOrg) {
+      throw new DatabaseError(
+        'Organization creation failed',
+        undefined,
+        { orgId, message: 'Organization was not created successfully' }
+      )
+    }
+
+    console.log(`✅ Organization ${orgId} created and verified for user ${validatedData.email}`)
 
     // Initialize usage tracking for the new organization
     try {
