@@ -145,7 +145,7 @@ function evaluateConditions(conditions: Record<string, any>, context: Record<str
  * @param context - Execution context (storyId, organizationId, userId, etc.)
  * @throws Error if action fails or validation fails
  */
-async function executeAction(action: AgentActionDefinition, context: Record<string, any>): Promise<void> {
+export async function executeAction(action: AgentActionDefinition, context: Record<string, any>): Promise<void> {
   const { type, config } = action
   const { storyId, organizationId } = context
 
@@ -489,11 +489,19 @@ async function handleAIAction(config: Record<string, any>, context: Record<strin
           title: story.title,
           description: prompt,
           hasUI: false,
-          themes: [],
+          themes: ['data-entry'],
           requiresWCAG: false,
           requiresPersistence: false,
-          acceptanceCriteria: [],
-          estimate: undefined,
+          acceptanceCriteria: [
+            {
+              given: 'A user',
+              when: 'they access the story',
+              then: 'they see the description',
+              is_interactive: false,
+              themes: [],
+            },
+          ],
+          estimate: 3,
         },
         projectContext: undefined,
         requestId: generateId(),
@@ -519,13 +527,43 @@ async function handleAIAction(config: Record<string, any>, context: Record<strin
       // Use validation service to validate story
       const { validationService } = await import('@/lib/ai/validation.service')
       
-      // Convert acceptanceCriteria to array of strings if needed
-      const acArray = Array.isArray(story.acceptanceCriteria) 
-        ? story.acceptanceCriteria.map((ac: any) => typeof ac === 'string' ? ac : `${ac.given || ''} ${ac.when || ''} ${ac.then || ''}`.trim())
-        : []
+      // Convert acceptanceCriteria to AcceptanceCriterion[] format if needed
+      let acArray: Array<{ given: string; when: string; then: string; is_interactive: boolean; themes: string[] }> = []
+      
+      if (Array.isArray(story.acceptanceCriteria)) {
+        acArray = story.acceptanceCriteria.map((ac: any) => {
+          if (typeof ac === 'string') {
+            // Parse string format "Given X When Y Then Z"
+            const parts = ac.split(/When|Then/i)
+            return {
+              given: parts[0]?.replace(/Given/i, '').trim() || 'A user',
+              when: parts[1]?.trim() || 'they perform an action',
+              then: parts[2]?.trim() || 'they see a result',
+              is_interactive: false,
+              themes: [],
+            }
+          } else if (ac.given && ac.when && ac.then) {
+            return {
+              given: ac.given,
+              when: ac.when,
+              then: ac.then,
+              is_interactive: ac.is_interactive || false,
+              themes: ac.themes || [],
+            }
+          } else {
+            return {
+              given: `${ac.given || ''}`.trim() || 'A user',
+              when: `${ac.when || ''}`.trim() || 'they perform an action',
+              then: `${ac.then || ''}`.trim() || 'they see a result',
+              is_interactive: false,
+              themes: [],
+            }
+          }
+        })
+      }
       
       const validation = await validationService.validateStory(
-        acArray,
+        acArray as any,
         false,
         [],
         0.7
