@@ -576,7 +576,7 @@ export async function getOrganizationTier(organizationId: string): Promise<strin
   return org?.plan || null
 }
 
-export default {
+const subscriptionTierService = {
   checkActionLimit,
   incrementActionUsage,
   calculateRollover,
@@ -589,4 +589,6 @@ export default {
   isFeatureEnabled,
   getOrganizationTier,
 }
+
+export default subscriptionTierService
 

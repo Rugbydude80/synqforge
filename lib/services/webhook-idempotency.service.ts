@@ -379,7 +379,7 @@ function isRetryableError(error: unknown): boolean {
 /**
  * Get webhook processing statistics
  */
-export async function getWebhookStats(since?: Date): Promise<{
+export async function getWebhookStats(_since?: Date): Promise<{
   total: number
   successful: number
   failed: number

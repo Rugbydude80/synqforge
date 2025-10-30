@@ -224,12 +224,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
         const legacyTier = getLegacyTier(entitlements.plan)
 
         // CRITICAL: Ensure plan and subscriptionTier always match
+        // Note: dbValues already includes plan, but we override it to ensure correctness
         await tx
           .update(organizations)
           .set({
             subscriptionTier: legacyTier,
-            plan: entitlements.plan, // Ensure plan matches the actual plan name from entitlements
             ...dbValues,
+            plan: entitlements.plan, // Override to ensure plan matches the actual plan name from entitlements
             stripeSubscriptionId: subscriptionId,
             stripePriceId: priceId,
             subscriptionStatus: subscription.status,
@@ -331,12 +332,13 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
 
   // Downgrade organization to starter tier (free tier)
   // CRITICAL: Ensure plan and subscriptionTier match
+  // Note: dbValues already includes plan, but we override it to ensure correctness
   await db
     .update(organizations)
     .set({
       subscriptionTier: 'starter', // Free tier is called 'starter' in database
-      plan: 'free', // Ensure plan matches tier
       ...dbValues,
+      plan: 'free', // Override to ensure plan matches tier
       stripeSubscriptionId: null,
       stripePriceId: null,
       subscriptionStatus: 'inactive',

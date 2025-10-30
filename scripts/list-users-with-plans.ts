@@ -44,17 +44,17 @@ interface UserWithPlan {
   userId: string
   email: string
   name: string | null
-  role: string
-  isActive: boolean
+  role: string | null
+  isActive: boolean | null
   createdAt: Date | null
   organizationId: string
   organizationName: string
   organizationSlug: string
-  plan: string
-  tier: string
-  subscriptionStatus: string
-  seatsIncluded: number
-  aiTokensIncluded: number
+  plan: string | null
+  tier: string | null
+  subscriptionStatus: string | null
+  seatsIncluded: number | null
+  aiTokensIncluded: number | null
   userCount: number
 }
 
@@ -163,14 +163,14 @@ async function listUsersWithPlans(searchTerm?: string) {
     console.log(`   Plan:              ${org.plan}`)
     console.log(`   Tier:              ${org.tier}${hasMismatch ? ` ⚠️  (expected: ${expectedTier})` : ''}`)
     console.log(`   Status:            ${org.subscriptionStatus}`)
-    console.log(`   Seats Included:    ${org.seatsIncluded === 999999 ? 'Unlimited' : org.seatsIncluded}`)
-    console.log(`   AI Tokens:         ${org.aiTokensIncluded === 999999 ? 'Unlimited' : org.aiTokensIncluded.toLocaleString()}`)
+    console.log(`   Seats Included:    ${org.seatsIncluded === 999999 ? 'Unlimited' : org.seatsIncluded || 0}`)
+    console.log(`   AI Tokens:         ${org.aiTokensIncluded === 999999 ? 'Unlimited' : (org.aiTokensIncluded || 0).toLocaleString()}`)
     console.log(`   Total Users:       ${org.userCount}`)
     console.log(`\n   👥 Users in this org:`)
     
     orgUsers.forEach(user => {
       console.log(`   • ${user.name || 'N/A'} (${user.email})`)
-      console.log(`     └─ Role: ${user.role} | Active: ${user.isActive ? 'Yes' : 'No'} | Created: ${user.createdAt?.toLocaleDateString() || 'N/A'}`)
+      console.log(`     └─ Role: ${user.role || 'N/A'} | Active: ${user.isActive ? 'Yes' : 'No'} | Created: ${user.createdAt?.toLocaleDateString() || 'N/A'}`)
     })
     
     console.log(`\n💡 To change plan for any user in this org:`)
@@ -185,7 +185,8 @@ async function listUsersWithPlans(searchTerm?: string) {
   // Plan distribution
   const planCounts = new Map<string, number>()
   results.forEach(user => {
-    planCounts.set(user.plan, (planCounts.get(user.plan) || 0) + 1)
+    const plan = user.plan || 'unknown'
+    planCounts.set(plan, (planCounts.get(plan) || 0) + 1)
   })
   
   console.log(`\n   Plan Distribution:`)
