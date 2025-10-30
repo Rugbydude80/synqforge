@@ -12,11 +12,33 @@
  *   pnpm tsx scripts/list-users-with-plans.ts
  *   pnpm tsx scripts/list-users-with-plans.ts john
  *   pnpm tsx scripts/list-users-with-plans.ts @example.com
+ * 
+ * Note: Requires DATABASE_URL environment variable.
+ *       Run: vercel env pull .env.local (or set DATABASE_URL manually)
  */
+
+// Load environment variables
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Try loading .env.local first, then .env
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set')
+  console.error('\n💡 To fix this, run:')
+  console.error('   vercel env pull .env.local')
+  console.error('\n   Or set DATABASE_URL manually:')
+  console.error('   export DATABASE_URL="your-database-url"')
+  process.exit(1)
+}
 
 import { db } from '../lib/db'
 import { organizations, users } from '../lib/db/schema'
 import { eq, like, or, sql, desc } from 'drizzle-orm'
+import { mapPlanToLegacyTier } from '../lib/billing/plan-entitlements'
 
 interface UserWithPlan {
   userId: string
@@ -131,12 +153,15 @@ async function listUsersWithPlans(searchTerm?: string) {
   orgMap.forEach((orgUsers, orgId) => {
     const org = orgUsers[0]
     
+    const expectedTier = mapPlanToLegacyTier(org.plan || '')
+    const hasMismatch = org.tier !== expectedTier
+
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-    console.log(`🏢 ${org.organizationName}`)
+    console.log(`🏢 ${org.organizationName}${hasMismatch ? ' ⚠️  MISMATCH' : ''}`)
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     console.log(`   Slug:              ${org.organizationSlug}`)
     console.log(`   Plan:              ${org.plan}`)
-    console.log(`   Tier:              ${org.tier}`)
+    console.log(`   Tier:              ${org.tier}${hasMismatch ? ` ⚠️  (expected: ${expectedTier})` : ''}`)
     console.log(`   Status:            ${org.subscriptionStatus}`)
     console.log(`   Seats Included:    ${org.seatsIncluded === 999999 ? 'Unlimited' : org.seatsIncluded}`)
     console.log(`   AI Tokens:         ${org.aiTokensIncluded === 999999 ? 'Unlimited' : org.aiTokensIncluded.toLocaleString()}`)

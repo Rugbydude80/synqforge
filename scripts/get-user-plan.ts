@@ -10,7 +10,28 @@
  * 
  * Example:
  *   pnpm tsx scripts/get-user-plan.ts user@example.com
+ * 
+ * Note: Requires DATABASE_URL environment variable.
+ *       Run: vercel env pull .env.local (or set DATABASE_URL manually)
  */
+
+// Load environment variables
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Try loading .env.local first, then .env
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set')
+  console.error('\n💡 To fix this, run:')
+  console.error('   vercel env pull .env.local')
+  console.error('\n   Or set DATABASE_URL manually:')
+  console.error('   export DATABASE_URL="your-database-url"')
+  process.exit(1)
+}
 
 import { db } from '../lib/db'
 import { organizations, users } from '../lib/db/schema'
@@ -88,14 +109,25 @@ async function getUserPlan(email: string) {
   console.log(`   Created:       ${result.createdAt?.toLocaleString() || 'N/A'}`)
   console.log(`   Last Active:   ${result.lastActiveAt?.toLocaleString() || 'Never'}`)
   
+  // Check for mismatch
+  const { mapPlanToLegacyTier } = await import('../lib/billing/plan-entitlements')
+  const expectedTier = mapPlanToLegacyTier(result.plan || '')
+  const hasMismatch = result.tier !== expectedTier
+
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
   console.log(`📦 PLAN INFORMATION`)
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
   console.log(`   Plan:          ${result.plan}`)
-  console.log(`   Tier:          ${result.tier}`)
+  console.log(`   Tier:          ${result.tier}${hasMismatch ? ` ⚠️  (expected: ${expectedTier})` : ''}`)
   console.log(`   Cycle:         ${result.planCycle}`)
   console.log(`   Status:        ${result.subscriptionStatus}`)
   console.log(`   Renewal Date:  ${result.subscriptionRenewalAt ? result.subscriptionRenewalAt.toLocaleString() : 'N/A'}`)
+  
+  if (hasMismatch) {
+    console.log(`\n⚠️  WARNING: Plan and tier don't match!`)
+    console.log(`   This can cause confusion. Run this to fix:`)
+    console.log(`   pnpm tsx scripts/fix-plan-tier-mismatches.ts --fix`)
+  }
   
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
   console.log(`🏢 ORGANIZATION`)

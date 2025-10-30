@@ -164,15 +164,18 @@ export function mapPlanToLegacyTier(planName: string): 'starter' | 'core' | 'pro
 
 /**
  * Get database values for a plan
+ * CRITICAL: Ensures plan and subscriptionTier always match
  */
 export function getPlanDbValues(planName: string) {
   const entitlements = getEntitlementsForPlan(planName)
   const legacyTier = mapPlanToLegacyTier(planName)
   const dbValues = entitlementsToDbValues(entitlements)
 
+  // Override plan and tier to ensure they match
   return {
-    subscriptionTier: legacyTier,
     ...dbValues,
+    plan: planName, // Use the actual plan name (solo, pro, team, etc.) - overrides any value from entitlements
+    subscriptionTier: legacyTier, // Use the mapped tier (core, pro, team, etc.)
     subscriptionStatus: planName === 'free' || planName === 'starter' ? 'active' : 'active',
   }
 }
