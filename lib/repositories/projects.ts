@@ -278,35 +278,69 @@ export class ProjectsRepository {
 
   /**
    * Get project statistics
+   * Uses raw SQL to avoid query builder issues when no related data exists
    */
   async getProjectStats(projectId: string) {
     await this.getProjectById(projectId) // Verify access
 
-    const [stats] = await db
-      .select({
-        totalEpics: count(epics.id),
-        totalStories: count(stories.id),
-        completedStories: sql<number>`COUNT(CASE WHEN ${stories.status} = 'done' THEN 1 END)`,
-        inProgressStories: sql<number>`COUNT(CASE WHEN ${stories.status} = 'in_progress' THEN 1 END)`,
-        totalStoryPoints: sql<number>`SUM(${stories.storyPoints})`,
-        completedStoryPoints: sql<number>`SUM(CASE WHEN ${stories.status} = 'done' THEN ${stories.storyPoints} ELSE 0 END)`,
-        totalSprints: sql<number>`(
-          SELECT COUNT(*) FROM ${sprints} 
-          WHERE ${sprints.projectId} = ${projects.id}
-        )`,
-        activeSprints: sql<number>`(
-          SELECT COUNT(*) FROM ${sprints} 
-          WHERE ${sprints.projectId} = ${projects.id} 
+    const statsResult = await db.execute<{
+      totalEpics: number
+      totalStories: number
+      completedStories: number
+      inProgressStories: number
+      totalStoryPoints: number | null
+      completedStoryPoints: number | null
+      totalSprints: number
+      activeSprints: number
+    }>(sql`
+      SELECT 
+        (
+          SELECT COUNT(*)::int 
+          FROM ${epics} 
+          WHERE ${epics.projectId} = ${projectId}
+        ) as "totalEpics",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
+          WHERE ${stories.projectId} = ${projectId}
+        ) as "totalStories",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
+          WHERE ${stories.projectId} = ${projectId}
+          AND ${stories.status} = 'done'
+        ) as "completedStories",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
+          WHERE ${stories.projectId} = ${projectId}
+          AND ${stories.status} = 'in_progress'
+        ) as "inProgressStories",
+        (
+          SELECT COALESCE(SUM(${stories.storyPoints}), 0)::int 
+          FROM ${stories} 
+          WHERE ${stories.projectId} = ${projectId}
+        ) as "totalStoryPoints",
+        (
+          SELECT COALESCE(SUM(${stories.storyPoints}), 0)::int 
+          FROM ${stories} 
+          WHERE ${stories.projectId} = ${projectId}
+          AND ${stories.status} = 'done'
+        ) as "completedStoryPoints",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${sprints} 
+          WHERE ${sprints.projectId} = ${projectId}
+        ) as "totalSprints",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${sprints} 
+          WHERE ${sprints.projectId} = ${projectId}
           AND ${sprints.status} = 'active'
-        )`,
-      })
-      .from(projects)
-      .leftJoin(epics, eq(epics.projectId, projects.id))
-      .leftJoin(stories, eq(stories.projectId, projects.id))
-      .where(eq(projects.id, projectId))
-      .groupBy(projects.id)
+        ) as "activeSprints"
+    `)
 
-    return stats || {
+    const stats = (statsResult[0] as any) || {
       totalEpics: 0,
       totalStories: 0,
       completedStories: 0,
@@ -315,6 +349,17 @@ export class ProjectsRepository {
       completedStoryPoints: 0,
       totalSprints: 0,
       activeSprints: 0,
+    }
+
+    return {
+      totalEpics: Number(stats.totalEpics) || 0,
+      totalStories: Number(stats.totalStories) || 0,
+      completedStories: Number(stats.completedStories) || 0,
+      inProgressStories: Number(stats.inProgressStories) || 0,
+      totalStoryPoints: Number(stats.totalStoryPoints) || 0,
+      completedStoryPoints: Number(stats.completedStoryPoints) || 0,
+      totalSprints: Number(stats.totalSprints) || 0,
+      activeSprints: Number(stats.activeSprints) || 0,
     }
   }
 

@@ -237,52 +237,69 @@ export class UsersRepository {
 
   /**
    * Get user statistics
+   * Uses raw SQL to avoid query builder issues when user has no related data
    */
   async getUserStats(userId: string): Promise<UserStats> {
     // Verify user exists and is in same organization
-    await this.getUserById(userId)
+    const user = await this.getUserById(userId)
 
-    const [stats] = await db
-      .select({
-        projectsOwned: sql<number>`(
-          SELECT COUNT(*) FROM ${projects} 
+    const statsResult = await db.execute<{
+      projectsOwned: number
+      storiesCreated: number
+      storiesAssigned: number
+      storiesCompleted: number
+      storiesInProgress: number
+      totalStoryPoints: number | null
+      activitiesCount: number
+    }>(sql`
+      SELECT 
+        (
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
           WHERE ${projects.ownerId} = ${userId}
-        )`,
-        storiesCreated: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+        ) as "projectsOwned",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
           WHERE ${stories.createdBy} = ${userId}
-        )`,
-        storiesAssigned: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+        ) as "storiesCreated",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
           WHERE ${stories.assigneeId} = ${userId}
-        )`,
-        storiesCompleted: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+        ) as "storiesAssigned",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
           WHERE ${stories.assigneeId} = ${userId} 
           AND ${stories.status} = 'done'
-        )`,
-        storiesInProgress: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+        ) as "storiesCompleted",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${stories} 
           WHERE ${stories.assigneeId} = ${userId} 
           AND ${stories.status} = 'in_progress'
-        )`,
-        totalStoryPoints: sql<number>`(
-          SELECT COALESCE(SUM(${stories.storyPoints}), 0) FROM ${stories} 
+        ) as "storiesInProgress",
+        (
+          SELECT COALESCE(SUM(${stories.storyPoints}), 0)::int 
+          FROM ${stories} 
           WHERE ${stories.assigneeId} = ${userId}
-        )`,
-        activitiesCount: sql<number>`(
-          SELECT COUNT(*) FROM ${activities} 
+        ) as "totalStoryPoints",
+        (
+          SELECT COUNT(*)::int 
+          FROM ${activities} 
           WHERE ${activities.userId} = ${userId}
-        )`,
-        lastActiveAt: users.lastActiveAt,
-        memberSince: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1)
+        ) as "activitiesCount"
+    `)
 
-    if (!stats) {
-      throw new NotFoundError('User')
+    const stats = (statsResult[0] as any) || {
+      projectsOwned: 0,
+      storiesCreated: 0,
+      storiesAssigned: 0,
+      storiesCompleted: 0,
+      storiesInProgress: 0,
+      totalStoryPoints: 0,
+      activitiesCount: 0,
     }
 
     const storiesAssigned = Number(stats.storiesAssigned || 0)
@@ -300,8 +317,8 @@ export class UsersRepository {
       totalStoryPoints: Number(stats.totalStoryPoints || 0),
       completionRate,
       activitiesCount: Number(stats.activitiesCount || 0),
-      lastActiveAt: stats.lastActiveAt,
-      memberSince: stats.memberSince,
+      lastActiveAt: user.lastActiveAt || null,
+      memberSince: user.createdAt || new Date(),
     }
   }
 
