@@ -11,6 +11,21 @@ import type { StorySplitAnalysis } from '@/lib/services/story-split-analysis.ser
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { useSession } from 'next-auth/react';
+
+// Super admin emails - must match backend
+const SUPER_ADMIN_EMAILS = [
+  'chrisjrobertson@outlook.com',
+  'chris@synqforge.com',
+];
+
+function isSuperAdmin(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalizedEmail = email.toLowerCase().trim();
+  return SUPER_ADMIN_EMAILS.some(
+    adminEmail => adminEmail.toLowerCase() === normalizedEmail
+  );
+}
 
 interface ChildrenEditorProps {
   childStories: ChildStoryInput[];
@@ -32,9 +47,14 @@ export function ChildrenEditor({
   parentAcceptanceCriteria,
 }: ChildrenEditorProps) {
   const { t } = useTranslation();
+  const { data: session } = useSession();
   const [validationResults, setValidationResults] = useState<any[]>([]);
   const [coverageAnalysis, setCoverageAnalysis] = useState<any>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+
+  // Check if user is super admin
+  const userEmail = session?.user?.email as string | undefined;
+  const isSuperAdminUser = isSuperAdmin(userEmail);
 
   useEffect(() => {
     if (childStories.length === 0) {
@@ -50,10 +70,15 @@ export function ChildrenEditor({
     setValidationResults(validation.results);
     setCoverageAnalysis(validation.coverage);
     
-    // Consider coverage in validation - must have 100% coverage to proceed
-    const hasCoverage = validation.coverage.coveragePercentage === 100;
+    // 🔓 SUPER ADMIN BYPASS: Allow submission even with partial coverage
+    // For regular users: require 100% coverage to ensure all acceptance criteria are covered
+    // For super admin: allow any coverage > 0% (for demo/testing purposes)
+    const hasCoverage = isSuperAdminUser 
+      ? validation.coverage.coveragePercentage > 0 
+      : validation.coverage.coveragePercentage === 100;
+    
     onValidationChange(validation.allValid && hasCoverage);
-  }, [childStories, parentAcceptanceCriteria, onValidationChange]);
+  }, [childStories, parentAcceptanceCriteria, onValidationChange, isSuperAdminUser]);
 
   const addChild = () => {
     onChange([
