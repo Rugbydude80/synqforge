@@ -27,7 +27,7 @@ export function ContextSelector({
   selectedLevel,
   onLevelChange,
   epicId,
-  projectId,
+  projectId: _projectId,
 }: ContextSelectorProps) {
   const [showDetails, setShowDetails] = useState(false);
 

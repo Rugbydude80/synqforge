@@ -58,12 +58,22 @@ export function StoryFormModal({
   
   const [selectedContextLevel, setSelectedContextLevel] = React.useState<ContextLevel>(ContextLevel.STANDARD)
 
+  const fetchEpics = React.useCallback(async () => {
+    try {
+      // Only fetch published epics (draft epics shouldn't be available for story assignment)
+      const response = await api.epics.list({ projectId, status: 'published' })
+      setEpics(response.data || [])
+    } catch (err) {
+      console.error('Failed to load epics:', err)
+    }
+  }, [projectId])
+
   // Load epics for dropdown
   React.useEffect(() => {
     if (open && projectId) {
       fetchEpics()
     }
-  }, [open, projectId])
+  }, [open, projectId, fetchEpics])
 
   // Populate form if editing
   React.useEffect(() => {
@@ -78,16 +88,6 @@ export function StoryFormModal({
       })
     }
   }, [story])
-
-  const fetchEpics = async () => {
-    try {
-      // Only fetch published epics (draft epics shouldn't be available for story assignment)
-      const response = await api.epics.list({ projectId, status: 'published' })
-      setEpics(response.data || [])
-    } catch (err) {
-      console.error('Failed to load epics:', err)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
