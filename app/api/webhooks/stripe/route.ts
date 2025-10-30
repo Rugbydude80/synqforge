@@ -12,6 +12,13 @@ import {
   formatErrorResponse,
   isApplicationError
 } from '@/lib/errors/custom-errors'
+import {
+  checkWebhookIdempotency,
+  logWebhookEvent,
+  markWebhookSuccess,
+  markWebhookFailed,
+  processWithRetry,
+} from '@/lib/services/webhook-idempotency.service'
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -487,44 +494,88 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(errorBody, { status: statusCode })
   }
 
-  console.log('Received Stripe webhook event:', event.type)
+  console.log('Received Stripe webhook event:', event.type, 'Event ID:', event.id)
 
   try {
-    switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
-        break
-
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-        const subscription = event.data.object as Stripe.Subscription
-        const { handleSubscriptionCancelled } = await import('@/lib/services/addOnService')
-        await handleSubscriptionCancelled(subscription.id)
-        break
-
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-
-      case 'invoice.payment_failed':
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
-        break
-
-      case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
-        break
-
-      case 'customer.created':
-      case 'customer.updated':
-        console.log('Customer event:', event.type)
-        break
-
-      default:
-        console.log('Unhandled event type:', event.type)
+    // CRITICAL FIX: Check idempotency before processing
+    const idempotencyCheck = await checkWebhookIdempotency(event.id)
+    
+    if (!idempotencyCheck.shouldProcess) {
+      if (idempotencyCheck.alreadyProcessed) {
+        console.log(`✓ Webhook event ${event.id} already processed successfully - skipping`)
+        // Return 200 OK immediately for duplicate events
+        return NextResponse.json({ 
+          received: true, 
+          message: 'Event already processed',
+          eventId: event.id 
+        })
+      } else {
+        console.warn(`⚠️  Webhook event ${event.id} cannot be processed:`, idempotencyCheck.error)
+        // Return 200 OK to prevent Stripe from retrying failed events
+        return NextResponse.json({ 
+          received: true, 
+          message: 'Event processing skipped',
+          reason: idempotencyCheck.error,
+          eventId: event.id 
+        })
+      }
     }
 
-    return NextResponse.json({ received: true })
+    // Process webhook with retry logic and idempotency tracking
+    const processResult = await processWithRetry(
+      event.id,
+      event.type,
+      event.data.object,
+      async () => {
+        switch (event.type) {
+          case 'customer.subscription.created':
+          case 'customer.subscription.updated':
+            await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
+            break
+
+          case 'customer.subscription.deleted':
+            await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+            const subscription = event.data.object as Stripe.Subscription
+            const { handleSubscriptionCancelled } = await import('@/lib/services/addOnService')
+            await handleSubscriptionCancelled(subscription.id)
+            break
+
+          case 'invoice.payment_succeeded':
+            await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
+            break
+
+          case 'invoice.payment_failed':
+            await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
+            break
+
+          case 'checkout.session.completed':
+            await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+            break
+
+          case 'customer.created':
+          case 'customer.updated':
+            console.log('Customer event:', event.type)
+            break
+
+          default:
+            console.log('Unhandled event type:', event.type)
+        }
+      }
+    )
+
+    if (!processResult.success) {
+      console.error(`❌ Webhook processing failed for ${event.id}:`, processResult.error)
+      // Still return 200 OK to prevent Stripe retries (event is logged as failed)
+      return NextResponse.json({ 
+        received: true, 
+        message: 'Event processing failed',
+        error: processResult.error,
+        eventId: event.id 
+      })
+    }
+
+    console.log(`✅ Webhook event ${event.id} processed successfully`)
+    return NextResponse.json({ received: true, eventId: event.id })
   } catch (error) {
     console.error('Error handling webhook:', error)
 
