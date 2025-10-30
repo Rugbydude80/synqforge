@@ -7,6 +7,7 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { metrics } from '@/lib/observability/metrics';
+import { MODEL } from '@/lib/ai/client';
 
 async function getAISplitSuggestions(
   req: NextRequest,
@@ -98,10 +99,64 @@ async function getAISplitSuggestions(
       splitStrategy: splitResponse.splitStrategy,
     });
 
+    // Validate coverage and generate additional stories if needed
+    const { storySplitValidationService } = await import('@/lib/services/story-split-validation.service');
+    const validation = storySplitValidationService.validateAllChildren(
+      splitResponse.suggestions,
+      acceptanceCriteria
+    );
+
+    let finalSuggestions = splitResponse.suggestions;
+    let totalTokens = splitResponse.usage.totalTokens;
+
+    // If coverage < 100%, generate additional stories for uncovered criteria
+    if (validation.coverage.coveragePercentage < 100 && validation.coverage.uncoveredCriteria.length > 0) {
+      console.log('[ai-split-suggestions] Coverage incomplete:', {
+        coverage: validation.coverage.coveragePercentage,
+        uncoveredCount: validation.coverage.uncoveredCriteria.length,
+        uncoveredCriteria: validation.coverage.uncoveredCriteria,
+      });
+
+      // Generate additional stories to cover the gaps
+      const gapFillResponse = await aiService.suggestStorySplit(
+        story.title,
+        story.description || '',
+        validation.coverage.uncoveredCriteria, // Only the uncovered criteria
+        story.storyPoints,
+        analysis.invest,
+        analysis.spidr,
+        MODEL, // model parameter
+        true // isGapFill flag
+      );
+
+      // Add the gap-fill stories to the original suggestions
+      finalSuggestions = [...splitResponse.suggestions, ...gapFillResponse.suggestions];
+      totalTokens += gapFillResponse.usage.totalTokens;
+
+      console.log('[ai-split-suggestions] Generated additional stories for gaps:', {
+        additionalCount: gapFillResponse.suggestions.length,
+        totalCount: finalSuggestions.length,
+      });
+
+      // Verify we now have 100% coverage
+      const finalValidation = storySplitValidationService.validateAllChildren(
+        finalSuggestions,
+        acceptanceCriteria
+      );
+
+      if (finalValidation.coverage.coveragePercentage === 100) {
+        console.log('[ai-split-suggestions] ✅ Achieved 100% coverage after gap-fill');
+      } else {
+        console.warn('[ai-split-suggestions] ⚠️ Still incomplete coverage after gap-fill:', {
+          coverage: finalValidation.coverage.coveragePercentage,
+        });
+      }
+    }
+
     // Track usage
     await incrementTokenUsage(
       context.user.organizationId,
-      splitResponse.usage.totalTokens
+      totalTokens
     );
 
     // Track in database
@@ -109,14 +164,20 @@ async function getAISplitSuggestions(
       context.user.id,
       context.user.organizationId,
       splitResponse.model,
-      splitResponse.usage,
+      {
+        promptTokens: splitResponse.usage.promptTokens + (totalTokens - splitResponse.usage.totalTokens),
+        completionTokens: splitResponse.usage.completionTokens,
+        totalTokens,
+      },
       'story_generation',
       `Split story: ${story.title}`,
-      JSON.stringify(splitResponse.suggestions),
+      JSON.stringify(finalSuggestions),
       {
         storyId: story.id,
         splitStrategy: splitResponse.splitStrategy,
-        suggestionCount: splitResponse.suggestions.length,
+        suggestionCount: finalSuggestions.length,
+        coveragePercentage: validation.coverage.coveragePercentage,
+        gapFillUsed: finalSuggestions.length > splitResponse.suggestions.length,
       }
     );
 
@@ -124,11 +185,16 @@ async function getAISplitSuggestions(
 
     return NextResponse.json({
       success: true,
-      suggestions: splitResponse.suggestions,
+      suggestions: finalSuggestions,
       splitStrategy: splitResponse.splitStrategy,
       reasoning: splitResponse.reasoning,
       analysis,
-      usage: splitResponse.usage,
+      usage: {
+        promptTokens: splitResponse.usage.promptTokens,
+        completionTokens: splitResponse.usage.completionTokens,
+        totalTokens,
+      },
+      coverage: validation.coverage.coveragePercentage,
     });
   } catch (error) {
     console.error('[ai-split-suggestions] ===== ERROR =====');
