@@ -20,7 +20,18 @@ async function getDashboardStats(_request: NextRequest, context: any) {
       )
     }
 
-    const statsResult = await db.execute(sql`
+    const statsResult = await db.execute<{
+      totalProjects: number
+      activeProjects: number
+      planningProjects: number
+      onHoldProjects: number
+      completedProjects: number
+      archivedProjects: number
+      totalStories: number
+      completedStories: number
+      aiGeneratedStories: number
+      totalEpics: number
+    }>(sql`
       SELECT 
         (
           SELECT COUNT(*)::int 
@@ -85,7 +96,7 @@ async function getDashboardStats(_request: NextRequest, context: any) {
         ) as "totalEpics"
     `)
 
-    const stats = statsResult[0] || {
+    const stats = (statsResult[0] as any) || {
       totalProjects: 0,
       activeProjects: 0,
       planningProjects: 0,

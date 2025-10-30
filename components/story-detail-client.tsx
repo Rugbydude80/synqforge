@@ -63,19 +63,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     totalActualHours: 0,
   })
 
-  // Load epics for the project
-  React.useEffect(() => {
-    if (story.projectId) {
-      fetchEpics()
-    }
-  }, [story.projectId])
-
-  // Load tasks for the story
-  React.useEffect(() => {
-    fetchTasks()
-  }, [story.id])
-
-  const fetchEpics = async () => {
+  const fetchEpics = React.useCallback(async () => {
     try {
       // Only fetch published epics (draft epics shouldn't be available for story assignment)
       const response = await api.epics.list({ projectId: story.projectId, status: 'published' })
@@ -83,7 +71,19 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     } catch (error) {
       console.error('Failed to load epics:', error)
     }
-  }
+  }, [story.projectId])
+
+  // Load epics for the project
+  React.useEffect(() => {
+    if (story.projectId) {
+      fetchEpics()
+    }
+  }, [story.projectId, fetchEpics])
+
+  // Load tasks for the story
+  React.useEffect(() => {
+    fetchTasks()
+  }, [story.id])
 
   const fetchTasks = async () => {
     try {
