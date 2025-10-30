@@ -347,16 +347,34 @@ export class StoriesRepository {
     if (input.assigneeId !== undefined && input.assigneeId !== existingStory.assigneeId) {
       changes.assignee = { from: existingStory.assigneeId, to: input.assigneeId };
     }
+    if (input.epicId !== undefined && input.epicId !== existingStory.epicId) {
+      changes.epic = { from: existingStory.epicId, to: input.epicId };
+    }
+
+    // Build update object - only include fields that are being updated
+    const updateFields: any = {
+      updatedAt: new Date(),
+      lastUpdatedAt: new Date(),
+      updateVersion: (existingStory.updateVersion || 1) + 1,
+    };
+
+    // Only include fields that are explicitly provided in input
+    if (input.title !== undefined) updateFields.title = input.title;
+    if (input.description !== undefined) updateFields.description = input.description;
+    if (input.acceptanceCriteria !== undefined) updateFields.acceptanceCriteria = input.acceptanceCriteria;
+    if (input.storyPoints !== undefined) updateFields.storyPoints = input.storyPoints;
+    if (input.priority !== undefined) updateFields.priority = input.priority;
+    if (input.status !== undefined) updateFields.status = input.status;
+    if (input.storyType !== undefined) updateFields.storyType = input.storyType;
+    if (input.tags !== undefined) updateFields.tags = input.tags;
+    if (input.labels !== undefined) updateFields.labels = input.labels;
+    if (input.assigneeId !== undefined) updateFields.assigneeId = input.assigneeId;
+    if (input.epicId !== undefined) updateFields.epicId = input.epicId; // Explicitly handle null to clear epic
 
     // Update story with version increment
     const currentVersion = existingStory.updateVersion || 1;
     await db.update(stories)
-      .set({
-        ...input,
-        updatedAt: new Date(),
-        lastUpdatedAt: new Date(),
-        updateVersion: currentVersion + 1,
-      })
+      .set(updateFields)
       .where(eq(stories.id, storyId));
 
     // Log activity if there were changes
