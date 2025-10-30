@@ -116,9 +116,6 @@ export async function POST(req: NextRequest) {
     // This prevents users from getting paid access without paying
     const actualTier = 'starter'; // Always start as starter (free tier), upgrade via webhook
     
-    // Map intended plan to tier for subscriptionTier field
-    const intendedTier = mapPlanToTier(validatedData.plan);
-    
     // For free/starter plan, give 7 day trial. For paid plans, no trial until they pay
     const trialEndDate = validatedData.plan === 'free'
       ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days for free/starter

@@ -66,6 +66,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // Auto-refresh dashboard data every 30 seconds to keep it live
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const interval = setInterval(() => {
+      fetchDashboardData(true) // Silent refresh
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchDashboardData = async (isRefresh = false) => {
     try {
       if (isRefresh) {
