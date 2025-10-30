@@ -81,14 +81,52 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // CRITICAL FIX: Store session version in token on initial sign-in
       if (user) {
         token.id = user.id
         token.email = user.email
         token.role = user.role
         token.organizationId = user.organizationId
         token.organizationName = user.organizationName
+        
+        // Get current session version from database
+        const [dbUser] = await db
+          .select({ sessionVersion: users.sessionVersion, isActive: users.isActive })
+          .from(users)
+          .where(eq(users.id, user.id))
+          .limit(1)
+        
+        if (dbUser) {
+          token.sessionVersion = dbUser.sessionVersion || 1
+          
+          // Check if user is active
+          if (!dbUser.isActive) {
+            throw new Error('User account is deactivated')
+          }
+        }
+      } else if (token.id) {
+        // CRITICAL FIX: On subsequent requests, verify session version matches
+        const [dbUser] = await db
+          .select({ sessionVersion: users.sessionVersion, isActive: users.isActive })
+          .from(users)
+          .where(eq(users.id, token.id as string))
+          .limit(1)
+        
+        if (dbUser) {
+          // If session version doesn't match, invalidate token
+          const tokenSessionVersion = (token.sessionVersion as number) || 1
+          if (dbUser.sessionVersion !== tokenSessionVersion) {
+            throw new Error('Session has been invalidated. Please sign in again.')
+          }
+          
+          // Check if user is still active
+          if (!dbUser.isActive) {
+            throw new Error('User account is deactivated')
+          }
+        }
       }
+      
       return token
     },
     async session({ session, token }) {

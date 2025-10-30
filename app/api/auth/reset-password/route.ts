@@ -60,10 +60,22 @@ export async function POST(request: NextRequest) {
     // Hash new password
     const hashedPassword = await hashPassword(password)
 
-    // Update user password
+    // CRITICAL FIX: Get current session version and increment it
+    const [user] = await db
+      .select({ sessionVersion: users.sessionVersion })
+      .from(users)
+      .where(eq(users.id, resetToken.userId))
+      .limit(1)
+
+    const newSessionVersion = (user?.sessionVersion || 1) + 1
+
+    // Update user password and increment session version to invalidate all sessions
     await db
       .update(users)
-      .set({ password: hashedPassword })
+      .set({
+        password: hashedPassword,
+        sessionVersion: newSessionVersion, // CRITICAL FIX: Invalidate all existing sessions
+      })
       .where(eq(users.id, resetToken.userId))
 
     // Mark token as used
