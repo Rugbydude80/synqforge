@@ -28,7 +28,7 @@ if (!process.env.DATABASE_URL) {
 
 import { db } from '../lib/db'
 import { organizations } from '../lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { mapPlanToLegacyTier } from '../lib/billing/plan-entitlements'
 
 /**
@@ -81,7 +81,7 @@ async function findMismatches() {
   return mismatches
 }
 
-async function fixMismatches(mismatches: Array<{ id: string; plan: string; tier: string }>) {
+async function fixMismatches(mismatches: Array<{ id: string; name: string | null; plan: string | null; tier: string | null }>) {
   console.log(`\n🔧 Fixing ${mismatches.length} mismatch(es)...\n`)
 
   let fixed = 0
@@ -99,10 +99,10 @@ async function fixMismatches(mismatches: Array<{ id: string; plan: string; tier:
         })
         .where(eq(organizations.id, org.id))
 
-      console.log(`✅ Fixed: ${org.name} - tier updated from "${org.tier}" → "${expectedTier}"`)
+      console.log(`✅ Fixed: ${org.name || 'Unknown'} - tier updated from "${org.tier || 'unknown'}" → "${expectedTier}"`)
       fixed++
     } catch (error: any) {
-      console.error(`❌ Error fixing ${org.name}: ${error.message}`)
+      console.error(`❌ Error fixing ${org.name || 'Unknown'}: ${error.message}`)
       errors++
     }
   }

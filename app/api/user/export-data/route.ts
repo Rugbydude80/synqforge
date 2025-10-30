@@ -10,7 +10,7 @@ import { users, organizations, aiGenerations, auditLogs } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm';
 import JSZip from 'jszip';
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await auth();
   
   if (!session?.user?.id) {
