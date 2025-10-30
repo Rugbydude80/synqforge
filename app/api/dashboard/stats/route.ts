@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { db } from '@/lib/db'
 import { projects, stories, epics } from '@/lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 /**
  * GET /api/dashboard/stats
