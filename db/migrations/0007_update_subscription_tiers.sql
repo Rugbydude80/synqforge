@@ -5,25 +5,41 @@
 -- 3. Ensures data integrity
 
 -- First, update any organizations using legacy tiers to 'starter'
-UPDATE organizations 
-SET subscription_tier = 'starter' 
-WHERE subscription_tier IN ('free', 'solo', 'business');
+-- Only update if the enum value exists (handle gracefully)
+DO $$ 
+BEGIN
+  -- Check if 'free' exists in enum
+  IF EXISTS (
+    SELECT 1 FROM pg_enum 
+    WHERE enumlabel = 'free' 
+    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'subscription_tier')
+  ) THEN
+    UPDATE organizations 
+    SET subscription_tier = 'starter' 
+    WHERE subscription_tier::text IN ('free', 'solo', 'business');
+  END IF;
+END $$;
 
--- Create a new enum with the correct values
-CREATE TYPE subscription_tier_new AS ENUM ('starter', 'core', 'pro', 'team', 'enterprise', 'admin');
-
--- Drop the default temporarily
-ALTER TABLE organizations 
-  ALTER COLUMN subscription_tier DROP DEFAULT;
-
--- Update the column to use the new enum
-ALTER TABLE organizations 
-  ALTER COLUMN subscription_tier TYPE subscription_tier_new 
-  USING subscription_tier::text::subscription_tier_new;
-
--- Drop the old enum and rename the new one
-DROP TYPE subscription_tier;
-ALTER TYPE subscription_tier_new RENAME TO subscription_tier;
+-- Create a new enum with the correct values (only if it doesn't exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'subscription_tier_new') THEN
+    CREATE TYPE subscription_tier_new AS ENUM ('starter', 'core', 'pro', 'team', 'enterprise', 'admin');
+    
+    -- Drop the default temporarily
+    ALTER TABLE organizations 
+      ALTER COLUMN subscription_tier DROP DEFAULT;
+    
+    -- Update the column to use the new enum
+    ALTER TABLE organizations 
+      ALTER COLUMN subscription_tier TYPE subscription_tier_new 
+      USING subscription_tier::text::subscription_tier_new;
+    
+    -- Drop the old enum and rename the new one
+    DROP TYPE IF EXISTS subscription_tier;
+    ALTER TYPE subscription_tier_new RENAME TO subscription_tier;
+  END IF;
+END $$;
 
 -- Re-add the default with the correct type
 ALTER TABLE organizations 

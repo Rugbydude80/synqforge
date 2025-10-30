@@ -187,11 +187,17 @@ ON CONFLICT (tier, feature_name) DO NOTHING;
 -- GRANT PERMISSIONS
 -- ============================================
 
--- Grant permissions to application user (adjust username as needed)
-GRANT SELECT, INSERT, UPDATE, DELETE ON token_allowances TO postgres;
-GRANT SELECT, INSERT, UPDATE, DELETE ON addon_purchases TO postgres;
-GRANT SELECT, INSERT, UPDATE, DELETE ON tokens_ledger TO postgres;
-GRANT SELECT, INSERT, UPDATE, DELETE ON feature_gates TO postgres;
+-- Grant permissions to application user (skip if role doesn't exist)
+-- Note: Neon/Vercel manages permissions automatically
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON token_allowances TO postgres;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON addon_purchases TO postgres;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON tokens_ledger TO postgres;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON feature_gates TO postgres;
+  END IF;
+END $$;
 
 -- ============================================
 -- COMMENTS
