@@ -8,10 +8,11 @@
  */
 
 import { db } from '@/lib/db'
-import { organizations } from '@/lib/db/schema'
+import { organizations, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import type { UserContext } from './auth'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 export type SubscriptionTier = 'free' | 'starter' | 'core' | 'pro' | 'team' | 'enterprise'
 
@@ -164,8 +165,23 @@ export async function checkFeatureAccess(
  */
 export async function requireSubscriptionTier(
   organizationId: string,
-  requiredTier: SubscriptionTier
+  requiredTier: SubscriptionTier,
+  userId?: string
 ): Promise<NextResponse | null> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing subscription tier check (required: ${requiredTier})`);
+      return null; // null means "continue with request"
+    }
+  }
+
   const check = await checkSubscriptionTier(organizationId, requiredTier)
 
   if (!check.hasAccess) {
@@ -246,7 +262,7 @@ export async function requireTier(
   user: UserContext,
   requiredTier: SubscriptionTier
 ): Promise<NextResponse | null> {
-  return await requireSubscriptionTier(user.organizationId, requiredTier)
+  return await requireSubscriptionTier(user.organizationId, requiredTier, user.id)
 }
 
 /**

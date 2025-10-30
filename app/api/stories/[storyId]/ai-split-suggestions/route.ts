@@ -35,7 +35,7 @@ async function getAISplitSuggestions(
 
     // Check AI usage limits
     const estimatedTokens = AI_TOKEN_COSTS.STORY_SPLIT;
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens);
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id);
 
     if (!aiCheck.allowed) {
       return NextResponse.json(

@@ -40,7 +40,7 @@ async function decomposeHandler(req: NextRequest, context: AuthContext) {
 
     // Check AI usage limit
     const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION * 5; // Estimate for decomposition
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens);
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id);
 
     if (!aiCheck.allowed) {
       return NextResponse.json(

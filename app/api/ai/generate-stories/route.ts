@@ -44,7 +44,7 @@ async function generateStories(req: NextRequest, context: AuthContext) {
 
     // NEW: Check fair-usage bulk limit
     const estimatedStoryCount = 5 // Default estimate
-    const bulkCheck = await checkBulkLimit(context.user.organizationId, estimatedStoryCount)
+    const bulkCheck = await checkBulkLimit(context.user.organizationId, estimatedStoryCount, context.user.id)
     if (!bulkCheck.allowed) {
       return NextResponse.json(
         {
@@ -59,7 +59,7 @@ async function generateStories(req: NextRequest, context: AuthContext) {
 
     // NEW: Check fair-usage AI token limit (HARD BLOCK)
     const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION * estimatedStoryCount
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens)
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id)
 
     if (!aiCheck.allowed) {
       return NextResponse.json(

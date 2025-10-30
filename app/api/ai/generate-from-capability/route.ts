@@ -39,7 +39,7 @@ async function generateFromCapabilityHandler(req: NextRequest, context: AuthCont
 
     // Check AI usage limit
     const estimatedTokens = 2000; // Estimated for story generation
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens);
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id);
 
     if (!aiCheck.allowed) {
       return NextResponse.json(

@@ -54,7 +54,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
 
     // Check fair-usage AI token limit (HARD BLOCK)
     const estimatedTokens = AI_TOKEN_COSTS.STORY_GENERATION
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens)
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id)
 
     if (!aiCheck.allowed) {
       return NextResponse.json(

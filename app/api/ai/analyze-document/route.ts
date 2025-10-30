@@ -40,7 +40,7 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
     }
 
     // Check fair-usage document ingestion limit (HARD BLOCK)
-    const docCheck = await canIngestDocument(context.user.organizationId)
+    const docCheck = await canIngestDocument(context.user.organizationId, context.user.id)
     if (!docCheck.allowed) {
       return NextResponse.json(
         {
@@ -74,7 +74,7 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
 
     // Check fair-usage AI token limit (HARD BLOCK)
     const estimatedTokens = AI_TOKEN_COSTS.DOCUMENT_ANALYSIS
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens)
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id)
 
     if (!aiCheck.allowed) {
       return NextResponse.json(
