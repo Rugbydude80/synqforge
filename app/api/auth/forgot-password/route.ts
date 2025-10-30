@@ -7,6 +7,10 @@ import { Resend } from 'resend'
 import { z } from 'zod'
 import { checkRateLimit, passwordResetRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
 
+// Runtime configuration for Vercel
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 // Only initialize Resend if API key is configured
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
@@ -20,10 +24,17 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase()
 
     // Check rate limit (3 requests per email per hour)
-    const rateLimitResult = await checkRateLimit(
-      `password-reset:${normalizedEmail}`,
-      passwordResetRateLimit
-    )
+    let rateLimitResult
+    try {
+      rateLimitResult = await checkRateLimit(
+        `password-reset:${normalizedEmail}`,
+        passwordResetRateLimit
+      )
+    } catch (rateLimitError) {
+      console.error('[Forgot Password] Rate limit check failed:', rateLimitError)
+      // Continue without rate limiting if it fails
+      rateLimitResult = { success: true, limit: 999, remaining: 999, reset: Date.now() + 3600000 }
+    }
 
     if (!rateLimitResult.success) {
       const resetTime = getResetTimeMessage(rateLimitResult.reset)
@@ -41,12 +52,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user by email
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, normalizedEmail))
-      .limit(1)
+    // Find user by email (select only needed columns to avoid session_version issues)
+    let user
+    try {
+      const [foundUser] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          organizationId: users.organizationId,
+        })
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .limit(1)
+      user = foundUser
+    } catch (dbError: any) {
+      console.error('[Forgot Password] Database query error:', dbError)
+      
+      // If it's a missing column error, log and return success to prevent email enumeration
+      if (dbError?.message?.includes('session_version') || dbError?.code === '42703') {
+        console.error('[Forgot Password] Missing session_version column - run migration: db/migrations/0012_add_session_versioning.sql')
+      }
+      
+      // Always return success to prevent email enumeration
+      return NextResponse.json({
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      })
+    }
 
     // Always return success to prevent email enumeration
     if (!user) {
@@ -60,16 +92,37 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setHours(expiresAt.getHours() + 1) // Token expires in 1 hour
 
-    // Store reset token
-    await db.insert(passwordResetTokens).values({
-      id: nanoid(),
-      userId: user.id,
-      token: resetToken,
-      expiresAt,
-    })
+    // Store reset token (retry if duplicate token generated)
+    let finalToken = resetToken
+    let retries = 0
+    const maxRetries = 3
+    
+    while (retries < maxRetries) {
+      try {
+        await db.insert(passwordResetTokens).values({
+          id: nanoid(),
+          userId: user.id,
+          token: finalToken,
+          expiresAt,
+        })
+        break // Success, exit loop
+      } catch (dbError: any) {
+        console.error(`Database error inserting reset token (attempt ${retries + 1}):`, dbError)
+        // If token already exists (unlikely but possible), generate a new one
+        if (dbError?.code === '23505' || dbError?.message?.includes('unique')) {
+          retries++
+          if (retries >= maxRetries) {
+            throw new Error('Failed to generate unique reset token after multiple attempts')
+          }
+          finalToken = nanoid(64) // Generate new token
+        } else {
+          throw dbError // Re-throw if it's not a unique constraint error
+        }
+      }
+    }
 
     // Create reset URL
-    const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`
+    const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password?token=${finalToken}`
 
     // Send email
     if (resend) {
@@ -110,6 +163,13 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Password reset request error:', error)
+    
+    // Log detailed error information for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -122,8 +182,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // Provide more detailed error message in development
+    const errorMessage = process.env.NODE_ENV === 'development' && error instanceof Error
+      ? error.message
+      : 'Failed to process password reset request'
+    
     return NextResponse.json(
-      { error: 'Failed to process password reset request' },
+      { 
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { 
+          stack: error instanceof Error ? error.stack : undefined 
+        })
+      },
       { status: 500 }
     )
   }
