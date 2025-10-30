@@ -4,8 +4,6 @@ import { db, generateId } from '@/lib/db'
 import { users, passwordResetTokens, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/utils/auth'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth/options'
 
 /**
  * Session Invalidation Tests

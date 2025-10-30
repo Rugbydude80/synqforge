@@ -374,9 +374,11 @@ export class StoriesRepository {
     if (input.epicId !== undefined) updateFields.epicId = input.epicId; // Explicitly handle null to clear epic
 
     // Update story with version increment
-    const currentVersion = existingStory.updateVersion || 1;
     await db.update(stories)
-      .set(updateFields)
+      .set({
+        ...updateFields,
+        updateVersion: sql`${stories.updateVersion} + 1`,
+      })
       .where(eq(stories.id, storyId));
 
     // Log activity if there were changes

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { db, generateId } from '@/lib/db'
-import { organizations, tokenBalances, stripeSubscriptions } from '@/lib/db/schema'
+import { organizations, tokenBalances } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { addPurchasedTokens, getTokenBalance } from '@/lib/services/ai-usage.service'
 import { canUseAI } from '@/lib/billing/fair-usage-guards'

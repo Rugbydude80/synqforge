@@ -100,9 +100,10 @@ test.describe('Template Versioning - High Priority #6', () => {
     const userId = await createTestUser(orgId)
     const repo = new StoryTemplatesRepository()
 
+    let template: any
     try {
       // Create initial template
-      const template = await repo.createTemplate({
+      template = await repo.createTemplate({
         organizationId: orgId,
         createdBy: userId,
         templateName: 'Test Template',
@@ -143,7 +144,11 @@ test.describe('Template Versioning - High Priority #6', () => {
         .limit(1)
       assert.equal(updated.version, 2, 'Template version should be 2')
     } finally {
-      await cleanupTestData(orgId, template.id, userId)
+      if (template) {
+        await cleanupTestData(orgId, template.id, userId)
+      } else {
+        await cleanupTestData(orgId, undefined, userId)
+      }
     }
   })
 
@@ -152,9 +157,10 @@ test.describe('Template Versioning - High Priority #6', () => {
     const userId = await createTestUser(orgId)
     const repo = new StoryTemplatesRepository()
 
+    let template: any
     try {
       // Create template
-      const template = await repo.createTemplate({
+      template = await repo.createTemplate({
         organizationId: orgId,
         createdBy: userId,
         templateName: 'Test Template',
@@ -201,7 +207,11 @@ test.describe('Template Versioning - High Priority #6', () => {
       await db.delete(stories).where(eq(stories.projectId, projectId))
       await db.delete(projects).where(eq(projects.id, projectId))
     } finally {
-      await cleanupTestData(orgId, template.id, userId)
+      if (template) {
+        await cleanupTestData(orgId, template.id, userId)
+      } else {
+        await cleanupTestData(orgId, undefined, userId)
+      }
     }
   })
 
@@ -210,9 +220,10 @@ test.describe('Template Versioning - High Priority #6', () => {
     const userId = await createTestUser(orgId)
     const repo = new StoryTemplatesRepository()
 
+    let template: any
     try {
       // Create template
-      const template = await repo.createTemplate({
+      template = await repo.createTemplate({
         organizationId: orgId,
         createdBy: userId,
         templateName: 'Test Template',
@@ -231,7 +242,11 @@ test.describe('Template Versioning - High Priority #6', () => {
       assert.ok(versions.length >= 1, 'Should have at least 1 version')
       assert.equal(versions[0].version, 1, 'Should have version 1')
     } finally {
-      await cleanupTestData(orgId, template.id, userId)
+      if (template) {
+        await cleanupTestData(orgId, template.id, userId)
+      } else {
+        await cleanupTestData(orgId, undefined, userId)
+      }
     }
   })
 
@@ -240,9 +255,10 @@ test.describe('Template Versioning - High Priority #6', () => {
     const userId = await createTestUser(orgId)
     const repo = new StoryTemplatesRepository()
 
+    let template: any
     try {
       // Create template
-      const template = await repo.createTemplate({
+      template = await repo.createTemplate({
         organizationId: orgId,
         createdBy: userId,
         templateName: 'Test Template',
@@ -262,7 +278,11 @@ test.describe('Template Versioning - High Priority #6', () => {
       assert.equal(version1.templateName, 'Test Template', 'Should have correct name')
       assert.ok(version1.storiesSnapshot, 'Should have stories snapshot')
     } finally {
-      await cleanupTestData(orgId, template.id, userId)
+      if (template) {
+        await cleanupTestData(orgId, template.id, userId)
+      } else {
+        await cleanupTestData(orgId, undefined, userId)
+      }
     }
   })
 })

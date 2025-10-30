@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/stripe-client'
 import { db, generateId } from '@/lib/db'
-import { organizations, stripeSubscriptions } from '@/lib/db/schema'
+import { organizations, stripeSubscriptions, tokenBalances } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { entitlementsFromPrice, entitlementsToDbValues, getFreeTierEntitlements } from '@/lib/billing/entitlements'
@@ -14,9 +14,6 @@ import {
 } from '@/lib/errors/custom-errors'
 import {
   checkWebhookIdempotency,
-  logWebhookEvent,
-  markWebhookSuccess,
-  markWebhookFailed,
   processWithRetry,
 } from '@/lib/services/webhook-idempotency.service'
 
@@ -86,40 +83,6 @@ function parseSubscriptionData(
     includedSeats,
     addonSeats,
     dbValues,
-  }
-}
-
-/**
- * Updates or creates a subscription record in the database
- * 
- * @param subscriptionId - Stripe subscription ID
- * @param subscriptionData - Parsed subscription data
- * @returns Created or updated subscription ID
- */
-async function updateOrCreateSubscription(
-  subscriptionId: string,
-  subscriptionData: any
-): Promise<string> {
-  const [existingSubscription] = await db
-    .select()
-    .from(stripeSubscriptions)
-    .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
-    .limit(1)
-
-  if (existingSubscription) {
-    await db
-      .update(stripeSubscriptions)
-      .set(subscriptionData)
-      .where(eq(stripeSubscriptions.id, existingSubscription.id))
-    return existingSubscription.id
-  } else {
-    const newId = generateId()
-    await db.insert(stripeSubscriptions).values({
-      id: newId,
-      ...subscriptionData,
-      createdAt: new Date(),
-    })
-    return newId
   }
 }
 

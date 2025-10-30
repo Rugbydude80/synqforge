@@ -57,13 +57,16 @@ async function createTestUser(orgId: string) {
 }
 
 // Create test project helper
-async function createTestProject(orgId: string) {
+async function createTestProject(orgId: string, ownerId: string) {
   const projectId = generateId()
   await db.insert(projects).values({
     id: projectId,
     organizationId: orgId,
     name: 'Test Project',
+    key: 'TEST',
+    slug: `test-project-${Date.now()}`,
     status: 'active',
+    ownerId,
   })
   return projectId
 }
@@ -89,7 +92,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should add label to story', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -123,7 +126,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should add multiple labels to story', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -157,7 +160,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should not add duplicate labels', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -189,7 +192,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
     const orgId = await createTestOrganization()
     const assignerId = await createTestUser(orgId)
     const assigneeId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, assignerId)
 
     try {
@@ -222,7 +225,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should reject assignment to non-existent user', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
     const fakeUserId = generateId()
 
@@ -289,7 +292,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should send notification', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -330,7 +333,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should update story field', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -363,7 +366,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should update multiple story fields', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -401,7 +404,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should reject invalid field updates', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -429,7 +432,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should execute AI action', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -465,7 +468,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should handle failed actions gracefully', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -502,7 +505,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should log action execution', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
@@ -543,7 +546,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
   test('should handle action with missing required config', async () => {
     const orgId = await createTestOrganization()
     const userId = await createTestUser(orgId)
-    const projectId = await createTestProject(orgId)
+    const projectId = await createTestProject(orgId, userId)
     const storyId = await createTestStory(orgId, projectId, userId)
 
     try {
