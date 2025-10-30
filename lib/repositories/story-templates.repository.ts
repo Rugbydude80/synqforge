@@ -198,9 +198,6 @@ export class StoryTemplatesRepository {
       // Create actual stories from template
       const createdStories = []
 
-      // CRITICAL FIX: Track template version when creating stories
-      const versionId = generateId() // Use template version ID
-
       for (const templateStory of template.stories) {
         // Replace variables in title/description
         let title = templateStory.title

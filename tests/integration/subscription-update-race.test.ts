@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { db, generateId } from '@/lib/db'
-import { organizations, stripeSubscriptions, users } from '@/lib/db/schema'
+import { organizations, stripeSubscriptions } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 /**
@@ -28,40 +28,6 @@ async function createTestOrganization() {
     stripeCustomerId: `cus_test_${Date.now()}`,
   })
   return orgId
-}
-
-// Helper to simulate concurrent subscription updates
-async function simulateSubscriptionUpdate(
-  customerId: string,
-  subscriptionId: string,
-  delayMs: number = 0
-) {
-  if (delayMs > 0) {
-    await new Promise(resolve => setTimeout(resolve, delayMs))
-  }
-
-  const [org] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.stripeCustomerId, customerId))
-    .limit(1)
-
-  if (!org) {
-    throw new Error('Organization not found')
-  }
-
-  // Simulate subscription update
-  await db
-    .update(organizations)
-    .set({
-      subscriptionTier: 'core',
-      subscriptionStatus: 'active',
-      stripeSubscriptionId: subscriptionId,
-      updatedAt: new Date(),
-    })
-    .where(eq(organizations.id, org.id))
-
-  return org.id
 }
 
 // Helper to simulate subscription update with transaction
@@ -298,12 +264,6 @@ test.describe('Subscription Update Race Condition - High Priority #4', () => {
       // Simulate multiple concurrent updates with different values
       const updatePromises = [
         db.transaction(async (tx) => {
-          const [org] = await tx
-            .select()
-            .from(organizations)
-            .where(eq(organizations.id, orgId))
-            .limit(1)
-
           await tx
             .update(organizations)
             .set({
@@ -313,12 +273,6 @@ test.describe('Subscription Update Race Condition - High Priority #4', () => {
             .where(eq(organizations.id, orgId))
         }),
         db.transaction(async (tx) => {
-          const [org] = await tx
-            .select()
-            .from(organizations)
-            .where(eq(organizations.id, orgId))
-            .limit(1)
-
           await tx
             .update(organizations)
             .set({
@@ -340,7 +294,7 @@ test.describe('Subscription Update Race Condition - High Priority #4', () => {
 
       assert.ok(finalOrg, 'Organization should exist')
       assert.ok(
-        ['core', 'pro'].includes(finalOrg.subscriptionTier),
+        finalOrg.subscriptionTier && ['core', 'pro'].includes(finalOrg.subscriptionTier),
         'Should be one of the updated values'
       )
     } finally {

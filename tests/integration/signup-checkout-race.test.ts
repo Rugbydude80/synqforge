@@ -167,7 +167,7 @@ test.describe('Signup → Checkout Race Condition - Critical Issue #3', () => {
       const checkoutResult = await simulateCheckout(orgId)
 
       // Wait for org creation to complete
-      const userId = await createOrgPromise
+      await createOrgPromise
 
       assert.equal(checkoutResult.success, true, 'Checkout should succeed after polling')
       assert.ok(checkoutResult.organization, 'Organization should be found')
@@ -361,7 +361,11 @@ test.describe('Signup → Checkout Race Condition - Critical Issue #3', () => {
       // Verify organization exists
       const checkoutResult = await simulateCheckout(orgId)
       assert.equal(checkoutResult.success, true, 'Checkout should succeed')
-      assert.equal(checkoutResult.organization.id, orgId, 'Organization should match')
+      if (checkoutResult.organization) {
+        assert.equal(checkoutResult.organization.id, orgId, 'Organization should match')
+      } else {
+        assert.fail('Organization should be returned')
+      }
     } finally {
       await cleanupTestData(orgId, userId)
     }

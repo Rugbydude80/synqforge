@@ -37,14 +37,13 @@ async function createTestOrganization() {
   })
 
   // Create initial usage record
-  const { start } = await import('@/lib/billing/fair-usage-guards')
   const { getCurrentBillingPeriod } = await import('@/lib/billing/fair-usage-guards')
   const billingPeriod = getCurrentBillingPeriod()
   
   await db.insert(workspaceUsage).values({
-    id: generateId(),
     organizationId: orgId,
     billingPeriodStart: billingPeriod.start,
+    billingPeriodEnd: billingPeriod.end,
     tokensLimit: 10000,
     tokensUsed: 0,
   })

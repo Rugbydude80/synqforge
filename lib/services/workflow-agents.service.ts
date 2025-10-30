@@ -147,7 +147,7 @@ function evaluateConditions(conditions: Record<string, any>, context: Record<str
  */
 async function executeAction(action: AgentActionDefinition, context: Record<string, any>): Promise<void> {
   const { type, config } = action
-  const { storyId, organizationId, userId } = context
+  const { storyId, organizationId } = context
 
   console.log(`[Workflow Agent] Executing action: ${type}`, {
     storyId,
@@ -490,7 +490,12 @@ async function handleAIAction(config: Record<string, any>, context: Record<strin
           description: prompt,
           hasUI: false,
           themes: [],
+          requiresWCAG: false,
+          requiresPersistence: false,
+          acceptanceCriteria: [],
+          estimate: undefined,
         },
+        projectContext: undefined,
         requestId: generateId(),
         model: aiConfig.model || 'claude-3-5-sonnet-20241022',
         qualityThreshold: 0.7,
@@ -513,19 +518,30 @@ async function handleAIAction(config: Record<string, any>, context: Record<strin
     case 'validate_story':
       // Use validation service to validate story
       const { validationService } = await import('@/lib/ai/validation.service')
+      
+      // Convert acceptanceCriteria to array of strings if needed
+      const acArray = Array.isArray(story.acceptanceCriteria) 
+        ? story.acceptanceCriteria.map((ac: any) => typeof ac === 'string' ? ac : `${ac.given || ''} ${ac.when || ''} ${ac.then || ''}`.trim())
+        : []
+      
       const validation = await validationService.validateStory(
-        story.acceptanceCriteria || [],
+        acArray,
         false,
         [],
         0.7
       )
 
       // Update story with validation results
-      if (validation.acceptanceCriteria) {
+      if (validation.acceptanceCriteria && Array.isArray(validation.acceptanceCriteria)) {
+        // Convert to string array format expected by database
+        const acStrings = validation.acceptanceCriteria.map((ac: any) => 
+          typeof ac === 'string' ? ac : `${ac.given || ''} ${ac.when || ''} ${ac.then || ''}`.trim()
+        ).filter(Boolean)
+        
         await db
           .update(stories)
           .set({
-            acceptanceCriteria: validation.acceptanceCriteria,
+            acceptanceCriteria: acStrings,
             updatedAt: new Date(),
           })
           .where(eq(stories.id, storyId))

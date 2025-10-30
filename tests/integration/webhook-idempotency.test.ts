@@ -1,16 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { db, generateId } from '@/lib/db'
-import { stripeWebhookLogs, organizations, stripeSubscriptions } from '@/lib/db/schema'
+import { stripeWebhookLogs, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import {
   checkWebhookIdempotency,
-  logWebhookEvent,
-  markWebhookSuccess,
-  markWebhookFailed,
   processWithRetry,
 } from '@/lib/services/webhook-idempotency.service'
-import Stripe from 'stripe'
 
 /**
  * Webhook Idempotency Integration Tests
