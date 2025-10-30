@@ -6,8 +6,9 @@
  */
 
 import { db, generateId } from '@/lib/db'
-import { organizations, workspaceUsage } from '@/lib/db/schema'
+import { organizations, workspaceUsage, users } from '@/lib/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 export interface FairUsageCheck {
   allowed: boolean
@@ -89,8 +90,30 @@ export async function getOrCreateWorkspaceUsage(organizationId: string) {
  */
 export async function canUseAI(
   organizationId: string,
-  tokensRequired: number
+  tokensRequired: number,
+  userId?: string
 ): Promise<FairUsageCheck> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing AI token limits`);
+      return {
+        allowed: true,
+        used: 0,
+        limit: -1,
+        percentage: 0,
+        isWarning: false,
+        reason: 'Super Admin - unlimited AI tokens',
+      };
+    }
+  }
+
   const usage = await getOrCreateWorkspaceUsage(organizationId)
 
   const tokensRemaining = usage.tokensLimit - usage.tokensUsed
@@ -246,8 +269,30 @@ export async function incrementTokenUsage(
  * HARD BLOCK: Returns allowed=false when docs_remaining <= 0
  */
 export async function canIngestDocument(
-  organizationId: string
+  organizationId: string,
+  userId?: string
 ): Promise<FairUsageCheck> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing document ingestion limits`);
+      return {
+        allowed: true,
+        used: 0,
+        limit: -1,
+        percentage: 0,
+        isWarning: false,
+        reason: 'Super Admin - unlimited document ingestion',
+      };
+    }
+  }
+
   const usage = await getOrCreateWorkspaceUsage(organizationId)
 
   const docsRemaining = usage.docsLimit - usage.docsIngested
@@ -322,8 +367,30 @@ export async function incrementDocIngestion(
  */
 export async function checkThroughput(
   organizationId: string,
-  storiesInRequest: number
+  storiesInRequest: number,
+  userId?: string
 ): Promise<FairUsageCheck> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing throughput limits`);
+      return {
+        allowed: true,
+        used: storiesInRequest,
+        limit: -1,
+        percentage: 0,
+        isWarning: false,
+        reason: 'Super Admin - unlimited throughput',
+      };
+    }
+  }
+
   const [org] = await db
     .select()
     .from(organizations)
@@ -364,8 +431,30 @@ export async function checkThroughput(
  */
 export async function checkBulkLimit(
   organizationId: string,
-  storiesCount: number
+  storiesCount: number,
+  userId?: string
 ): Promise<FairUsageCheck> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing bulk generation limits`);
+      return {
+        allowed: true,
+        used: storiesCount,
+        limit: -1,
+        percentage: 0,
+        isWarning: false,
+        reason: 'Super Admin - unlimited bulk generation',
+      };
+    }
+  }
+
   const [org] = await db
     .select()
     .from(organizations)
@@ -405,8 +494,30 @@ export async function checkBulkLimit(
  */
 export async function checkPageLimit(
   organizationId: string,
-  pageCount: number
+  pageCount: number,
+  userId?: string
 ): Promise<FairUsageCheck> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing page limits`);
+      return {
+        allowed: true,
+        used: pageCount,
+        limit: -1,
+        percentage: 0,
+        isWarning: false,
+        reason: 'Super Admin - unlimited pages',
+      };
+    }
+  }
+
   const [org] = await db
     .select()
     .from(organizations)

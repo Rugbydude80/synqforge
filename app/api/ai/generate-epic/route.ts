@@ -45,7 +45,7 @@ export const POST = withAuth(
 
       // Check fair-usage AI token limit (HARD BLOCK)
       const estimatedTokens = AI_TOKEN_COSTS.EPIC_CREATION
-      const aiCheck = await canUseAI(user.organizationId, estimatedTokens)
+      const aiCheck = await canUseAI(user.organizationId, estimatedTokens, user.id)
 
       if (!aiCheck.allowed) {
         return NextResponse.json(

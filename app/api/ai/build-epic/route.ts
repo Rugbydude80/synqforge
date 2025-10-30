@@ -47,7 +47,8 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
     // Check bulk story limit
     const bulkCheck = await checkBulkLimit(
       context.user.organizationId,
-      validatedData.capabilities.length
+      validatedData.capabilities.length,
+      context.user.id
     );
 
     if (!bulkCheck.allowed) {
@@ -64,7 +65,7 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
 
     // Check AI usage limit
     const estimatedTokens = validatedData.capabilities.length * 2000;
-    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens);
+    const aiCheck = await canUseAI(context.user.organizationId, estimatedTokens, context.user.id);
 
     if (!aiCheck.allowed) {
       return NextResponse.json(
