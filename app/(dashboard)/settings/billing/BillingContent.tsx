@@ -151,7 +151,7 @@ export function BillingContent({ organizationId }: BillingContentProps) {
     <div className="space-y-8">
       {/* Current Subscription */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Current Subscription</h2>
+        <h2 className="text-2xl font-bold mb-4">Your Subscription</h2>
         <div className="bg-muted p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
