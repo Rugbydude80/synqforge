@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/lib/db';
-import { stories } from '@/lib/db/schema';
+import { stories, storyLinks } from '@/lib/db/schema';
 import { nanoid } from 'nanoid';
 import { eq } from 'drizzle-orm';
 import { metrics } from '@/lib/observability/metrics';
@@ -123,8 +123,24 @@ async function createChildStories(
 
     childStories.push(childStory);
 
-    // TODO: Create story links when story_links table is added to schema
-    links.push({ id: nanoid(), relation: 'split_child' });
+    // CRITICAL FIX: Create story link in database
+    const linkId = nanoid();
+    await tx.insert(storyLinks).values({
+      id: linkId,
+      storyId: parentStoryId,
+      relatedStoryId: childStory.id,
+      relation: 'split_child',
+    });
+    
+    // Also create reverse link (child -> parent)
+    await tx.insert(storyLinks).values({
+      id: nanoid(),
+      storyId: childStory.id,
+      relatedStoryId: parentStoryId,
+      relation: 'split_parent',
+    });
+
+    links.push({ id: linkId, relation: 'split_child' });
   }
 
   return { childStories, links };

@@ -382,6 +382,27 @@ export const stories = pgTable(
 )
 
 // ============================================
+// STORY LINKS - Relationship tracking between stories
+// ============================================
+
+export const storyLinks = pgTable(
+  'story_links',
+  {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    storyId: varchar('story_id', { length: 255 }).notNull(),
+    relatedStoryId: varchar('related_story_id', { length: 255 }).notNull(),
+    relation: varchar('relation', { length: 50 }).notNull(), // CRITICAL FIX: 'split_child', 'split_parent', 'depends_on'
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_story_links_story').on(table.storyId),
+    relatedStoryIdx: index('idx_story_links_related').on(table.relatedStoryId),
+    relationIdx: index('idx_story_links_relation').on(table.relation),
+    uniqueStoryRelation: uniqueIndex('unique_story_relation').on(table.storyId, table.relatedStoryId, table.relation),
+  })
+)
+
+// ============================================
 // TASKS - Agile methodology tasks linked to stories
 // ============================================
 
