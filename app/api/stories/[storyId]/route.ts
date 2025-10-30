@@ -122,9 +122,13 @@ async function updateStory(req: NextRequest, context: { user: any }) {
     const { projectId: _projectId, ...rawUpdateData } = validationResult.data;
     
     // Convert null values to undefined for type compatibility with UpdateStoryInput
+    // BUT preserve null for epicId and assigneeId (to allow clearing them)
     const updateData: any = {};
     for (const [key, value] of Object.entries(rawUpdateData)) {
-      if (value !== null) {
+      // Preserve null for fields that can be cleared (epicId, assigneeId)
+      if (key === 'epicId' || key === 'assigneeId') {
+        updateData[key] = value; // Keep null to allow clearing
+      } else if (value !== null) {
         updateData[key] = value;
       }
     }
