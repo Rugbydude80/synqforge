@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { CreateProjectModal } from '@/components/create-project-modal'
 import { AppSidebar } from '@/components/app-sidebar'
+import { TrialWarningBanner } from '@/components/billing/TrialWarningBanner'
 import { cn, formatRelativeTime } from '@/lib/utils'
 
 export default function DashboardPage() {
@@ -39,6 +40,11 @@ export default function DashboardPage() {
   const [activityFilter, setActivityFilter] = useState<string>('all')
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
   const [, forceUpdate] = useState({})
+  const [orgInfo, setOrgInfo] = useState<{
+    trialEndsAt: Date | null
+    subscriptionStatus: string
+    plan: string | null
+  } | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -68,10 +74,11 @@ export default function DashboardPage() {
         setLoading(true)
       }
       // Fetch all dashboard data in parallel
-      const [statsResponse, activitiesResponse, projectsResponse] = await Promise.all([
+      const [statsResponse, activitiesResponse, projectsResponse, orgResponse] = await Promise.all([
         api.dashboard.getStats(),
         api.activities.list({ limit: 10 }),
         api.projects.list(),
+        fetch('/api/organizations/me').then(r => r.ok ? r.json() : null).catch(() => null),
       ])
 
       setStats(statsResponse)
@@ -82,6 +89,15 @@ export default function DashboardPage() {
         (p: any) => p.status === 'planning' || p.status === 'on_hold'
       )
       setInactiveProjects(inactive)
+
+      // Store organization info for trial warning banner
+      if (orgResponse) {
+        setOrgInfo({
+          trialEndsAt: orgResponse.trialEndsAt ? new Date(orgResponse.trialEndsAt) : null,
+          subscriptionStatus: orgResponse.subscriptionStatus || 'inactive',
+          plan: orgResponse.plan || null,
+        })
+      }
 
       setError('')
       setLastSyncTime(new Date())
@@ -359,6 +375,15 @@ export default function DashboardPage() {
 
           {!loading && !error && (
             <>
+              {/* Trial Warning Banner */}
+              {orgInfo && (
+                <TrialWarningBanner
+                  trialEndsAt={orgInfo.trialEndsAt}
+                  subscriptionStatus={orgInfo.subscriptionStatus}
+                  plan={orgInfo.plan}
+                />
+              )}
+
               {/* Metrics Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {metrics.map((metric, i) => (
