@@ -2,34 +2,88 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { db } from '@/lib/db'
 import { projects, stories, epics } from '@/lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, and } from 'drizzle-orm'
 
 /**
  * GET /api/dashboard/stats
  * Get organization-wide dashboard statistics
+ * Uses separate subqueries for accurate counts
  */
 async function getDashboardStats(_request: NextRequest, context: any) {
   try {
     const organizationId = context.user.organizationId
 
-    // Get aggregated stats across all projects
+    // Use separate queries for accurate counts (LEFT JOINs can cause duplicate counting issues)
     const [stats] = await db
       .select({
-        totalProjects: sql<number>`COUNT(DISTINCT ${projects.id})`,
-        activeProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'active' THEN ${projects.id} END)`,
-        planningProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'planning' THEN ${projects.id} END)`,
-        onHoldProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'on_hold' THEN ${projects.id} END)`,
-        completedProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'completed' THEN ${projects.id} END)`,
-        archivedProjects: sql<number>`COUNT(DISTINCT CASE WHEN ${projects.status} = 'archived' THEN ${projects.id} END)`,
-        totalStories: sql<number>`COUNT(DISTINCT ${stories.id})`,
-        completedStories: sql<number>`COUNT(DISTINCT CASE WHEN ${stories.status} = 'done' THEN ${stories.id} END)`,
-        aiGeneratedStories: sql<number>`COUNT(DISTINCT CASE WHEN ${stories.aiGenerated} = true THEN ${stories.id} END)`,
-        totalEpics: sql<number>`COUNT(DISTINCT ${epics.id})`,
+        // Project counts
+        totalProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+        )`,
+        activeProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${projects.status} = 'active'
+        )`,
+        planningProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${projects.status} = 'planning'
+        )`,
+        onHoldProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${projects.status} = 'on_hold'
+        )`,
+        completedProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${projects.status} = 'completed'
+        )`,
+        archivedProjects: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${projects} 
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${projects.status} = 'archived'
+        )`,
+        // Story counts (across all projects in org)
+        totalStories: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${stories}
+          INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
+          WHERE ${projects.organizationId} = ${organizationId}
+        )`,
+        completedStories: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${stories}
+          INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${stories.status} = 'done'
+        )`,
+        aiGeneratedStories: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${stories}
+          INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
+          WHERE ${projects.organizationId} = ${organizationId}
+          AND ${stories.aiGenerated} = true
+        )`,
+        // Epic counts (across all projects in org)
+        totalEpics: sql<number>`(
+          SELECT COUNT(*)::int 
+          FROM ${epics}
+          INNER JOIN ${projects} ON ${epics.projectId} = ${projects.id}
+          WHERE ${projects.organizationId} = ${organizationId}
+        )`,
       })
       .from(projects)
-      .leftJoin(stories, eq(stories.projectId, projects.id))
-      .leftJoin(epics, eq(epics.projectId, projects.id))
       .where(eq(projects.organizationId, organizationId))
+      .limit(1)
 
     // Calculate percentages
     const completionPercentage = stats.totalStories > 0
@@ -53,6 +107,12 @@ async function getDashboardStats(_request: NextRequest, context: any) {
       totalEpics: Number(stats.totalEpics) || 0,
       completionPercentage,
       aiGeneratedPercentage,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     })
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
