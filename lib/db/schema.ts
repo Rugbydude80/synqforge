@@ -238,6 +238,28 @@ export const projects = pgTable(
 )
 
 // ============================================
+// PROJECT MEMBERS - Project-level permissions
+// ============================================
+
+export const projectMembers = pgTable(
+  'project_members',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    role: roleEnum('role').default('viewer').notNull(), // CRITICAL FIX: Project-level permissions
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    projectIdx: index('idx_project_members_project').on(table.projectId),
+    userIdx: index('idx_project_members_user').on(table.userId),
+    orgIdx: index('idx_project_members_org').on(table.organizationId),
+    uniqueProjectUser: uniqueIndex('unique_project_user').on(table.projectId, table.userId),
+  })
+)
+
+// ============================================
 // EPICS & STORIES
 // ============================================
 
