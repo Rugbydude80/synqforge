@@ -37,9 +37,11 @@ export interface UpdateStoryInput {
   acceptanceCriteria?: string[];
   storyPoints?: number;
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  storyType?: 'feature' | 'bug' | 'task' | 'spike';
   assigneeId?: string;
   status?: 'backlog' | 'ready' | 'in_progress' | 'review' | 'done' | 'blocked';
   tags?: string[];
+  labels?: string[];
   epicId?: string;
 }
 
