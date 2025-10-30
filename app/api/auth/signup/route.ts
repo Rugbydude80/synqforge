@@ -22,18 +22,6 @@ const signupSchema = z.object({
   plan: z.enum(['free', 'solo', 'team', 'pro', 'enterprise']).default('free'),
 })
 
-// Map signup plan names to database tier names
-function mapPlanToTier(plan: 'free' | 'solo' | 'team' | 'pro' | 'enterprise'): 'starter' | 'core' | 'pro' | 'team' | 'enterprise' {
-  const tierMap = {
-    'free': 'starter',
-    'solo': 'core',
-    'pro': 'pro',
-    'team': 'team',
-    'enterprise': 'enterprise',
-  } as const;
-  return tierMap[plan];
-}
-
 // Plans that require Stripe checkout (enterprise is contact sales)
 const PAID_PLANS_WITH_CHECKOUT = ['solo', 'pro', 'team'] as const
 
