@@ -160,6 +160,7 @@ export const users = pgTable(
     isActive: boolean('is_active').default(true),
     preferences: json('preferences').$type<Record<string, any>>(),
     lastActiveAt: timestamp('last_active_at'),
+    sessionVersion: integer('session_version').default(1).notNull(), // CRITICAL FIX: Session invalidation
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
@@ -335,6 +336,9 @@ export const stories = pgTable(
     // Version tracking for update story feature
     lastUpdatedAt: timestamp('last_updated_at').defaultNow(),
     updateVersion: integer('update_version').default(1),
+
+    // Template versioning - track which template version was used
+    templateVersionId: varchar('template_version_id', { length: 36 }),
 
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -802,6 +806,7 @@ export const storyTemplates = pgTable(
     description: text('description'),
     isPublic: boolean('is_public').default(false),
     usageCount: integer('usage_count').default(0),
+    version: integer('version').default(1).notNull(), // CRITICAL FIX: Template versioning
     createdBy: varchar('created_by', { length: 36 }).notNull(),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -811,6 +816,7 @@ export const storyTemplates = pgTable(
     categoryIdx: index('idx_templates_category').on(table.category),
     publicIdx: index('idx_templates_public').on(table.isPublic),
     creatorIdx: index('idx_templates_creator').on(table.createdBy),
+    versionIdx: index('idx_templates_version').on(table.id, table.version),
   })
 )
 
@@ -831,6 +837,33 @@ export const templateStories = pgTable(
   (table) => ({
     templateIdx: index('idx_template_stories_template').on(table.templateId),
     orderIdx: index('idx_template_stories_order').on(table.templateId, table.order),
+  })
+)
+
+// ============================================
+// TEMPLATE VERSIONS - Version history for templates
+// ============================================
+
+export const templateVersions = pgTable(
+  'template_versions',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    templateId: varchar('template_id', { length: 36 }).notNull(),
+    version: integer('version').notNull(),
+    templateName: varchar('template_name', { length: 255 }).notNull(),
+    category: templateCategoryEnum('category').notNull(),
+    description: text('description'),
+    isPublic: boolean('is_public').default(false),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    storiesSnapshot: json('stories_snapshot').$type<Record<string, any>[]>().notNull(),
+    changeSummary: text('change_summary'),
+    changedBy: varchar('changed_by', { length: 36 }),
+  },
+  (table) => ({
+    templateIdx: index('idx_template_versions_template').on(table.templateId),
+    versionIdx: index('idx_template_versions_version').on(table.templateId, table.version),
+    uniqueTemplateVersion: uniqueIndex('unique_template_version').on(table.templateId, table.version),
   })
 )
 

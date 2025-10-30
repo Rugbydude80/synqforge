@@ -1,5 +1,5 @@
 import { db, generateId } from '@/lib/db'
-import { storyTemplates, templateStories, stories } from '@/lib/db/schema'
+import { storyTemplates, templateStories, stories, templateVersions } from '@/lib/db/schema'
 import { eq, and, desc, sql } from 'drizzle-orm'
 
 export type TemplateCategory =
@@ -40,12 +40,13 @@ export interface ApplyTemplateInput {
 export class StoryTemplatesRepository {
   /**
    * Create a custom template
+   * CRITICAL FIX: Creates initial version automatically
    */
   async createTemplate(input: CreateTemplateInput) {
     try {
       const templateId = generateId()
 
-      // Create template
+      // Create template with version 1
       const [template] = await db
         .insert(storyTemplates)
         .values({
@@ -56,6 +57,7 @@ export class StoryTemplatesRepository {
           description: input.description || null,
           isPublic: input.isPublic || false,
           usageCount: 0,
+          version: 1, // Initial version
           createdBy: input.createdBy,
         })
         .returning()
@@ -74,6 +76,27 @@ export class StoryTemplatesRepository {
       }))
 
       await db.insert(templateStories).values(templateStoriesData)
+
+      // CRITICAL FIX: Create initial version record
+      await db.insert(templateVersions).values({
+        id: generateId(),
+        templateId,
+        version: 1,
+        templateName: input.templateName,
+        category: input.category,
+        description: input.description || null,
+        isPublic: input.isPublic || false,
+        createdBy: input.createdBy,
+        storiesSnapshot: templateStoriesData.map(s => ({
+          title: s.title,
+          description: s.description,
+          acceptanceCriteria: s.acceptanceCriteria,
+          storyPoints: s.storyPoints,
+          storyType: s.storyType,
+          tags: s.tags,
+          order: s.order,
+        })),
+      })
 
       return template
     } catch (error) {
@@ -175,6 +198,9 @@ export class StoryTemplatesRepository {
       // Create actual stories from template
       const createdStories = []
 
+      // CRITICAL FIX: Track template version when creating stories
+      const versionId = generateId() // Use template version ID
+
       for (const templateStory of template.stories) {
         // Replace variables in title/description
         let title = templateStory.title
@@ -206,6 +232,7 @@ export class StoryTemplatesRepository {
             aiGenerated: false,
             createdBy: input.createdBy,
             assigneeId: null,
+            templateVersionId: `${template.id}_v${template.version}`, // Track template version
           })
           .returning()
 
@@ -216,6 +243,174 @@ export class StoryTemplatesRepository {
     } catch (error) {
       console.error('Apply template error:', error)
       throw new Error('Failed to apply template')
+    }
+  }
+
+  /**
+   * Update template (creates new version)
+   * CRITICAL FIX: Template versioning
+   */
+  async updateTemplate(
+    templateId: string,
+    input: Partial<CreateTemplateInput> & { changedBy: string; changeSummary?: string }
+  ) {
+    try {
+      // Get current template
+      const [currentTemplate] = await db
+        .select()
+        .from(storyTemplates)
+        .where(eq(storyTemplates.id, templateId))
+        .limit(1)
+
+      if (!currentTemplate) {
+        throw new Error('Template not found')
+      }
+
+      // Get next version number
+      const [maxVersion] = await db
+        .select({
+          maxVersion: sql<number>`COALESCE(MAX(${templateVersions.version}), 0)`,
+        })
+        .from(templateVersions)
+        .where(eq(templateVersions.templateId, templateId))
+
+      const nextVersion = (maxVersion?.maxVersion || currentTemplate.version) + 1
+
+      // Update template with new version
+      const updateData: any = {
+        version: nextVersion,
+        updatedAt: new Date(),
+      }
+
+      if (input.templateName) updateData.templateName = input.templateName
+      if (input.category) updateData.category = input.category
+      if (input.description !== undefined) updateData.description = input.description
+      if (input.isPublic !== undefined) updateData.isPublic = input.isPublic
+
+      const [updatedTemplate] = await db
+        .update(storyTemplates)
+        .set(updateData)
+        .where(eq(storyTemplates.id, templateId))
+        .returning()
+
+      // Update template stories if provided
+      if (input.stories) {
+        // Delete old stories
+        await db.delete(templateStories).where(eq(templateStories.templateId, templateId))
+
+        // Insert new stories
+        const templateStoriesData = input.stories.map((story, index) => ({
+          id: generateId(),
+          templateId,
+          title: story.title,
+          description: story.description,
+          acceptanceCriteria: story.acceptanceCriteria,
+          storyPoints: story.storyPoints || null,
+          storyType: story.storyType || 'feature',
+          tags: story.tags || [],
+          order: index + 1,
+        }))
+
+        await db.insert(templateStories).values(templateStoriesData)
+
+        // Create version record with new stories
+        await db.insert(templateVersions).values({
+          id: generateId(),
+          templateId,
+          version: nextVersion,
+          templateName: updatedTemplate.templateName,
+          category: updatedTemplate.category,
+          description: updatedTemplate.description,
+          isPublic: updatedTemplate.isPublic,
+          createdBy: updatedTemplate.createdBy,
+          changedBy: input.changedBy,
+          changeSummary: input.changeSummary || null,
+          storiesSnapshot: templateStoriesData.map(s => ({
+            title: s.title,
+            description: s.description,
+            acceptanceCriteria: s.acceptanceCriteria,
+            storyPoints: s.storyPoints,
+            storyType: s.storyType,
+            tags: s.tags,
+            order: s.order,
+          })),
+        })
+      } else {
+        // Just update metadata, stories unchanged
+        const currentStories = await db
+          .select()
+          .from(templateStories)
+          .where(eq(templateStories.templateId, templateId))
+          .orderBy(templateStories.order)
+
+        await db.insert(templateVersions).values({
+          id: generateId(),
+          templateId,
+          version: nextVersion,
+          templateName: updatedTemplate.templateName,
+          category: updatedTemplate.category,
+          description: updatedTemplate.description,
+          isPublic: updatedTemplate.isPublic,
+          createdBy: updatedTemplate.createdBy,
+          changedBy: input.changedBy,
+          changeSummary: input.changeSummary || null,
+          storiesSnapshot: currentStories.map(s => ({
+            title: s.title,
+            description: s.description,
+            acceptanceCriteria: s.acceptanceCriteria,
+            storyPoints: s.storyPoints,
+            storyType: s.storyType,
+            tags: s.tags,
+            order: s.order,
+          })),
+        })
+      }
+
+      return updatedTemplate
+    } catch (error) {
+      console.error('Update template error:', error)
+      throw new Error('Failed to update template')
+    }
+  }
+
+  /**
+   * Get template version history
+   */
+  async getTemplateVersions(templateId: string) {
+    try {
+      const versions = await db
+        .select()
+        .from(templateVersions)
+        .where(eq(templateVersions.templateId, templateId))
+        .orderBy(desc(templateVersions.version))
+
+      return versions
+    } catch (error) {
+      console.error('Get template versions error:', error)
+      throw new Error('Failed to get template versions')
+    }
+  }
+
+  /**
+   * Get specific template version
+   */
+  async getTemplateVersion(templateId: string, version: number) {
+    try {
+      const [versionRecord] = await db
+        .select()
+        .from(templateVersions)
+        .where(
+          and(
+            eq(templateVersions.templateId, templateId),
+            eq(templateVersions.version, version)
+          )
+        )
+        .limit(1)
+
+      return versionRecord || null
+    } catch (error) {
+      console.error('Get template version error:', error)
+      throw new Error('Failed to get template version')
     }
   }
 
