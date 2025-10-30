@@ -13,6 +13,13 @@ async function getDashboardStats(_request: NextRequest, context: any) {
   try {
     const organizationId = context.user.organizationId
 
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Organization ID is required' },
+        { status: 401 }
+      )
+    }
+
     // Use separate queries for accurate counts (LEFT JOINs can cause duplicate counting issues)
     const [stats] = await db
       .select({
@@ -85,6 +92,30 @@ async function getDashboardStats(_request: NextRequest, context: any) {
       .where(eq(projects.organizationId, organizationId))
       .limit(1)
 
+    // Handle case where no projects exist (stats will be undefined)
+    if (!stats) {
+      return NextResponse.json({
+        totalProjects: 0,
+        activeProjects: 0,
+        planningProjects: 0,
+        onHoldProjects: 0,
+        completedProjects: 0,
+        archivedProjects: 0,
+        totalStories: 0,
+        completedStories: 0,
+        aiGeneratedStories: 0,
+        totalEpics: 0,
+        completionPercentage: 0,
+        aiGeneratedPercentage: 0,
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      })
+    }
+
     // Calculate percentages
     const completionPercentage = stats.totalStories > 0
       ? Math.round((stats.completedStories / stats.totalStories) * 100)
@@ -116,8 +147,9 @@ async function getDashboardStats(_request: NextRequest, context: any) {
     })
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard statistics' },
+      { error: 'Failed to fetch dashboard statistics', message: errorMessage },
       { status: 500 }
     )
   }
