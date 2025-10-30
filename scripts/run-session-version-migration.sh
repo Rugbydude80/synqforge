@@ -131,3 +131,4 @@ rm -f .env.migration
 echo ""
 echo "✨ Done!"
 
+
