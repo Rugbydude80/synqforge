@@ -205,6 +205,8 @@ async function initializeUsageTracking(
  * Handle subscription creation or update
  * Parses entitlements from Stripe Price metadata and updates organization
  * 
+ * CRITICAL FIX: Wrapped in transaction with retry logic to handle race conditions
+ * 
  * @param subscription - Stripe subscription object
  * @throws {ValidationError} Invalid subscription data
  * @throws {DatabaseError} Database operation failed
@@ -232,57 +234,128 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
     priceId,
   })
 
-  // Find organization by Stripe customer ID
+  // CRITICAL FIX: Wrap all updates in transaction with retry logic for deadlocks
+  const MAX_RETRIES = 3
+  let lastError: Error | undefined
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      await db.transaction(async (tx) => {
+        // Find organization by Stripe customer ID (within transaction for consistency)
+        const [organization] = await tx
+          .select()
+          .from(organizations)
+          .where(eq(organizations.stripeCustomerId, customerId))
+          .limit(1)
+
+        if (!organization) {
+          throw new DatabaseError(
+            'Organization not found for customer',
+            undefined,
+            { customerId, message: `No organization found with Stripe customer ID: ${customerId}` }
+          )
+        }
+
+        // Fetch full price object with metadata from Stripe
+        const price = await stripe.prices.retrieve(priceId)
+        const entitlements = entitlementsFromPrice(price)
+        const parsed = parseSubscriptionData(subscription, customerId, organization.id, priceId, entitlements)
+
+        console.log('Parsed entitlements:', {
+          plan: entitlements.plan,
+          cycle: entitlements.plan_cycle,
+          seats: parsed.includedSeats,
+          addonSeats: parsed.addonSeats,
+          projects: parsed.dbValues.projectsIncluded,
+          tokens: entitlements.ai_tokens_included,
+        })
+
+        // Update or create subscription record (within transaction)
+        const [existingSubscription] = await tx
+          .select()
+          .from(stripeSubscriptions)
+          .where(eq(stripeSubscriptions.stripeSubscriptionId, subscriptionId))
+          .limit(1)
+
+        if (existingSubscription) {
+          await tx
+            .update(stripeSubscriptions)
+            .set(parsed.subscriptionData)
+            .where(eq(stripeSubscriptions.id, existingSubscription.id))
+        } else {
+          const newId = generateId()
+          await tx.insert(stripeSubscriptions).values({
+            id: newId,
+            ...parsed.subscriptionData,
+            createdAt: new Date(),
+          })
+        }
+
+        // Update organization with entitlements (within transaction)
+        const dbValues = entitlementsToDbValues(entitlements)
+        const legacyTier = getLegacyTier(entitlements.plan)
+
+        await tx
+          .update(organizations)
+          .set({
+            subscriptionTier: legacyTier,
+            ...dbValues,
+            stripeSubscriptionId: subscriptionId,
+            stripePriceId: priceId,
+            subscriptionStatus: subscription.status,
+            subscriptionRenewalAt: (subscription as {current_period_end?: number}).current_period_end
+              ? new Date((subscription as {current_period_end?: number}).current_period_end! * 1000)
+              : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, organization.id))
+      })
+
+      // Transaction succeeded - break retry loop
+      break
+    } catch (error: any) {
+      lastError = error
+
+      // Check if this is a deadlock error
+      const isDeadlock = error?.message?.toLowerCase().includes('deadlock') || 
+                         error?.code === '40P01'
+
+      if (isDeadlock && attempt < MAX_RETRIES - 1) {
+        // Exponential backoff for retries
+        const delayMs = Math.pow(2, attempt) * 100
+        console.warn(
+          `Deadlock detected on subscription update (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${delayMs}ms`,
+          { customerId, subscriptionId }
+        )
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+        continue
+      }
+
+      // Non-retryable error or final attempt - throw
+      throw error
+    }
+  }
+
+  // If we exhausted retries, throw last error
+  if (lastError && !lastError.message?.includes('transaction')) {
+    throw lastError
+  }
+
+  // Initialize usage tracking (outside transaction to avoid long-running transactions)
   const [organization] = await db
     .select()
     .from(organizations)
     .where(eq(organizations.stripeCustomerId, customerId))
     .limit(1)
 
-  if (!organization) {
-    throw new DatabaseError(
-      'Organization not found for customer',
-      undefined,
-      { customerId, message: `No organization found with Stripe customer ID: ${customerId}` }
-    )
+  if (organization) {
+    await initializeUsageTracking(organization.id, status)
+
+    console.log('Subscription updated successfully for org:', organization.name, {
+      subscriptionId,
+      status,
+    })
   }
-
-  // Fetch full price object with metadata from Stripe
-  const price = await stripe.prices.retrieve(priceId)
-  const entitlements = entitlementsFromPrice(price)
-  const parsed = parseSubscriptionData(subscription, customerId, organization.id, priceId, entitlements)
-
-  console.log('Parsed entitlements:', {
-    plan: entitlements.plan,
-    cycle: entitlements.plan_cycle,
-    seats: parsed.includedSeats,
-    addonSeats: parsed.addonSeats,
-    projects: parsed.dbValues.projectsIncluded,
-    tokens: entitlements.ai_tokens_included,
-  })
-
-  // Update or create subscription record
-  await updateOrCreateSubscription(subscriptionId, parsed.subscriptionData)
-
-  // Update organization with entitlements
-  await updateOrganizationEntitlements(
-    organization.id,
-    entitlements,
-    subscription,
-    subscriptionId,
-    priceId
-  )
-
-  // Initialize usage tracking
-  await initializeUsageTracking(organization.id, status)
-
-  console.log('Subscription updated successfully for org:', organization.name, {
-    plan: entitlements.plan,
-    cycle: entitlements.plan_cycle,
-    seats: parsed.includedSeats,
-    addonSeats: parsed.addonSeats,
-    status,
-  })
 }
 
 /**
