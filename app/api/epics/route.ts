@@ -58,6 +58,8 @@ async function createEpic(req: NextRequest, context: any) {
       projectId: body.projectId,
       title: body.title,
       description: body.description,
+      goals: body.goals,
+      color: body.color,
       priority: body.priority || 'medium',
       startDate: body.startDate,
       targetDate: body.targetDate,
@@ -74,6 +76,12 @@ async function createEpic(req: NextRequest, context: any) {
         return NextResponse.json(
           { error: error.message },
           { status: 400 }
+        )
+      }
+      if (error.name === 'ForbiddenError') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 }
         )
       }
     }

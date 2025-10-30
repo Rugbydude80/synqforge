@@ -87,13 +87,9 @@ export async function createTestSubscription(
     trialEndsAt,
     hasSmartContext = false,
     hasDeepReasoning = false,
-    _hasAdvancedGherkin = false,
-    _hasCustomModels = false,
-    _hasCustomSimilarityThreshold = false,
     departmentAllocations,
     billingPeriodStart,
     billingPeriodEnd,
-    _billingAnniversary,
   } = config
 
   // Validate Team plan seat count
@@ -130,7 +126,7 @@ export async function createTestSubscription(
       tokensLimit: totalActionsLimit,
       tokensUsed: 0,
       rolloverEnabled,
-      rolloverPercentage,
+      rolloverPercentage: rolloverPercentage ? rolloverPercentage.toString() : null,
       rolloverBalance: 0,
       billingPeriodStart: start,
       billingPeriodEnd: end,
@@ -170,8 +166,12 @@ export async function useAIActions(
       organizationId: orgId,
       userId,
       department,
+      type: 'story_generation',
+      model: 'test',
+      promptText: 'Test generation',
+      responseText: null,
       tokensUsed: 1,
-      generationType: 'story_generation',
+      status: 'completed',
       createdAt: getCurrentTime(),
     })
   }
@@ -334,8 +334,9 @@ export async function advanceBillingPeriod(orgId: string): Promise<void> {
   let rolloverBalance = 0
   if (usage.rolloverEnabled && usage.rolloverPercentage) {
     const unusedActions = Math.max(0, usage.tokensLimit - usage.tokensUsed)
-    const rolloverAmount = Math.floor(unusedActions * usage.rolloverPercentage)
-    const maxRollover = Math.floor(usage.tokensLimit * usage.rolloverPercentage)
+    const rolloverPct = parseFloat(usage.rolloverPercentage)
+    const rolloverAmount = Math.floor(unusedActions * rolloverPct)
+    const maxRollover = Math.floor(usage.tokensLimit * rolloverPct)
     rolloverBalance = Math.min(rolloverAmount, maxRollover)
   }
 
@@ -343,10 +344,14 @@ export async function advanceBillingPeriod(orgId: string): Promise<void> {
   await db.insert(workspaceUsageHistory).values({
     id: generateId(),
     organizationId: orgId,
+    billingPeriodStart: usage.billingPeriodStart,
+    billingPeriodEnd: usage.billingPeriodEnd,
     billingPeriod: usage.billingPeriodStart.toISOString().substring(0, 7), // YYYY-MM
     tokensUsed: usage.tokensUsed,
     tokensLimit: usage.tokensLimit,
-    createdAt: getCurrentTime(),
+    docsIngested: usage.docsIngested || 0,
+    docsLimit: usage.docsLimit || 10,
+    archivedAt: getCurrentTime(),
   })
 
   // Reset for new period
@@ -404,7 +409,7 @@ export async function upgradePlan(orgId: string, newPlan: string): Promise<void>
     .set({
       tokensLimit: limits[newPlan] || 25,
       rolloverEnabled: ['core', 'pro'].includes(newPlan),
-      rolloverPercentage: ['core', 'pro'].includes(newPlan) ? 0.20 : 0,
+      rolloverPercentage: ['core', 'pro'].includes(newPlan) ? '0.20' : '0.00',
       updatedAt: getCurrentTime(),
     })
     .where(eq(workspaceUsage.organizationId, orgId))
@@ -431,7 +436,7 @@ export async function downgradePlan(orgId: string, newPlan: string): Promise<voi
     .set({
       tokensLimit: limits[newPlan] || 25,
       rolloverEnabled: ['core', 'pro'].includes(newPlan),
-      rolloverPercentage: ['core', 'pro'].includes(newPlan) ? 0.20 : 0,
+      rolloverPercentage: ['core', 'pro'].includes(newPlan) ? '0.20' : '0.00',
       rolloverBalance: 0, // Clear rollover on downgrade
       updatedAt: getCurrentTime(),
     })
@@ -575,7 +580,7 @@ export async function createChildStory(orgId: string, parentStoryId: string) {
   const children = await db
     .select()
     .from(stories)
-    .where(eq(stories.parentStoryId, parentStoryId))
+    .where(eq(stories.epicId, parentStoryId)) // Using epicId as parent relationship
 
   const maxChildren: Record<string, number> = {
     starter: 2,
