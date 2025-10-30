@@ -20,100 +20,82 @@ async function getDashboardStats(_request: NextRequest, context: any) {
       )
     }
 
-    // Use separate queries for accurate counts (LEFT JOINs can cause duplicate counting issues)
-    const [stats] = await db
-      .select({
-        // Project counts
-        totalProjects: sql<number>`(
+    const statsResult = await db.execute(sql`
+      SELECT 
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
-        )`,
-        activeProjects: sql<number>`(
+        ) as "totalProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${projects.status} = 'active'
-        )`,
-        planningProjects: sql<number>`(
+        ) as "activeProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${projects.status} = 'planning'
-        )`,
-        onHoldProjects: sql<number>`(
+        ) as "planningProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${projects.status} = 'on_hold'
-        )`,
-        completedProjects: sql<number>`(
+        ) as "onHoldProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${projects.status} = 'completed'
-        )`,
-        archivedProjects: sql<number>`(
+        ) as "completedProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${projects} 
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${projects.status} = 'archived'
-        )`,
-        // Story counts (across all projects in org)
-        totalStories: sql<number>`(
+        ) as "archivedProjects",
+        (
           SELECT COUNT(*)::int 
           FROM ${stories}
           INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
           WHERE ${projects.organizationId} = ${organizationId}
-        )`,
-        completedStories: sql<number>`(
+        ) as "totalStories",
+        (
           SELECT COUNT(*)::int 
           FROM ${stories}
           INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${stories.status} = 'done'
-        )`,
-        aiGeneratedStories: sql<number>`(
+        ) as "completedStories",
+        (
           SELECT COUNT(*)::int 
           FROM ${stories}
           INNER JOIN ${projects} ON ${stories.projectId} = ${projects.id}
           WHERE ${projects.organizationId} = ${organizationId}
           AND ${stories.aiGenerated} = true
-        )`,
-        // Epic counts (across all projects in org)
-        totalEpics: sql<number>`(
+        ) as "aiGeneratedStories",
+        (
           SELECT COUNT(*)::int 
           FROM ${epics}
           INNER JOIN ${projects} ON ${epics.projectId} = ${projects.id}
           WHERE ${projects.organizationId} = ${organizationId}
-        )`,
-      })
-      .from(projects)
-      .where(eq(projects.organizationId, organizationId))
-      .limit(1)
+        ) as "totalEpics"
+    `)
 
-    // Handle case where no projects exist (stats will be undefined)
-    if (!stats) {
-      return NextResponse.json({
-        totalProjects: 0,
-        activeProjects: 0,
-        planningProjects: 0,
-        onHoldProjects: 0,
-        completedProjects: 0,
-        archivedProjects: 0,
-        totalStories: 0,
-        completedStories: 0,
-        aiGeneratedStories: 0,
-        totalEpics: 0,
-        completionPercentage: 0,
-        aiGeneratedPercentage: 0,
-      }, {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      })
+    const stats = statsResult[0] || {
+      totalProjects: 0,
+      activeProjects: 0,
+      planningProjects: 0,
+      onHoldProjects: 0,
+      completedProjects: 0,
+      archivedProjects: 0,
+      totalStories: 0,
+      completedStories: 0,
+      aiGeneratedStories: 0,
+      totalEpics: 0,
     }
 
     // Calculate percentages
