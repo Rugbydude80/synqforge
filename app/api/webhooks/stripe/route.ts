@@ -101,41 +101,6 @@ function getLegacyTier(planName: string): 'starter' | 'core' | 'pro' | 'team' | 
 }
 
 /**
- * Updates organization with entitlements and subscription details
- * 
- * @param organizationId - Organization ID
- * @param entitlements - Parsed entitlements
- * @param subscription - Stripe subscription object
- * @param subscriptionId - Stripe subscription ID
- * @param priceId - Stripe price ID
- */
-async function updateOrganizationEntitlements(
-  organizationId: string,
-  entitlements: ReturnType<typeof entitlementsFromPrice>,
-  subscription: Stripe.Subscription,
-  subscriptionId: string,
-  priceId: string
-): Promise<void> {
-  const dbValues = entitlementsToDbValues(entitlements)
-  const legacyTier = getLegacyTier(entitlements.plan)
-
-  await db
-    .update(organizations)
-    .set({
-      subscriptionTier: legacyTier,
-      ...dbValues,
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      subscriptionStatus: subscription.status,
-      subscriptionRenewalAt: (subscription as {current_period_end?: number}).current_period_end
-        ? new Date((subscription as {current_period_end?: number}).current_period_end! * 1000)
-        : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(organizations.id, organizationId))
-}
-
-/**
  * Initializes usage tracking and metering for new/active subscriptions
  * 
  * @param organizationId - Organization ID

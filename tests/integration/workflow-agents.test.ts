@@ -264,7 +264,7 @@ test.describe('Workflow Agent Actions - Critical Issue #2', () => {
     const orgId2 = await createTestOrganization()
     const userId1 = await createTestUser(orgId1)
     const userId2 = await createTestUser(orgId2)
-    const projectId = await createTestProject(orgId1)
+    const projectId = await createTestProject(orgId1, userId1)
     const storyId = await createTestStory(orgId1, projectId, userId1)
 
     try {
