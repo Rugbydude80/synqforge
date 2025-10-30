@@ -259,7 +259,8 @@ export class AIService {
     storyPoints: number | null,
     investAnalysis: any,
     spidrHints: any,
-    model: string = MODEL
+    model: string = MODEL,
+    isGapFill: boolean = false
   ): Promise<StorySplitResponse> {
     const prompt = this.buildStorySplitPrompt(
       storyTitle,
@@ -267,7 +268,8 @@ export class AIService {
       acceptanceCriteria,
       storyPoints,
       investAnalysis,
-      spidrHints
+      spidrHints,
+      isGapFill
     );
 
     const response = await this.generate({
@@ -486,11 +488,56 @@ Format as JSON:
     acceptanceCriteria: string[],
     storyPoints: number | null,
     investAnalysis: any,
-    spidrHints: any
+    spidrHints: any,
+    isGapFill: boolean = false
   ): string {
     const acText = acceptanceCriteria.length > 0 ? acceptanceCriteria.join('\n- ') : 'None provided';
     const pointsText = storyPoints !== null ? `${storyPoints} points` : 'Not estimated';
     
+    if (isGapFill) {
+      // Special prompt for gap-fill: focus ONLY on covering the missing criteria
+      return `You are an expert agile coach. Generate additional user stories to cover MISSING acceptance criteria.
+
+**Original Story Context:**
+Title: ${storyTitle}
+Description: ${storyDescription}
+Story Points: ${pointsText}
+
+**CRITICAL: These acceptance criteria are NOT YET COVERED by existing child stories:**
+${acText}
+
+**Your Task:**
+Generate 1-3 additional child stories that specifically address these uncovered criteria. Each story MUST:
+1. Cover at least ONE of the missing criteria above
+2. Follow INVEST principles
+3. Be 1-5 story points
+4. Include 2+ specific acceptance criteria
+5. Provide clear user value
+
+**Format your response as JSON:**
+{
+  "splitStrategy": "Gap-fill: Covering missing acceptance criteria",
+  "reasoning": "Why these stories are needed to complete coverage",
+  "suggestions": [
+    {
+      "title": "Concise story title",
+      "personaGoal": "As a [persona], I want [goal] so that [benefit]",
+      "description": "Detailed description",
+      "acceptanceCriteria": [
+        "Given... When... Then...",
+        "Another criterion"
+      ],
+      "estimatePoints": 3,
+      "providesUserValue": true,
+      "reasoning": "How this story covers the missing criteria"
+    }
+  ]
+}
+
+Generate stories that ensure 100% coverage of the missing criteria above.`;
+    }
+    
+    // Original prompt for initial split
     return `You are an expert agile coach specializing in story splitting using INVEST principles and SPIDR patterns.
 
 **Original Story to Split:**
