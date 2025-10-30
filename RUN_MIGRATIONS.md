@@ -166,3 +166,4 @@ The migrations use `IF NOT EXISTS`, so they're safe. If you get permission error
 
 The code changes are already deployed and will work with or without the column, but running the migration gives you full functionality.
 
+
