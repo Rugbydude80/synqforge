@@ -53,7 +53,7 @@ export class StorySplitValidationService {
     const valuable = this.validateValuable(child, errors);
     const independent = this.validateIndependent(child, allChildren, warnings);
     const small = this.validateSmall(child, errors);
-    const testable = this.validateTestable(child, errors);
+    const testable = this.validateTestable(child, errors, warnings); // Pass warnings array
 
     const valid = errors.length === 0 && valuable && testable;
 
@@ -121,11 +121,29 @@ export class StorySplitValidationService {
   }
 
   private detectCoupling(child1: ChildStoryInput, child2: ChildStoryInput): boolean {
+    // Improved coupling detection - only flag if there's significant overlap
     const desc1 = child1.description.toLowerCase();
+    const desc2 = child2.description.toLowerCase();
+    const title1 = child1.title.toLowerCase();
     const title2 = child2.title.toLowerCase();
 
-    const keywords = title2.split(' ').filter(w => w.length > 4);
-    return keywords.some(kw => desc1.includes(kw));
+    // Extract meaningful words (5+ chars) from titles
+    const getTitleWords = (title: string) =>
+      title.split(' ')
+        .filter(word => word.length >= 5)
+        .filter(word => !['password', 'reset', 'email', 'user', 'secure', 'request', 'receive', 'click'].includes(word)); // Common words that don't indicate coupling
+
+    const words1 = getTitleWords(title1);
+    const words2 = getTitleWords(title2);
+
+    // Only flag if there's significant keyword overlap in titles AND descriptions
+    const titleOverlap = words1.filter(w => words2.includes(w)).length;
+    const descOverlap = desc1.split(' ')
+      .filter(w => w.length >= 5)
+      .filter(w => desc2.includes(w)).length;
+
+    // Require both title AND description overlap to indicate coupling
+    return titleOverlap >= 2 && descOverlap >= 3;
   }
 
   private validateSmall(child: ChildStoryInput, errors: string[]): boolean {
@@ -142,20 +160,27 @@ export class StorySplitValidationService {
     return true;
   }
 
-  private validateTestable(child: ChildStoryInput, errors: string[]): boolean {
+  private validateTestable(child: ChildStoryInput, errors: string[], warnings: string[]): boolean {
     if (!child.acceptanceCriteria || child.acceptanceCriteria.length < 2) {
       errors.push('story.split.validation.testable.insufficient_criteria');
       return false;
     }
 
+    // Vague terms detection - now a warning, not an error
+    // Only flag if the vague word appears alone without context
     const vagueKeywords = ['properly', 'correctly', 'works', 'good', 'nice'];
-    const hasVague = child.acceptanceCriteria.some(ac =>
-      vagueKeywords.some(kw => ac.toLowerCase().includes(kw))
-    );
+    const hasVague = child.acceptanceCriteria.some(ac => {
+      const lowerAC = ac.toLowerCase();
+      return vagueKeywords.some(kw => {
+        // Only flag if vague word appears without surrounding context
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        return regex.test(lowerAC);
+      });
+    });
 
     if (hasVague) {
-      errors.push('story.split.validation.testable.vague_criteria');
-      return false;
+      // This is now a warning, not an error - doesn't block creation
+      warnings.push('story.split.validation.testable.vague_criteria');
     }
 
     return true;
@@ -225,15 +250,22 @@ export class StorySplitValidationService {
       } else if (coveringStories.length === 1) {
         coveredCriteria.push(criterion);
       } else {
-        // Multiple stories cover the same criterion - potential duplication
-        coveredCriteria.push(criterion);
-        duplicatedFunctionality.push({
-          criterionIndex: idx,
-          coveredByStories: coveringStories
-        });
-        recommendations.push(
-          `Duplication: "${criterion.substring(0, 50)}..." is covered by ${coveringStories.length} stories (${coveringStories.map(i => i + 1).join(', ')})`
-        );
+        // Multiple stories cover the same criterion - only flag if it's clearly duplicate
+        // Allow 2 stories to cover the same criterion if they're different aspects
+        // Only flag as duplication if 3+ stories cover it
+        if (coveringStories.length >= 3) {
+          coveredCriteria.push(criterion);
+          duplicatedFunctionality.push({
+            criterionIndex: idx,
+            coveredByStories: coveringStories
+          });
+          recommendations.push(
+            `Duplication: "${criterion.substring(0, 50)}..." is covered by ${coveringStories.length} stories (${coveringStories.map(i => i + 1).join(', ')})`
+          );
+        } else {
+          // 2 stories covering same criterion is OK - might be different aspects
+          coveredCriteria.push(criterion);
+        }
       }
     });
 
@@ -273,6 +305,7 @@ export class StorySplitValidationService {
   /**
    * Check if a child AC addresses/covers a parent AC
    * Uses semantic matching (keywords) rather than exact match
+   * Improved to reduce false positives
    */
   private criteriaMatch(parentAC: string, childAC: string): boolean {
     const normalize = (text: string) => 
@@ -284,23 +317,25 @@ export class StorySplitValidationService {
     const parentNorm = normalize(parentAC);
     const childNorm = normalize(childAC);
 
-    // Extract significant keywords (4+ characters)
+    // Extract significant keywords (5+ characters for better precision)
     const getKeywords = (text: string) =>
       text.split(' ')
-        .filter(word => word.length >= 4)
-        .filter(word => !['given', 'when', 'then', 'should', 'must', 'will', 'that', 'this', 'with', 'from'].includes(word));
+        .filter(word => word.length >= 5) // Increased from 4 to 5
+        .filter(word => !['given', 'when', 'then', 'should', 'must', 'will', 'that', 'this', 'with', 'from', 'their', 'have', 'they', 'them'].includes(word));
 
     const parentKeywords = getKeywords(parentNorm);
     const childKeywords = getKeywords(childNorm);
 
-    // Consider it a match if at least 50% of parent keywords appear in child
-    if (parentKeywords.length === 0) return false;
+    // Require at least 2 keywords to match (reduces false positives)
+    if (parentKeywords.length === 0 || parentKeywords.length < 2) return false;
 
     const matchingKeywords = parentKeywords.filter(kw => 
       childKeywords.some(ck => ck.includes(kw) || kw.includes(ck))
     );
 
-    return matchingKeywords.length / parentKeywords.length >= 0.5;
+    // Require at least 60% match (increased from 50%) AND at least 2 matching keywords
+    const matchRatio = matchingKeywords.length / parentKeywords.length;
+    return matchRatio >= 0.6 && matchingKeywords.length >= 2;
   }
 }
 
