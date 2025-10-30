@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { checkSubscriptionTierEdge, routeRequiresTier } from '@/lib/middleware/subscription-guard-edge'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -68,6 +69,12 @@ export async function middleware(request: NextRequest) {
       const signInUrl = new URL('/auth/signin', request.url)
       signInUrl.searchParams.set('callbackUrl', pathname)
       return NextResponse.redirect(signInUrl)
+    }
+
+    // 🔓 SUPER ADMIN BYPASS - Check before any subscription checks
+    if (token.email && isSuperAdmin(token.email as string)) {
+      console.log(`🔓 Super Admin detected in middleware (${token.email}) - bypassing all subscription checks for ${pathname}`);
+      return NextResponse.next();
     }
 
     // Check if this route requires subscription validation
