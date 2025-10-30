@@ -1,32 +1,11 @@
-<svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
-  <!-- Logo Icon (Dark purple/gray rounded square with lightning and connection symbols) -->
-  <defs>
-    <linearGradient id="darkPurpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2D3748;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4A5568;stop-opacity:1" />
-    </linearGradient>
-  </defs>
+<svg width="240" height="60" viewBox="0 0 240 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon: White outline rounded square with white lightning bolt (for dark backgrounds) -->
+  <rect x="0" y="10" width="40" height="40" rx="8" stroke="white" stroke-width="2.5" fill="none"/>
+  <path d="M20 16 L16 26 L20 26 L18.5 30 L24 24 L20 24 L21.5 20 Z" fill="white"/>
   
-  <!-- Rounded square background -->
-  <rect x="20" y="30" width="180" height="180" rx="30" fill="url(#darkPurpleGrad)" stroke="#4A5568" stroke-width="2"/>
-  
-  <!-- Lightning bolt -->
-  <path d="M 140 80 L 100 130 L 120 130 L 90 170 L 135 120 L 115 120 Z" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="3"/>
-  
-  <!-- Connection circles -->
-  <circle cx="160" cy="90" r="12" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="2"/>
-  <circle cx="160" cy="150" r="12" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="2"/>
-  
-  <!-- Connection line -->
-  <line x1="160" y1="102" x2="160" y2="138" stroke="#E2E8F0" stroke-width="4"/>
-  
-  <!-- Text: "Synq" in light gray -->
-  <text x="240" y="180" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="120" font-weight="700" fill="#CBD5E0">Synq</text>
-  
-  <!-- Text: "Forge" in purple -->
-  <text x="580" y="180" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="120" font-weight="700" fill="#9F7AEA">Forge</text>
+  <!-- Text: SynqForge -->
+  <text x="52" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="white" letter-spacing="-0.5px">
+    <tspan>Synq</tspan>
+    <tspan fill="#A855F7">Forge</tspan>
+  </text>
 </svg>
-
-
-
-
