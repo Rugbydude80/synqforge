@@ -313,13 +313,25 @@ function BillingPageContent() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Current Plan</CardTitle>
+                  <CardTitle>Your Plan</CardTitle>
                   <CardDescription>
-                    You are currently on the{' '}
-                    <span className="font-semibold capitalize">
-                      {subscription?.tier || 'Free'}
-                    </span>{' '}
-                    plan
+                    {usageData?.seats?.usedSeats > 1 ? (
+                      <>
+                        Your team is on the{' '}
+                        <span className="font-semibold capitalize">
+                          {subscription?.tier || 'Free'}
+                        </span>{' '}
+                        plan
+                      </>
+                    ) : (
+                      <>
+                        You are on the{' '}
+                        <span className="font-semibold capitalize">
+                          {subscription?.tier || 'Free'}
+                        </span>{' '}
+                        plan
+                      </>
+                    )}
                   </CardDescription>
                 </div>
                 <Badge
