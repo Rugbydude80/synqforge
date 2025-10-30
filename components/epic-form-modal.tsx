@@ -140,7 +140,7 @@ export function EpicFormModal({
     setError(null)
 
     try {
-      const result = await api.epics.publish(epic.id)
+      await api.epics.publish(epic.id)
       toast.success('Epic published successfully! Stories are now active.')
       onSuccess?.()
       onOpenChange(false)
