@@ -18,7 +18,7 @@
 
 import { db, generateId } from '@/lib/db'
 import { tokenReservations, workspaceUsage } from '@/lib/db/schema'
-import { eq, and, lt, sql } from 'drizzle-orm'
+import { eq, and, lt, sql, or } from 'drizzle-orm'
 import { checkAndResetBillingPeriod } from './billing-period.service'
 
 // ============================================================================
@@ -379,7 +379,7 @@ export async function expireOldReservations(): Promise<number> {
   try {
     const now = new Date()
     
-    const result = await db
+    await db
       .update(tokenReservations)
       .set({
         status: 'expired',
@@ -452,19 +452,21 @@ export async function cleanupOldReservations(daysToKeep: number = 7): Promise<nu
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
   
-  const result = await db
+  await db
     .delete(tokenReservations)
     .where(
       and(
         lt(tokenReservations.reservedAt, cutoffDate),
         // Only delete non-reserved
-        eq(tokenReservations.status, 'committed')
-          .or(eq(tokenReservations.status, 'released'))
-          .or(eq(tokenReservations.status, 'expired'))
+        or(
+          eq(tokenReservations.status, 'committed'),
+          eq(tokenReservations.status, 'released'),
+          eq(tokenReservations.status, 'expired')
+        )
       )
     )
   
-  const deletedCount = result.rowCount || 0
+  const deletedCount = 0 // Row count not available in drizzle delete
   
   if (deletedCount > 0) {
     console.log(`🧹 Cleaned up ${deletedCount} old token reservations`)

@@ -4,7 +4,7 @@
 
 import { db, generateId } from '@/lib/db'
 import { organizations, aiUsageMetering, workspaceUsage } from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 async function fixSubscriptionAndUsage() {
   console.log('='.repeat(80))
@@ -128,7 +128,9 @@ async function fixSubscriptionAndUsage() {
           billingPeriodEnd: monthEnd,
           tokensLimit,
           tokensUsed: 0,
-          purchasedTokenBalance: 0,
+          docsIngested: 0,
+          docsLimit: 10,
+          lastResetAt: new Date(),
           createdAt: new Date(),
           updatedAt: new Date(),
         })

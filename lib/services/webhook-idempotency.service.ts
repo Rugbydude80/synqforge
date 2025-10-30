@@ -148,7 +148,7 @@ export async function logWebhookEvent(
         .set({
           status,
           errorMessage,
-          retryCount: existingLog.retryCount + 1,
+          retryCount: (existingLog.retryCount || 0) + 1,
           processedAt: new Date(),
           updatedAt: new Date(),
         })
