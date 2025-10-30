@@ -17,7 +17,7 @@
 
 import { db } from '@/lib/db'
 import { organizations } from '@/lib/db/schema'
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq, isNotNull, and } from 'drizzle-orm'
 import { stripe } from '@/lib/stripe/stripe-client'
 import Stripe from 'stripe'
 import { transitionSubscriptionStatus } from '@/lib/services/subscription.service'
@@ -79,18 +79,25 @@ async function reconcileSubscriptions(): Promise<ReconciliationReport> {
   
   try {
     // Get all organizations with Stripe customer IDs
-    let orgsQuery = db
-      .select()
-      .from(organizations)
-      .where(isNotNull(organizations.stripeCustomerId))
+    // Get organizations with Stripe customers
+    const orgs = specificOrgId 
+      ? await db
+          .select()
+          .from(organizations)
+          .where(
+            and(
+              isNotNull(organizations.stripeCustomerId),
+              eq(organizations.id, specificOrgId)
+            )
+          )
+      : await db
+          .select()
+          .from(organizations)
+          .where(isNotNull(organizations.stripeCustomerId))
     
-    // Filter to specific org if provided
     if (specificOrgId) {
-      orgsQuery = orgsQuery.where(eq(organizations.id, specificOrgId))
       console.log(`Checking specific organization: ${specificOrgId}\n`)
     }
-    
-    const orgs = await orgsQuery
     
     report.totalOrganizations = orgs.length
     console.log(`Found ${orgs.length} organizations with Stripe customers\n`)

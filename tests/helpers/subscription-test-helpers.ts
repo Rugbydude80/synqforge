@@ -12,8 +12,6 @@ import {
   workspaceUsage,
   aiGenerations,
   stories,
-  projects,
-  subscriptionStateAudit,
   departmentBudgets,
   budgetReallocationLog,
   workspaceUsageHistory,
@@ -64,11 +62,10 @@ interface TestSubscriptionConfig {
   seatCount?: number
   trialEndsAt?: Date
   hasSmartContext?: boolean
-  hasSemanticSearch?: boolean
   hasDeepReasoning?: boolean
-  hasAdvancedGherkin?: boolean
-  hasCustomModels?: boolean
-  hasCustomSimilarityThreshold?: boolean
+  _hasAdvancedGherkin?: boolean
+  _hasCustomModels?: boolean
+  _hasCustomSimilarityThreshold?: boolean
   departmentAllocations?: Record<string, number>
   billingPeriodStart?: Date
   billingPeriodEnd?: Date
@@ -89,15 +86,14 @@ export async function createTestSubscription(
     seatCount,
     trialEndsAt,
     hasSmartContext = false,
-    hasSemanticSearch = false,
     hasDeepReasoning = false,
-    hasAdvancedGherkin = false,
-    hasCustomModels = false,
-    hasCustomSimilarityThreshold = false,
+    _hasAdvancedGherkin = false,
+    _hasCustomModels = false,
+    _hasCustomSimilarityThreshold = false,
     departmentAllocations,
     billingPeriodStart,
     billingPeriodEnd,
-    billingAnniversary,
+    _billingAnniversary,
   } = config
 
   // Validate Team plan seat count
