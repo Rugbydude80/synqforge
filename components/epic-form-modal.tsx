@@ -124,8 +124,10 @@ export function EpicFormModal({
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
-      setError(err.message || 'Failed to save epic')
-      toast.error(err.message || 'Failed to save epic')
+      const errorMessage = err.message || err.error || 'Failed to save epic'
+      setError(errorMessage)
+      toast.error(errorMessage)
+      console.error('Failed to save epic:', err)
     } finally {
       setIsLoading(false)
     }
@@ -138,13 +140,15 @@ export function EpicFormModal({
     setError(null)
 
     try {
-      await api.epics.publish(epic.id)
+      const result = await api.epics.publish(epic.id)
       toast.success('Epic published successfully! Stories are now active.')
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
-      setError(err.message || 'Failed to publish epic')
-      toast.error(err.message || 'Failed to publish epic')
+      const errorMessage = err.message || err.error || 'Failed to publish epic'
+      setError(errorMessage)
+      toast.error(errorMessage)
+      console.error('Failed to publish epic:', err)
     } finally {
       setIsPublishing(false)
     }
