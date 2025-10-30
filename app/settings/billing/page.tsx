@@ -113,6 +113,11 @@ function BillingPageContent() {
     // Check for success/canceled params
     if (searchParams.get('success') === 'true') {
       toast.success('Subscription activated successfully!')
+      // Refresh data after successful subscription
+      setTimeout(() => {
+        fetchSubscription()
+        fetchUsageData()
+      }, 1000)
     }
     if (searchParams.get('canceled') === 'true') {
       toast.error('Checkout canceled')
@@ -122,6 +127,31 @@ function BillingPageContent() {
     fetchSubscription()
     fetchUsageData()
   }, [status, searchParams, router, fetchSubscription, fetchUsageData])
+
+  // Refresh data when page becomes visible (e.g., returning from Stripe)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && status === 'authenticated') {
+        fetchSubscription()
+        fetchUsageData()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [status, fetchSubscription, fetchUsageData])
+
+  // Periodic refresh every 30 seconds to catch subscription updates
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const interval = setInterval(() => {
+      fetchSubscription()
+      fetchUsageData()
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [status, fetchSubscription, fetchUsageData])
 
   const handlePurchaseTokens = async (packageSize: 'small' | 'medium' | 'large') => {
     try {
@@ -223,6 +253,26 @@ function BillingPageContent() {
               Manage your subscription and billing information
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchSubscription()
+              fetchUsageData()
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                Refresh
+              </>
+            )}
+          </Button>
         </header>
 
         <div className="p-8 space-y-6 max-w-5xl">
