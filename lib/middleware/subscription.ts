@@ -9,6 +9,7 @@ import { organizations, projects, stories, users } from '@/lib/db/schema'
 import { eq, count } from 'drizzle-orm'
 import type { UserContext } from './auth'
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 export interface SubscriptionLimits {
   maxProjects: number
@@ -66,6 +67,12 @@ export async function getSubscriptionLimits(
  * Check if user can create a new project
  */
 export async function canCreateProject(user: UserContext): Promise<boolean> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (isSuperAdmin(user.email)) {
+    console.log(`🔓 Super Admin detected (${user.email}) - bypassing project limits`);
+    return true;
+  }
+
   const limits = await getSubscriptionLimits(user)
   
   // Get org tier for logging
@@ -111,6 +118,12 @@ export async function canCreateStory(
   user: UserContext,
   projectId: string
 ): Promise<boolean> {
+  // 🔓 SUPER ADMIN BYPASS
+  if (isSuperAdmin(user.email)) {
+    console.log(`🔓 Super Admin detected (${user.email}) - bypassing story limits`);
+    return true;
+  }
+
   const limits = await getSubscriptionLimits(user)
 
   if (limits.maxStoriesPerProject === Infinity) {

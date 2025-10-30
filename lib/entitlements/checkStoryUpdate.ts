@@ -9,11 +9,15 @@
  * - Pro: 1000 updates/month
  * - Team: unlimited updates with approval required for Done/Closed stories
  * - Enterprise: unlimited updates with configurable policies
+ * 
+ * Super Admin Bypass:
+ * - Specific email addresses (defined in lib/auth/super-admin.ts) bypass ALL limits
  */
 
 import { db } from '@/lib/db';
 import { storyUpdates, users } from '@/lib/db/schema';
 import { eq, and, gte, count } from 'drizzle-orm';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 export interface StoryUpdateCheck {
   allowed: boolean;
@@ -84,6 +88,22 @@ export async function checkStoryUpdateEntitlement(
   context: StoryUpdateContext
 ): Promise<StoryUpdateCheck> {
   const { userId, storyId: _storyId, organizationId, tier } = context;
+
+  // 🔓 SUPER ADMIN BYPASS - Check if user is a super admin
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (user && isSuperAdmin(user.email)) {
+    console.log(`🔓 Super Admin detected (${user.email}) - bypassing all story update limits`);
+    return {
+      allowed: true,
+      reason: 'Super Admin - unlimited access',
+      limit: Infinity,
+      used: 0,
+      remaining: Infinity,
+    };
+  }
 
   // Get tier limits
   const tierLimits = getTierUpdateLimits(tier);

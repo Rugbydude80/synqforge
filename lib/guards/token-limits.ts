@@ -9,14 +9,18 @@
  * - Concurrent requests racing to use last tokens
  * - Mid-generation limit changes (plan downgrades)
  * - Grace period reduced limits
+ * 
+ * Super Admin Bypass:
+ * - Specific email addresses bypass ALL token limits
  */
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { workspaceUsage } from '@/lib/db/schema'
+import { workspaceUsage, users } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { checkAndResetBillingPeriod } from '@/lib/services/billing-period.service'
 import { reserveTokens, getReservationStats } from '@/lib/services/token-reservation.service'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 // ============================================================================
 // TYPES
@@ -163,6 +167,18 @@ export async function requireSufficientTokens(
   estimatedTokens: number,
   _generationType: string
 ): Promise<NextResponse | null> {
+  // 🔓 SUPER ADMIN BYPASS
+  const [user] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (user && isSuperAdmin(user.email)) {
+    console.log(`🔓 Super Admin detected (${user.email}) - bypassing token limits`);
+    return null; // null means "continue with request"
+  }
+
   const check = await checkTokenLimit(organizationId, estimatedTokens)
   
   if (!check.allowed) {
