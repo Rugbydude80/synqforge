@@ -10,7 +10,28 @@
  * 
  * Example:
  *   pnpm tsx scripts/find-org-by-user.ts user@example.com
+ * 
+ * Note: Requires DATABASE_URL environment variable.
+ *       Run: vercel env pull .env.local (or set DATABASE_URL manually)
  */
+
+// Load environment variables
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Try loading .env.local first, then .env
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set')
+  console.error('\n💡 To fix this, run:')
+  console.error('   vercel env pull .env.local')
+  console.error('\n   Or set DATABASE_URL manually:')
+  console.error('   export DATABASE_URL="your-database-url"')
+  process.exit(1)
+}
 
 import { db } from '../lib/db'
 import { organizations, users } from '../lib/db/schema'

@@ -14,12 +14,33 @@
  *   pnpm tsx scripts/manually-assign-plan.ts user@example.com free
  * 
  * Valid plans: free, solo, pro, team, enterprise, admin
+ * 
+ * Note: Requires DATABASE_URL environment variable.
+ *       Run: vercel env pull .env.local (or set DATABASE_URL manually)
  */
+
+// Load environment variables
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Try loading .env.local first, then .env
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set')
+  console.error('\n💡 To fix this, run:')
+  console.error('   vercel env pull .env.local')
+  console.error('\n   Or set DATABASE_URL manually:')
+  console.error('   export DATABASE_URL="your-database-url"')
+  process.exit(1)
+}
 
 import { db } from '../lib/db'
 import { organizations, users } from '../lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { getPlanDbValues } from '../lib/billing/plan-entitlements'
+import { getPlanDbValues, mapPlanToLegacyTier } from '../lib/billing/plan-entitlements'
 
 async function findOrganizationByUserEmail(email: string) {
   // Find user by email
@@ -91,21 +112,25 @@ async function assignPlan(email: string, planName: string) {
   // In a real script, you'd add a confirmation prompt here
   // For now, we'll proceed (you can add readline/prompt if needed)
 
+  // CRITICAL: Ensure plan and tier match
+  const expectedTier = mapPlanToLegacyTier(planName)
+  const finalPlanValues = {
+    ...planValues,
+    plan: planName, // Ensure plan uses the actual plan name
+    subscriptionTier: expectedTier, // Ensure tier matches plan
+    updatedAt: new Date(),
+  }
+
   // Update organization
   await db
     .update(organizations)
-    .set({
-      ...planValues,
-      updatedAt: new Date(),
-      // Note: We DON'T clear Stripe fields for manual assignments
-      // This allows Stripe to override if needed, but manual takes precedence
-    })
+    .set(finalPlanValues)
     .where(eq(organizations.id, org.id))
 
   console.log(`\n✅ Successfully assigned plan "${planName}" to organization!`)
   console.log(`\n📊 Updated Organization:`)
-  console.log(`   Plan: ${planValues.plan}`)
-  console.log(`   Tier: ${planValues.subscriptionTier}`)
+  console.log(`   Plan: ${finalPlanValues.plan}`)
+  console.log(`   Tier: ${finalPlanValues.subscriptionTier}`)
   console.log(`   Status: ${planValues.subscriptionStatus}`)
   
   console.log(`\n💡 Note: The user will see these changes immediately on their billing page.`)

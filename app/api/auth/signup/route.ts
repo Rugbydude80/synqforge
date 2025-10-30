@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     // This prevents users from getting paid access without paying
     const actualTier = 'starter'; // Always start as starter (free tier), upgrade via webhook
     
-    // Store the intended plan (mapped to database tier name)
+    // Map intended plan to tier for subscriptionTier field
     const intendedTier = mapPlanToTier(validatedData.plan);
     
     // For free/starter plan, give 7 day trial. For paid plans, no trial until they pay
@@ -128,13 +128,13 @@ export async function POST(req: NextRequest) {
     await db.transaction(async (tx) => {
       // Create organization - always starts as starter tier
       // Paid tier will be activated via Stripe webhook upon successful payment
-      // Store intended tier so we can direct them to payment if they haven't paid
+      // Store intended plan and tier correctly
       await tx.insert(organizations).values({
         id: orgId,
         name: `${validatedData.name}'s Organization`,
         slug: slug,
         subscriptionTier: actualTier, // Always starter until payment confirmed
-        plan: intendedTier, // Store what they signed up for (as database tier name)
+        plan: validatedData.plan === 'free' ? 'free' : validatedData.plan, // Store actual plan name (solo, pro, team, etc.)
         subscriptionStatus: validatedData.plan === 'free' ? 'active' : 'inactive', // Inactive until they pay
         trialEndsAt: trialEndDate,
       })
