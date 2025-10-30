@@ -6,6 +6,7 @@ import { organizations, users, projects, stories } from '@/lib/db/schema'
 import { eq, and, gte, sql } from 'drizzle-orm'
 import { getUsageSummary } from '@/lib/billing/guards'
 import { getUsageSummary as getFairUsageSummary } from '@/lib/billing/fair-usage-guards'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
 
 /**
  * GET /api/billing/usage?organizationId=xxx
@@ -103,20 +104,26 @@ export async function GET(req: NextRequest) {
     const aiUsage = await getUsageMetering(organizationId)
     const tokensThisMonth = aiUsage?.tokensUsed || 0
 
+    // 🔓 SUPER ADMIN OVERRIDE - Show unlimited limits for super admins
+    const isSuperAdminUser = isSuperAdmin(user.email)
+    if (isSuperAdminUser) {
+      console.log(`🔓 Super Admin detected (${user.email}) - showing unlimited limits`)
+    }
+
     // Build entitlements object for guards
     const workspace = {
-      seatsIncluded: organization.seatsIncluded,
-      projectsIncluded: organization.projectsIncluded,
-      storiesPerMonth: organization.storiesPerMonth,
-      aiTokensIncluded: organization.aiTokensIncluded,
-      advancedAi: organization.advancedAi,
-      exportsEnabled: organization.exportsEnabled,
-      templatesEnabled: organization.templatesEnabled,
-      rbacLevel: organization.rbacLevel,
-      auditLevel: organization.auditLevel,
-      ssoEnabled: organization.ssoEnabled,
-      supportTier: organization.supportTier,
-      fairUse: organization.fairUse,
+      seatsIncluded: isSuperAdminUser ? 999999 : organization.seatsIncluded,
+      projectsIncluded: isSuperAdminUser ? 999999 : organization.projectsIncluded,
+      storiesPerMonth: isSuperAdminUser ? 999999 : organization.storiesPerMonth,
+      aiTokensIncluded: isSuperAdminUser ? 999999999 : organization.aiTokensIncluded,
+      advancedAi: isSuperAdminUser ? true : organization.advancedAi,
+      exportsEnabled: isSuperAdminUser ? true : organization.exportsEnabled,
+      templatesEnabled: isSuperAdminUser ? true : organization.templatesEnabled,
+      rbacLevel: isSuperAdminUser ? 'enterprise' : organization.rbacLevel,
+      auditLevel: isSuperAdminUser ? 'full' : organization.auditLevel,
+      ssoEnabled: isSuperAdminUser ? true : organization.ssoEnabled,
+      supportTier: isSuperAdminUser ? 'priority' : organization.supportTier,
+      fairUse: isSuperAdminUser ? false : organization.fairUse,
     }
 
     // Get usage checks
@@ -134,10 +141,11 @@ export async function GET(req: NextRequest) {
       organization: {
         id: organization.id,
         name: organization.name,
-        plan: organization.plan,
+        plan: isSuperAdminUser ? 'Super Admin' : organization.plan,
         planCycle: organization.planCycle,
-        subscriptionStatus: organization.subscriptionStatus,
+        subscriptionStatus: isSuperAdminUser ? 'active' : organization.subscriptionStatus,
         subscriptionRenewalAt: organization.subscriptionRenewalAt,
+        isSuperAdmin: isSuperAdminUser,
       },
       entitlements: workspace,
       usage: usageSummary,
