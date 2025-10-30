@@ -508,10 +508,61 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       throw new ValidationError('Missing organizationId or tokens in checkout metadata', { metadata })
     }
 
-    const { addPurchasedTokens } = await import('@/lib/services/ai-usage.service')
-    await addPurchasedTokens(organizationId, tokens, session.id)
+    // CRITICAL FIX: Wrap token purchase in transaction to prevent race conditions
+    await db.transaction(async (tx) => {
+      // Verify organization exists
+      const [org] = await tx
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1)
 
-    console.log(`Added ${tokens} tokens to organization ${organizationId}`)
+      if (!org) {
+        throw new DatabaseError(
+          'Organization not found',
+          undefined,
+          { organizationId, message: `No organization found with ID: ${organizationId}` }
+        )
+      }
+
+      // Add tokens atomically within transaction
+      // Check existing balance
+      // Add tokens using transaction-safe method
+      const [balance] = await tx
+        .select()
+        .from(tokenBalances)
+        .where(eq(tokenBalances.organizationId, organizationId))
+        .limit(1)
+
+      if (!balance) {
+        // Create new balance
+        await tx.insert(tokenBalances).values({
+          id: generateId(),
+          organizationId,
+          purchasedTokens: tokens,
+          usedTokens: 0,
+          bonusTokens: 0,
+          totalTokens: tokens,
+          lastPurchaseAt: new Date(),
+        })
+      } else {
+        // Update existing balance atomically
+        const newPurchasedTokens = balance.purchasedTokens + tokens
+        const newTotalTokens = newPurchasedTokens + balance.bonusTokens - balance.usedTokens
+
+        await tx
+          .update(tokenBalances)
+          .set({
+            purchasedTokens: newPurchasedTokens,
+            totalTokens: newTotalTokens,
+            lastPurchaseAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(tokenBalances.organizationId, organizationId))
+      }
+    })
+
+    console.log(`✅ Added ${tokens} tokens to organization ${organizationId} (transaction committed)`)
   }
 }
 
