@@ -101,7 +101,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, trigger: _trigger }) {
       try {
         // CRITICAL FIX: Store session version in token on initial sign-in
         if (user) {
