@@ -161,7 +161,7 @@ export async function requireSufficientTokens(
   organizationId: string,
   userId: string,
   estimatedTokens: number,
-  generationType: string
+  _generationType: string
 ): Promise<NextResponse | null> {
   const check = await checkTokenLimit(organizationId, estimatedTokens)
   
