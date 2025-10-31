@@ -35,9 +35,28 @@ async function splitStory(
       child_count: payload.children.length.toString(),
     });
 
-    // Validate all children
+    // Get parent story to check acceptance criteria
+    const storiesRepo = new StoriesRepository(context.user);
+    const parentStory = await storiesRepo.getStoryById(context.params.storyId);
+
+    if (!parentStory) {
+      return NextResponse.json(
+        { error: 'Story not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get parent acceptance criteria for coverage validation
+    const parentAcceptanceCriteria = Array.isArray(parentStory.acceptanceCriteria)
+      ? parentStory.acceptanceCriteria
+      : parentStory.acceptanceCriteria
+      ? [parentStory.acceptanceCriteria]
+      : [];
+
+    // Validate all children with coverage check
     const validation = storySplitValidationService.validateAllChildren(
-      payload.children
+      payload.children,
+      parentAcceptanceCriteria.length > 0 ? parentAcceptanceCriteria : undefined
     );
 
     if (!validation.allValid) {
@@ -54,18 +73,37 @@ async function splitStory(
       );
     }
 
-    metrics.increment('story_split_validated', 1);
+    // CRITICAL: Enforce 100% coverage (unless super admin)
+    // Check if user is super admin (bypass coverage requirement for testing)
+    const SUPER_ADMIN_EMAILS = ['chrisjrobertson@outlook.com', 'chris@synqforge.com'];
+    const userEmail = context.user.email?.toLowerCase().trim();
+    const isSuperAdmin = userEmail && SUPER_ADMIN_EMAILS.some(
+      adminEmail => adminEmail.toLowerCase() === userEmail
+    );
 
-    // Check story exists and user has access
-    const storiesRepo = new StoriesRepository(context.user);
-    const parentStory = await storiesRepo.getStoryById(context.params.storyId);
+    if (parentAcceptanceCriteria.length > 0 && validation.coverage.coveragePercentage < 100 && !isSuperAdmin) {
+      metrics.increment('story_split_blocked', 1, {
+        reason: 'incomplete_coverage',
+        coverage: validation.coverage.coveragePercentage.toString(),
+      });
 
-    if (!parentStory) {
       return NextResponse.json(
-        { error: 'Story not found' },
-        { status: 404 }
+        {
+          error: 'Cannot complete split: Incomplete coverage',
+          message: `Coverage is ${validation.coverage.coveragePercentage}%. All acceptance criteria must be covered.`,
+          coverage: {
+            percentage: validation.coverage.coveragePercentage,
+            missingCriteria: validation.coverage.uncoveredCriteria,
+            totalCriteria: parentAcceptanceCriteria.length,
+            coveredCriteria: validation.coverage.coveredCriteria.length,
+          },
+          validationResults: validation.results,
+        },
+        { status: 400 }
       );
     }
+
+    metrics.increment('story_split_validated', 1);
 
     // Check if story can be converted to epic
     if (payload.convertParentToEpic) {

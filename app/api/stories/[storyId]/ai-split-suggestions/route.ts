@@ -110,18 +110,29 @@ async function getAISplitSuggestions(
     let totalTokens = splitResponse.usage.totalTokens;
 
     // If coverage < 100%, generate additional stories for uncovered criteria
-    if (validation.coverage.coveragePercentage < 100 && validation.coverage.uncoveredCriteria.length > 0) {
-      console.log('[ai-split-suggestions] Coverage incomplete:', {
-        coverage: validation.coverage.coveragePercentage,
-        uncoveredCount: validation.coverage.uncoveredCriteria.length,
-        uncoveredCriteria: validation.coverage.uncoveredCriteria,
+    // Retry up to 2 times to ensure complete coverage
+    let attemptCount = 0;
+    const maxAttempts = 2;
+    let currentSuggestions = splitResponse.suggestions;
+    let currentValidation = validation;
+
+    while (
+      currentValidation.coverage.coveragePercentage < 100 && 
+      currentValidation.coverage.uncoveredCriteria.length > 0 && 
+      attemptCount < maxAttempts
+    ) {
+      attemptCount++;
+      console.log(`[ai-split-suggestions] Coverage incomplete (attempt ${attemptCount}/${maxAttempts}):`, {
+        coverage: currentValidation.coverage.coveragePercentage,
+        uncoveredCount: currentValidation.coverage.uncoveredCriteria.length,
+        uncoveredCriteria: currentValidation.coverage.uncoveredCriteria.slice(0, 3), // Log first 3
       });
 
       // Generate additional stories to cover the gaps
       const gapFillResponse = await aiService.suggestStorySplit(
         story.title,
         story.description || '',
-        validation.coverage.uncoveredCriteria, // Only the uncovered criteria
+        currentValidation.coverage.uncoveredCriteria, // Only the uncovered criteria
         story.storyPoints,
         analysis.invest,
         analysis.spidr,
@@ -129,28 +140,33 @@ async function getAISplitSuggestions(
         true // isGapFill flag
       );
 
-      // Add the gap-fill stories to the original suggestions
-      finalSuggestions = [...splitResponse.suggestions, ...gapFillResponse.suggestions];
+      // Add the gap-fill stories to the existing suggestions
+      currentSuggestions = [...currentSuggestions, ...gapFillResponse.suggestions];
       totalTokens += gapFillResponse.usage.totalTokens;
 
-      console.log('[ai-split-suggestions] Generated additional stories for gaps:', {
-        additionalCount: gapFillResponse.suggestions.length,
-        totalCount: finalSuggestions.length,
-      });
+      console.log(`[ai-split-suggestions] Generated ${gapFillResponse.suggestions.length} additional stories for gaps (attempt ${attemptCount})`);
 
-      // Verify we now have 100% coverage
-      const finalValidation = storySplitValidationService.validateAllChildren(
-        finalSuggestions,
+      // Re-validate coverage with all suggestions
+      currentValidation = storySplitValidationService.validateAllChildren(
+        currentSuggestions,
         acceptanceCriteria
       );
 
-      if (finalValidation.coverage.coveragePercentage === 100) {
-        console.log('[ai-split-suggestions] ✅ Achieved 100% coverage after gap-fill');
-      } else {
-        console.warn('[ai-split-suggestions] ⚠️ Still incomplete coverage after gap-fill:', {
-          coverage: finalValidation.coverage.coveragePercentage,
-        });
+      if (currentValidation.coverage.coveragePercentage === 100) {
+        console.log(`[ai-split-suggestions] ✅ Achieved 100% coverage after ${attemptCount} gap-fill attempt(s)`);
+        break;
       }
+    }
+
+    finalSuggestions = currentSuggestions;
+
+    // If still incomplete after retries, log warning but proceed
+    if (currentValidation.coverage.coveragePercentage < 100) {
+      console.warn('[ai-split-suggestions] ⚠️ Still incomplete coverage after gap-fill retries:', {
+        coverage: currentValidation.coverage.coveragePercentage,
+        uncoveredCount: currentValidation.coverage.uncoveredCriteria.length,
+        totalSuggestions: finalSuggestions.length,
+      });
     }
 
     // Track usage
@@ -176,7 +192,7 @@ async function getAISplitSuggestions(
         storyId: story.id,
         splitStrategy: splitResponse.splitStrategy,
         suggestionCount: finalSuggestions.length,
-        coveragePercentage: validation.coverage.coveragePercentage,
+        coveragePercentage: currentValidation.coverage.coveragePercentage,
         gapFillUsed: finalSuggestions.length > splitResponse.suggestions.length,
       }
     );
@@ -194,7 +210,7 @@ async function getAISplitSuggestions(
         completionTokens: splitResponse.usage.completionTokens,
         totalTokens,
       },
-      coverage: validation.coverage.coveragePercentage,
+      coverage: currentValidation.coverage.coveragePercentage,
     });
   } catch (error) {
     console.error('[ai-split-suggestions] ===== ERROR =====');

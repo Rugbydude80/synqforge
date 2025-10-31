@@ -106,10 +106,28 @@ export class StorySplitValidationService {
     const childIndex = allChildren.indexOf(child);
     const otherChildren = allChildren.filter((_, idx) => idx !== childIndex);
 
-    for (const other of otherChildren) {
+    // Collect all coupled story indices
+    const coupledStories: number[] = [];
+    for (let i = 0; i < otherChildren.length; i++) {
+      const other = otherChildren[i];
+      const otherIndex = allChildren.indexOf(other);
       const coupling = this.detectCoupling(child, other);
       if (coupling) {
-        warnings.push('story.split.validation.independent.coupling_detected');
+        coupledStories.push(otherIndex);
+      }
+    }
+
+    // Only add warning if there's significant coupling (2+ stories)
+    // Single coupling is expected in split stories
+    if (coupledStories.length >= 2) {
+      const storyRefs = coupledStories.map(idx => `Story ${idx + 1}`).join(', ');
+      warnings.push(`story.split.validation.independent.coupling_detected_multiple:${storyRefs}`);
+    } else if (coupledStories.length === 1) {
+      // Only warn about single coupling if it's very strong
+      const coupledStory = allChildren[coupledStories[0]];
+      const strongCoupling = this.detectStrongCoupling(child, coupledStory);
+      if (strongCoupling) {
+        warnings.push(`story.split.validation.independent.coupling_detected:Story ${coupledStories[0] + 1}`);
       }
     }
 
@@ -118,6 +136,27 @@ export class StorySplitValidationService {
     }
 
     return true;
+  }
+
+  private detectStrongCoupling(child1: ChildStoryInput, child2: ChildStoryInput): boolean {
+    // Even stricter detection - require very high similarity
+    const desc1 = child1.description.toLowerCase();
+    const desc2 = child2.description.toLowerCase();
+    const title1 = child1.title.toLowerCase();
+    const title2 = child2.title.toLowerCase();
+
+    // Check for very similar titles (3+ word overlap)
+    const titleWords1 = title1.split(' ').filter(w => w.length >= 4);
+    const titleWords2 = title2.split(' ').filter(w => w.length >= 4);
+    const titleOverlap = titleWords1.filter(w => titleWords2.includes(w)).length;
+    
+    // Check for very similar descriptions (5+ keyword overlap)
+    const descWords1 = desc1.split(' ').filter(w => w.length >= 5);
+    const descWords2 = desc2.split(' ').filter(w => w.length >= 5);
+    const descOverlap = descWords1.filter(w => descWords2.includes(w)).length;
+
+    // Require strong overlap in both
+    return titleOverlap >= 3 && descOverlap >= 5;
   }
 
   private detectCoupling(child1: ChildStoryInput, child2: ChildStoryInput): boolean {
