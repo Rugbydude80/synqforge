@@ -79,7 +79,7 @@ export async function scanForPII(
 }
 
 async function detectPIIWithAI(story: any): Promise<PIIDetection> {
-  const content = `${story.title}\n${story.description}\n${(story.acceptanceCriteria || []).join('\n')}`
+  const storyContent = `${story.title}\n${story.description}\n${(story.acceptanceCriteria || []).join('\n')}`
 
   const prompt = `Scan the following text for Personally Identifiable Information (PII).
 
