@@ -8,11 +8,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users, organizations, aiGenerations, auditLogs } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
+import { stripe } from '@/lib/stripe/stripe-client';
 
 export async function DELETE(req: NextRequest) {
   const session = await auth();

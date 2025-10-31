@@ -17,14 +17,17 @@ import { metrics } from '@/lib/observability/metrics';
 import { callAIWithRetry } from '@/lib/utils/ai-retry';
 
 export class StoryGenerationService {
-  private anthropic: Anthropic;
+  private anthropic: Anthropic | null = null;
 
-  constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not found');
+  private getAnthropic(): Anthropic {
+    if (!this.anthropic) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY not found');
+      }
+      this.anthropic = new Anthropic({ apiKey });
     }
-    this.anthropic = new Anthropic({ apiKey });
+    return this.anthropic;
   }
 
   /**
@@ -49,7 +52,7 @@ export class StoryGenerationService {
     // Call AI with retry logic
     const startTime = Date.now();
     const response = await callAIWithRetry(
-      () => this.anthropic.messages.create({
+      () => this.getAnthropic().messages.create({
         model: request.model,
         max_tokens: 3000,
         temperature: 0.7,

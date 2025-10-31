@@ -22,9 +22,18 @@ import {
   checkDuplicatePrompts,
 } from './usage-enforcement'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+let anthropicInstance: Anthropic | null = null
+
+function getAnthropic(): Anthropic {
+  if (!anthropicInstance) {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY not found')
+    }
+    anthropicInstance = new Anthropic({ apiKey })
+  }
+  return anthropicInstance
+}
 
 interface AIRequest {
   organizationId: string
@@ -89,7 +98,7 @@ export class HaikuService {
     }
 
     // Call Claude API
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: AI_MODEL_CONFIG.model,
       max_tokens: maxOutputTokens,
       temperature: AI_MODEL_CONFIG.temperature,
@@ -163,7 +172,7 @@ export class HaikuService {
 
     const promptHash = hashPrompt(storyPrompt)
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: AI_MODEL_CONFIG.model,
       max_tokens: maxOutputTokens,
       temperature: 0.7,
@@ -239,7 +248,7 @@ export class HaikuService {
 
     const promptHash = hashPrompt(decomposerPrompt)
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: AI_MODEL_CONFIG.model,
       max_tokens: maxOutputTokens,
       temperature: 0.7,
@@ -314,7 +323,7 @@ export class HaikuService {
 
     const promptHash = hashPrompt(velocityPrompt)
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: AI_MODEL_CONFIG.model,
       max_tokens: maxOutputTokens,
       temperature: 0.5, // Lower for numerical planning
