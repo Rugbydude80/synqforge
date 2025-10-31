@@ -84,7 +84,7 @@ async function detectPIIWithAI(story: any): Promise<PIIDetection> {
   const prompt = `Scan the following text for Personally Identifiable Information (PII).
 
 Content:
-${content}
+${storyContent}
 
 Detect:
 - Email addresses
