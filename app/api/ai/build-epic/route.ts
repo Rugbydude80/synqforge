@@ -99,7 +99,7 @@ async function buildEpicHandler(req: NextRequest, context: AuthContext) {
 
     for (const story of response.stories) {
       // Convert AC format for database storage
-      const acceptanceCriteria = story.acceptanceCriteria.map(ac =>
+      const acceptanceCriteria = story.acceptanceCriteria.map((ac: any) =>
         `**Given** ${ac.given}\n**When** ${ac.when}\n**Then** ${ac.then}`
       ).join('\n\n');
 
