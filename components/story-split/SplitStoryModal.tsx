@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSplitAnalysis, useSplitStoryMutation } from '@/lib/hooks/useStorySplit';
 import { AnalysisPanel } from './AnalysisPanel';
 import { ChildrenEditor } from './ChildrenEditor';
-import { AlertCircle, Loader2, XCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ChildStoryInput } from '@/lib/services/story-split-validation.service';
 import type { ChildValidationResult } from '@/lib/services/story-split-validation.service';
