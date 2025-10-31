@@ -1,4 +1,5 @@
 import { MODEL } from '@/lib/ai/client'
+import { db, generateId } from '@/lib/db'
 import { workflowAgents, agentActions, organizations, stories, users, projects } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { StoriesRepository } from '@/lib/repositories/stories.repository'
