@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useSession } from 'next-auth/react';
+import type { ChildValidationResult } from '@/lib/services/story-split-validation.service';
 
 // Super admin emails - must match backend
 const SUPER_ADMIN_EMAILS = [
@@ -30,7 +31,7 @@ function isSuperAdmin(email: string | null | undefined): boolean {
 interface ChildrenEditorProps {
   childStories: ChildStoryInput[];
   onChange: (children: ChildStoryInput[]) => void;
-  onValidationChange: (valid: boolean) => void;
+  onValidationChange: (valid: boolean, results?: ChildValidationResult[]) => void;
   disabled?: boolean;
   analysis?: StorySplitAnalysis;
   storyId: string;
@@ -58,8 +59,9 @@ export function ChildrenEditor({
 
   useEffect(() => {
     if (childStories.length === 0) {
-      onValidationChange(false);
+      onValidationChange(false, []);
       setCoverageAnalysis(null);
+      setValidationResults([]);
       return;
     }
 
@@ -77,7 +79,7 @@ export function ChildrenEditor({
       ? validation.coverage.coveragePercentage > 0 
       : validation.coverage.coveragePercentage === 100;
     
-    onValidationChange(validation.allValid && hasCoverage);
+    onValidationChange(validation.allValid && hasCoverage, validation.results);
   }, [childStories, parentAcceptanceCriteria, onValidationChange, isSuperAdminUser]);
 
   const addChild = () => {
