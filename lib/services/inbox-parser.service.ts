@@ -110,11 +110,11 @@ Respond in JSON format:
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const content = response.choices[0]?.message?.content
-  if (!content) throw new Error('No text content')
+  const responseContent = response.choices[0]?.message?.content
+  if (!responseContent) throw new Error('No text content')
 
-  const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-  const jsonString = jsonMatch ? jsonMatch[1] : content
+  const jsonMatch = responseContent.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+  const jsonString = jsonMatch ? jsonMatch[1] : responseContent
   const parsedData = JSON.parse(jsonString.trim())
 
   return {

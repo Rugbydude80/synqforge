@@ -81,11 +81,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
   }, [story.projectId, fetchEpics])
 
   // Load tasks for the story
-  React.useEffect(() => {
-    fetchTasks()
-  }, [story.id])
-
-  const fetchTasks = async () => {
+  const fetchTasks = React.useCallback(async () => {
     try {
       const response = await fetch(`/api/stories/${story.id}/tasks`)
       if (response.ok) {
@@ -104,7 +100,11 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     } catch (error) {
       console.error('Failed to load tasks:', error)
     }
-  }
+  }, [story.id])
+
+  React.useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
 
   const startEdit = (field: string) => {
     setEditMode(field)

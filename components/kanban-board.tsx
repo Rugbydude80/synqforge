@@ -350,7 +350,7 @@ export default function KanbanBoard() {
     setActiveId(event.active.id as string)
   }
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = (_event: DragOverEvent) => {
     // Track drag over for visual feedback
   }
 
