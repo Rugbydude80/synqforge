@@ -9,7 +9,6 @@
  */
 
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 const TEST_SESSION_COOKIE = process.env.TEST_SESSION_COOKIE || '';
@@ -20,7 +19,7 @@ console.log('Checking prerequisites...\n');
 
 // Check if server is running
 try {
-  const response = await fetch(`${BASE_URL}/api/health`);
+  await fetch(`${BASE_URL}/api/health`);
   console.log('✅ Server is running');
 } catch (error) {
   console.log('❌ Server is not running');
