@@ -40,24 +40,6 @@ export function ChildRowEditor({
     setTouchedFields(prev => new Set(prev).add(field));
   };
 
-  const getFieldError = (field: string): string | null => {
-    if (!validation || !touchedFields.has(field)) return null;
-    
-    // Map field names to error keys
-    const fieldErrorMap: Record<string, string[]> = {
-      title: ['story.split.validation.valuable.missing_persona_goal'], // Title errors are usually persona/goal related
-      personaGoal: ['story.split.validation.valuable.missing_persona_goal'],
-      description: ['story.split.validation.valuable.description_too_short'],
-      acceptanceCriteria: ['story.split.validation.valuable.no_acceptance_criteria', 'story.split.validation.testable.insufficient_criteria'],
-      estimatePoints: ['story.split.validation.small.missing_estimate', 'story.split.validation.small.too_large'],
-      providesUserValue: ['story.split.validation.valuable.no_user_value'],
-    };
-
-    const relevantErrors = fieldErrorMap[field] || [];
-    const matchingError = validation.errors.find(err => relevantErrors.includes(err));
-    return matchingError ? t(matchingError) : null;
-  };
-
   const hasTitleError = validation && !validation.valid && (
     validation.errors.some(e => e.includes('persona_goal') || e.includes('title'))
   );
