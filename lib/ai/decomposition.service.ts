@@ -19,10 +19,17 @@ import { metrics, METRICS } from '@/lib/observability/metrics';
 export class DecompositionService {
   private readonly SOFT_CAP = 4;
   private readonly HARD_CAP = 6;
+  private _isConfigured: boolean | null = null;
 
-  constructor() {
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is required');
+  /**
+   * Check if service is configured (lazy validation)
+   */
+  private ensureConfigured(): void {
+    if (this._isConfigured === null) {
+      this._isConfigured = !!process.env.OPENROUTER_API_KEY;
+      if (!this._isConfigured) {
+        throw new Error('OPENROUTER_API_KEY is required');
+      }
     }
   }
 
@@ -39,6 +46,9 @@ export class DecompositionService {
    * Decompose requirements into capabilities
    */
   async decompose(request: DecompositionRequest): Promise<DecompositionResponse> {
+    // Lazy validation - only check when actually used (not during build)
+    this.ensureConfigured();
+    
     // Generate request ID if not provided
     const requestId = request.requestId || correlationService.generateRequestId();
 
