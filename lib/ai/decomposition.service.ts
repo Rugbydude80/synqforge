@@ -49,7 +49,7 @@ export class DecompositionService {
 
     // Call AI
     const startTime = Date.now();
-    const response = await this.anthropic.messages.create({
+    const response = await this.getAnthropic().messages.create({
       model: request.model,
       max_tokens: 4000,
       temperature: 0.7,
