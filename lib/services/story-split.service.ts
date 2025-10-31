@@ -35,6 +35,9 @@ export interface SplitStoryResult {
 /**
  * Converts a story to an epic by updating its status and isEpic flag
  * 
+ * When a story is converted to an epic, it becomes an epic itself and should
+ * no longer belong to another epic. This clears the epicId field.
+ * 
  * @param tx - Database transaction
  * @param storyId - Story ID to convert
  */
@@ -43,6 +46,7 @@ async function convertStoryToEpic(tx: any, storyId: string): Promise<void> {
     .update(stories)
     .set({
       isEpic: true,
+      epicId: null, // Clear epicId since this story becomes an epic itself
       status: 'backlog',
       updatedAt: new Date(),
     })
