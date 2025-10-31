@@ -323,7 +323,7 @@ export class HaikuService {
 
     const promptHash = hashPrompt(velocityPrompt)
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: AI_MODEL_CONFIG.model,
       max_tokens: maxOutputTokens,
       temperature: 0.5, // Lower for numerical planning
