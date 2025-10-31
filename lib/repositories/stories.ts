@@ -98,6 +98,7 @@ export class StoriesRepository {
         priority: stories.priority,
         status: stories.status,
         storyType: stories.storyType,
+        isEpic: stories.isEpic,
         aiGenerated: stories.aiGenerated,
         aiValidationScore: stories.aiValidationScore,
         aiSuggestions: stories.aiSuggestions,
