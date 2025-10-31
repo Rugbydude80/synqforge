@@ -67,19 +67,57 @@ async function splitStory(
       );
     }
 
-    // Execute split transaction
-    const result = await storySplitService.splitStoryTx(
-      context.params.storyId,
-      context.user.id,
-      payload
-    );
+    // Check if story can be converted to epic
+    if (payload.convertParentToEpic) {
+      // Check if story is already an epic
+      if (parentStory.isEpic) {
+        return NextResponse.json(
+          { 
+            error: 'Epic conversion failed: This story is already an epic',
+            validationResults: validation.results,
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Check if story has tasks (epics shouldn't have tasks)
+      // Note: This is a placeholder - implement actual task check if needed
+      // if (parentStory.hasTasks) {
+      //   return NextResponse.json(
+      //     { error: 'Epic conversion failed: Stories with tasks cannot be converted to epics' },
+      //     { status: 400 }
+      //   );
+      // }
+    }
 
-    return NextResponse.json({
-      success: true,
-      parentStory: result.parentStory,
-      childStories: result.childStories,
-      auditId: result.auditId,
-    });
+    // Execute split transaction
+    try {
+      const result = await storySplitService.splitStoryTx(
+        context.params.storyId,
+        context.user.id,
+        payload
+      );
+
+      return NextResponse.json({
+        success: true,
+        parentStory: result.parentStory,
+        childStories: result.childStories,
+        auditId: result.auditId,
+      });
+    } catch (splitError: any) {
+      // Check if error is related to epic conversion
+      const errorMessage = splitError?.message || 'Split failed';
+      if (errorMessage.toLowerCase().includes('epic') || errorMessage.toLowerCase().includes('convert')) {
+        return NextResponse.json(
+          { 
+            error: `Epic conversion failed: ${errorMessage}`,
+            validationResults: validation.results,
+          },
+          { status: 400 }
+        );
+      }
+      throw splitError; // Re-throw other errors
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

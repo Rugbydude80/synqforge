@@ -29,7 +29,14 @@ export const storySplitApi = {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Split failed');
+      // Preserve error message, especially for epic conversion errors
+      const errorMessage = error.error || 'Split failed';
+      const enhancedError = new Error(errorMessage);
+      // Attach validation results if available
+      if (error.validationResults) {
+        (enhancedError as any).validationResults = error.validationResults;
+      }
+      throw enhancedError;
     }
     return response.json();
   },
