@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Sparkles, Loader2, CheckCircle2, AlertTriangle, Info, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Sparkles, Loader2, CheckCircle2, Info, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { ChildRowEditor } from './ChildRowEditor';
 import type { ChildStoryInput } from '@/lib/services/story-split-validation.service';
 import { storySplitValidationService } from '@/lib/services/story-split-validation.service';
