@@ -359,47 +359,51 @@ export function ChildRowEditor({
 
         {validation && validation.warnings.length > 0 && (
           <div className="mt-3 space-y-1">
-            {validation.warnings.map((warning, i) => (
-              <p key={i} className="text-sm text-yellow-600 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                {t(warning)}
-              </p>
-            ))}
+            {validation.warnings
+              .filter(w => !w.includes('coupling') && !w.includes('dependencies'))
+              .map((warning, i) => (
+                <p key={i} className="text-sm text-yellow-600 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  {t(warning)}
+                </p>
+              ))}
           </div>
-          {/* INVEST Analysis Section */}
-          <div className="pt-4 border-t space-y-2">
-            <label className="text-sm font-medium">INVEST Score</label>
-            <div className="flex gap-2 flex-wrap">
-              <InvestBadge pass={validation?.valuable} label="Valuable" />
-              <InvestBadge pass={validation?.independent} label="Independent" />
-              <InvestBadge pass={validation?.small} label="Small" />
-              <InvestBadge pass={validation?.testable} label="Testable" />
-            </div>
-          </div>
+        )}
 
-          {/* Coupling Warnings - Only show if significant */}
-          {validation && validation.warnings.length > 0 && (
-            <div className="flex gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <strong className="text-sm block mb-1 text-orange-900 dark:text-orange-100">Potential coupling detected</strong>
-                {validation.warnings
-                  .filter(w => w.includes('coupling') || w.includes('dependencies'))
-                  .map((warning, i) => {
-                    // Extract story references if present
-                    const parts = warning.split(':');
-                    const warningKey = parts[0];
-                    const storyRefs = parts[1];
-                    
-                    return (
-                      <p key={i} className="text-sm text-muted-foreground">
-                        {storyRefs ? `${t(warningKey)}: ${storyRefs}` : t(warning)}
-                      </p>
-                    );
-                  })}
-              </div>
+        {/* INVEST Analysis Section */}
+        <div className="pt-4 border-t space-y-2">
+          <label className="text-sm font-medium">INVEST Score</label>
+          <div className="flex gap-2 flex-wrap">
+            <InvestBadge pass={validation?.valuable} label="Valuable" />
+            <InvestBadge pass={validation?.independent} label="Independent" />
+            <InvestBadge pass={validation?.small} label="Small" />
+            <InvestBadge pass={validation?.testable} label="Testable" />
+          </div>
+        </div>
+
+        {/* Coupling Warnings - Only show if significant */}
+        {validation && validation.warnings.some(w => w.includes('coupling') || w.includes('dependencies')) && (
+          <div className="flex gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <strong className="text-sm block mb-1 text-orange-900 dark:text-orange-100">Potential coupling detected</strong>
+              {validation.warnings
+                .filter(w => w.includes('coupling') || w.includes('dependencies'))
+                .map((warning, i) => {
+                  // Extract story references if present
+                  const parts = warning.split(':');
+                  const warningKey = parts[0];
+                  const storyRefs = parts[1];
+                  
+                  return (
+                    <p key={i} className="text-sm text-muted-foreground">
+                      {storyRefs ? `${t(warningKey)}: ${storyRefs}` : t(warning)}
+                    </p>
+                  );
+                })}
             </div>
-          )}
+          </div>
+        )}
         </CardContent>
       )}
     </Card>
