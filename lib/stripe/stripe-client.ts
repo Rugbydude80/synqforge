@@ -4,14 +4,35 @@
 
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set')
+// Lazy initialization - only validate API key when actually used
+// This prevents build-time errors when env vars aren't available
+let stripeInstance: Stripe | null = null
+
+function getStripeClient(): Stripe {
+  if (!stripeInstance) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+
+    stripeInstance = new Stripe(apiKey, {
+      apiVersion: '2025-06-30.basil' as any,
+      typescript: true,
+    });
+  }
+
+  return stripeInstance;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-06-30.basil' as any,
-  typescript: true,
-})
+// Export a getter that initializes on first use
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const client = getStripeClient();
+    const value = (client as any)[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+});
 
 /**
  * Pricing configuration (GBP)
