@@ -9,6 +9,7 @@ import { aiGenerations, organizations, tokenBalances } from '@/lib/db/schema';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import type { UserContext } from '@/lib/middleware/auth';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 export interface UsageStats {
   tokensUsed: number;
@@ -118,6 +119,24 @@ export async function checkAIUsageLimit(
   estimatedTokens: number = 1000
 ): Promise<UsageCheckResult> {
   try {
+    // 🔓 SUPER ADMIN BYPASS
+    if (isSuperAdmin(user.email)) {
+      console.log(`🔓 Super Admin detected (${user.email}) - bypassing AI usage limits`);
+      return {
+        allowed: true,
+        usage: {
+          tokensUsed: 0,
+          tokensLimit: Infinity,
+          generationsCount: 0,
+          generationsLimit: Infinity,
+          percentUsed: 0,
+          isOverLimit: false,
+          remainingTokens: Infinity,
+          remainingGenerations: Infinity,
+        },
+      };
+    }
+
     const limits = await getOrganizationLimits(user.organizationId);
     const usage = await getMonthlyUsage(user.organizationId);
 
