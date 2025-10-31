@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Sparkles, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { ChildRowEditor } from './ChildRowEditor';
@@ -9,8 +9,6 @@ import { storySplitValidationService } from '@/lib/services/story-split-validati
 import { useTranslation } from '@/lib/i18n';
 import type { StorySplitAnalysis } from '@/lib/services/story-split-analysis.service';
 import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { useSession } from 'next-auth/react';
 import type { ChildValidationResult, CoverageAnalysis } from '@/lib/services/story-split-validation.service';
 
@@ -63,6 +61,7 @@ export function ChildrenEditor({
       onValidationChange(false, []);
       setCoverageAnalysis(null);
       setValidationResults([]);
+      setExpandedCards([]);
       return;
     }
 
@@ -74,9 +73,13 @@ export function ChildrenEditor({
     setCoverageAnalysis(validation.coverage);
     
     // Initialize expanded state for all cards (default to collapsed)
-    if (expandedCards.length !== childStories.length) {
-      setExpandedCards(new Array(childStories.length).fill(false));
-    }
+    // Only update if the length changed to avoid unnecessary re-renders
+    setExpandedCards(prev => {
+      if (prev.length !== childStories.length) {
+        return new Array(childStories.length).fill(false);
+      }
+      return prev;
+    });
     
     // 🔓 SUPER ADMIN BYPASS: Allow submission even with partial coverage
     // For regular users: require 100% coverage to ensure all acceptance criteria are covered
@@ -100,6 +103,8 @@ export function ChildrenEditor({
         providesUserValue: true,
       },
     ]);
+    // Add expanded state for new child (expanded by default so user can edit)
+    setExpandedCards(prev => [...prev, true]);
   };
 
   const suggestSplits = async () => {
@@ -150,6 +155,8 @@ export function ChildrenEditor({
         }));
 
         onChange(childSuggestions);
+        // Initialize expanded cards for new suggestions (all collapsed by default)
+        setExpandedCards(new Array(childSuggestions.length).fill(false));
 
         toast.success('AI suggestions generated', {
           description: `Created ${childSuggestions.length} story suggestions using ${data.splitStrategy}`,
@@ -173,7 +180,7 @@ export function ChildrenEditor({
 
   const removeChild = (index: number) => {
     onChange(childStories.filter((_, i) => i !== index));
-    setExpandedCards(expandedCards.filter((_, i) => i !== index));
+    setExpandedCards(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleCard = (index: number) => {
@@ -189,6 +196,15 @@ export function ChildrenEditor({
   const collapseAll = () => {
     setExpandedCards(new Array(childStories.length).fill(false));
   };
+
+  // Memoize keyboard shortcut handlers to avoid recreating them
+  const handleExpandAll = useCallback(() => {
+    expandAll();
+  }, [childStories.length]);
+
+  const handleCollapseAll = useCallback(() => {
+    collapseAll();
+  }, [childStories.length]);
 
   const handleQuickAddStoryForCriterion = async (criterion: string, criterionIndex: number) => {
     if (!analysis) return;
@@ -228,7 +244,7 @@ export function ChildrenEditor({
           };
           
           onChange([...childStories, newStory]);
-          setExpandedCards([...expandedCards, true]); // Expand the new card
+          setExpandedCards(prev => [...prev, true]); // Expand the new card
           
           toast.success('Story added', {
             description: `Added story to cover this criterion`,
@@ -245,7 +261,7 @@ export function ChildrenEditor({
           };
           
           onChange([...childStories, newStory]);
-          setExpandedCards([...expandedCards, true]);
+          setExpandedCards(prev => [...prev, true]);
           
           toast.success('Story template added', {
             description: 'Please edit the story details',
@@ -267,17 +283,17 @@ export function ChildrenEditor({
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.shiftKey && e.key === 'E') {
         e.preventDefault();
-        expandAll();
+        handleExpandAll();
       }
       if (e.shiftKey && e.key === 'C') {
         e.preventDefault();
-        collapseAll();
+        handleCollapseAll();
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [childStories.length]);
+  }, [handleExpandAll, handleCollapseAll]);
 
   return (
     <div className="space-y-6">
