@@ -17,9 +17,25 @@ import {
 } from '@/lib/config/tiers'
 import { applyAddOnCredits } from './tokenService'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-})
+// Lazy initialization - only validate API key when actually used
+// This prevents build-time errors when env vars aren't available
+let stripeInstance: Stripe | null = null
+
+function getStripeClient(): Stripe {
+  if (!stripeInstance) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+
+    stripeInstance = new Stripe(apiKey, {
+      apiVersion: '2025-09-30.clover',
+    });
+  }
+
+  return stripeInstance;
+}
 
 // ============================================
 // TYPES
@@ -100,6 +116,7 @@ export async function purchaseAddOn(
   
   try {
     // Create Stripe Checkout Session
+    const stripe = getStripeClient();
     const session = await stripe.checkout.sessions.create({
       customer: org.stripeCustomerId,
       mode: addOnConfig.pricing.recurring ? 'subscription' : 'payment',
@@ -286,6 +303,7 @@ export async function cancelAddOn(
   
   try {
     // Cancel Stripe subscription
+    const stripe = getStripeClient();
     if (purchase.stripeSubscriptionId) {
       await stripe.subscriptions.update(purchase.stripeSubscriptionId, {
         cancel_at_period_end: true,
