@@ -10,9 +10,9 @@ let ablyClient: Ably.Realtime | null = null
 
 function getAblyClient(): Ably.Realtime | null {
   if (!process.env.ABLY_API_KEY) {
-    // In development, return null if ABLY_API_KEY is not configured
+    // In development or build-time, return null if ABLY_API_KEY is not configured
     // This allows the app to build without real-time features
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' || process.env.NEXT_PHASE === 'phase-production-build') {
       console.warn('ABLY_API_KEY not configured - real-time features disabled')
       return null
     }
