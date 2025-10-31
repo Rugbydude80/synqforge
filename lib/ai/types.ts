@@ -3,6 +3,7 @@
  * Implements full testing checklist requirements
  */
 
+import { z } from 'zod';
 import { MODEL } from './client';
 
 // ============================================
