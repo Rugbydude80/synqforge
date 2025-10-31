@@ -1,11 +1,18 @@
 import { db } from '@/lib/db'
 import { inboxParsing, organizations } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
-import Anthropic from '@anthropic-ai/sdk'
+import { openai, MODEL } from '@/lib/ai/client'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  if (model.includes('/')) return model;
+  if (model.startsWith('claude')) return `anthropic/${model}`;
+  return model;
+}
 
 export interface ParsedContent {
   decisions: Array<{ decision: string; reasoning: string; participants: string[] }>
@@ -96,23 +103,23 @@ Respond in JSON format:
   }]
 }`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') throw new Error('No text content')
+  const content = response.choices[0]?.message?.content
+  if (!content) throw new Error('No text content')
 
-  const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-  const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
+  const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+  const jsonString = jsonMatch ? jsonMatch[1] : content
   const parsedData = JSON.parse(jsonString.trim())
 
   return {
     ...parsedData,
-    tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+    tokensUsed: response.usage?.total_tokens || 0,
   }
 }
 

@@ -1,4 +1,4 @@
-import { db, generateId } from '@/lib/db'
+import { MODEL } from '@/lib/ai/client'
 import { workflowAgents, agentActions, organizations, stories, users, projects } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { StoriesRepository } from '@/lib/repositories/stories.repository'
@@ -505,7 +505,7 @@ async function handleAIAction(config: Record<string, any>, context: Record<strin
         },
         projectContext: undefined,
         requestId: generateId(),
-        model: aiConfig.model || 'claude-3-5-sonnet-20241022',
+        model: aiConfig.model || MODEL,
         qualityThreshold: 0.7,
       })
 

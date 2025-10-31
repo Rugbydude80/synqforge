@@ -261,11 +261,11 @@ export function getTokenBudget(
 }
 
 /**
- * Model configuration - always use Claude 4.5 Haiku
+ * Model configuration - always use Qwen 3 Max Reasoning
  */
 export const AI_MODEL_CONFIG = {
-  model: 'claude-3-5-haiku-20241022',
-  provider: 'anthropic',
+  model: 'qwen/qwen3-max',
+  provider: 'openrouter',
   temperature: 0.7,
   topP: 0.9,
 } as const

@@ -3,7 +3,7 @@
  * Implements full testing checklist requirements
  */
 
-import { z } from 'zod';
+import { MODEL } from './client';
 
 // ============================================
 // ACCEPTANCE THEMES (LOCKED ENUM)
@@ -149,7 +149,7 @@ export const DecompositionRequestSchema = z.object({
   targetUsers: z.string().optional(),
   businessGoals: z.string().optional(),
   similarityThreshold: z.number().min(0).max(1).default(0.85),
-  model: z.string().default('claude-3-5-haiku-20241022'),
+  model: z.string().default(MODEL),
 }).strict();
 
 export type DecompositionRequest = z.infer<typeof DecompositionRequestSchema>;
@@ -230,7 +230,7 @@ export const GenerateStoryRequestSchema = z.object({
   epicId: z.string().uuid().optional(),
   projectContext: z.string().optional(),
   qualityThreshold: z.number().min(0).max(10).default(7.0),
-  model: z.string().default('claude-3-5-haiku-20241022'),
+  model: z.string().default(MODEL),
 }).strict();
 
 export type GenerateStoryRequest = z.infer<typeof GenerateStoryRequestSchema>;
@@ -270,7 +270,7 @@ export const EpicBuildRequestSchema = z.object({
   parentEpicId: z.string().uuid().optional(),
   siblingEpicIds: z.array(z.string().uuid()).optional(),
   qualityThreshold: z.number().min(0).max(10).default(7.0),
-  model: z.string().default('claude-3-5-haiku-20241022'),
+  model: z.string().default(MODEL),
 }).strict();
 
 export type EpicBuildRequest = z.infer<typeof EpicBuildRequestSchema>;

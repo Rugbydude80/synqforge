@@ -5,14 +5,19 @@ import {
   organizations,
 } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
-import Anthropic from '@anthropic-ai/sdk'
+import { openai, MODEL } from '@/lib/ai/client'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-})
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  if (model.includes('/')) return model;
+  if (model.startsWith('claude')) return `anthropic/${model}`;
+  return model;
+}
 
 export type ArtefactType = 'gherkin' | 'postman' | 'playwright' | 'cypress'
 
@@ -215,8 +220,8 @@ Requirements:
 
 Provide a complete, production-ready Gherkin feature file.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [
@@ -227,14 +232,14 @@ Provide a complete, production-ready Gherkin feature file.`
     ],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No text content in AI response')
   }
 
   // Extract Gherkin from code blocks if present
-  const gherkinMatch = textContent.text.match(/```(?:gherkin|feature)?\s*([\s\S]*?)```/)
-  const content = gherkinMatch ? gherkinMatch[1].trim() : textContent.text.trim()
+  const gherkinMatch = content.match(/```(?:gherkin|feature)?\s*([\s\S]*?)```/)
+  const gherkinContent = gherkinMatch ? gherkinMatch[1].trim() : content.trim()
 
   // Generate filename from story title
   const fileName = story.title
@@ -244,8 +249,8 @@ Provide a complete, production-ready Gherkin feature file.`
     .substring(0, 50) + '.feature'
 
   return {
-    content,
-    tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+    content: gherkinContent,
+    tokensUsed: response.usage?.total_tokens || 0,
     fileName,
   }
 }
@@ -282,8 +287,8 @@ Requirements:
 
 Provide ONLY the valid JSON for the Postman collection, no additional text.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [
@@ -294,19 +299,19 @@ Provide ONLY the valid JSON for the Postman collection, no additional text.`
     ],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No text content in AI response')
   }
 
   // Extract JSON from code blocks if present
-  const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-  const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
+  const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+  const jsonString = jsonMatch ? jsonMatch[1] : content
 
   // Validate JSON
   try {
     const parsed = JSON.parse(jsonString.trim())
-    const content = JSON.stringify(parsed, null, 2)
+    const jsonContent = JSON.stringify(parsed, null, 2)
 
     const fileName = story.title
       .toLowerCase()
@@ -315,8 +320,8 @@ Provide ONLY the valid JSON for the Postman collection, no additional text.`
       .substring(0, 50) + '.postman_collection.json'
 
     return {
-      content,
-      tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+      content: jsonContent,
+      tokensUsed: response.usage?.total_tokens || 0,
       fileName,
     }
   } catch (error) {
@@ -358,8 +363,8 @@ Requirements:
 
 Provide complete, runnable Playwright test code.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [
@@ -370,14 +375,14 @@ Provide complete, runnable Playwright test code.`
     ],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No text content in AI response')
   }
 
   // Extract code from code blocks if present
-  const codeMatch = textContent.text.match(/```(?:typescript|javascript|ts|js)?\s*([\s\S]*?)```/)
-  const content = codeMatch ? codeMatch[1].trim() : textContent.text.trim()
+  const codeMatch = content.match(/```(?:typescript|javascript|ts|js)?\s*([\s\S]*?)```/)
+  const codeContent = codeMatch ? codeMatch[1].trim() : content.trim()
 
   const extension = language === 'typescript' ? '.spec.ts' : '.spec.js'
   const fileName = story.title
@@ -387,8 +392,8 @@ Provide complete, runnable Playwright test code.`
     .substring(0, 50) + extension
 
   return {
-    content,
-    tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+    content: codeContent,
+    tokensUsed: response.usage?.total_tokens || 0,
     fileName,
   }
 }
@@ -426,8 +431,8 @@ Requirements:
 
 Provide complete, runnable Cypress test code.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [
@@ -438,14 +443,14 @@ Provide complete, runnable Cypress test code.`
     ],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No text content in AI response')
   }
 
   // Extract code from code blocks if present
-  const codeMatch = textContent.text.match(/```(?:typescript|javascript|ts|js)?\s*([\s\S]*?)```/)
-  const content = codeMatch ? codeMatch[1].trim() : textContent.text.trim()
+  const codeMatch = content.match(/```(?:typescript|javascript|ts|js)?\s*([\s\S]*?)```/)
+  const codeContent = codeMatch ? codeMatch[1].trim() : content.trim()
 
   const extension = language === 'typescript' ? '.cy.ts' : '.cy.js'
   const fileName = story.title
@@ -455,8 +460,8 @@ Provide complete, runnable Cypress test code.`
     .substring(0, 50) + extension
 
   return {
-    content,
-    tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+    content: codeContent,
+    tokensUsed: response.usage?.total_tokens || 0,
     fileName,
   }
 }

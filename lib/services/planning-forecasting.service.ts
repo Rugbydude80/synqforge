@@ -8,14 +8,19 @@ import {
   users,
 } from '@/lib/db/schema'
 import { eq, and, desc, inArray } from 'drizzle-orm'
-import Anthropic from '@anthropic-ai/sdk'
+import { openai, MODEL } from '@/lib/ai/client'
 import { recordTokenUsage, checkTokenAvailability } from './ai-metering.service'
 import { checkAIRateLimit } from './ai-rate-limit.service'
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-})
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  if (model.includes('/')) return model;
+  if (model.startsWith('claude')) return `anthropic/${model}`;
+  return model;
+}
 
 export interface VelocityData {
   sprintId: string
@@ -463,8 +468,8 @@ Respond in JSON format:
 spilloverProbability should be 0-1 (0% to 100% chance of not completing everything).
 Consider historical completion rates, capacity utilization, and velocity trends when calculating this.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 4000,
     temperature: 0.3,
     messages: [
@@ -475,18 +480,18 @@ Consider historical completion rates, capacity utilization, and velocity trends 
     ],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No text content in AI response')
   }
 
   let parsedData
   try {
-    const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-    const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
+    const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+    const jsonString = jsonMatch ? jsonMatch[1] : content
     parsedData = JSON.parse(jsonString.trim())
   } catch {
-    console.error('Failed to parse Claude response:', textContent.text)
+    console.error('Failed to parse AI response:', content)
     throw new Error('Failed to parse AI response. Please try again.')
   }
 
@@ -505,7 +510,7 @@ Consider historical completion rates, capacity utilization, and velocity trends 
     spilloverProbability: parsedData.spilloverProbability || 0,
     riskFactors: parsedData.riskFactors || [],
     recommendations: parsedData.recommendations || [],
-    tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+    tokensUsed: response.usage?.total_tokens || 0,
   }
 }
 
