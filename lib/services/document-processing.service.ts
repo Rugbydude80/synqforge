@@ -3,7 +3,7 @@
  * Handles file uploads, AI extraction, and document intelligence
  */
 
-import { openai } from '@/lib/ai/client'
+import { openai, MODEL } from '@/lib/ai/client'
 import mammoth from 'mammoth'
 import pdf from 'pdf-parse'
 
@@ -42,8 +42,6 @@ export interface RequirementsExtractionResult {
   }>
   summary: string
 }
-
-import { openai, MODEL } from '@/lib/ai/client'
 
 export class DocumentProcessingService {
   private model: string = MODEL
