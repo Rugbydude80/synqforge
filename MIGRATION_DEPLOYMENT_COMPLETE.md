@@ -78,3 +78,4 @@ psql "$DATABASE_URL" -c "SELECT extname FROM pg_extension WHERE extname = 'vecto
 All critical migrations applied, code deployed, and database verified working correctly.
 
 
+
