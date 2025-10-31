@@ -17,9 +17,17 @@ import { metrics } from '@/lib/observability/metrics';
 import { callAIWithRetry } from '@/lib/utils/ai-retry';
 
 export class StoryGenerationService {
-  constructor() {
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is required');
+  private _isConfigured: boolean | null = null;
+
+  /**
+   * Check if service is configured (lazy validation)
+   */
+  private ensureConfigured(): void {
+    if (this._isConfigured === null) {
+      this._isConfigured = !!process.env.OPENROUTER_API_KEY;
+      if (!this._isConfigured) {
+        throw new Error('OPENROUTER_API_KEY is required');
+      }
     }
   }
 
@@ -43,6 +51,9 @@ export class StoryGenerationService {
    * Generate story from capability
    */
   async generateStory(request: GenerateStoryRequest): Promise<GenerateStoryResponse> {
+    // Lazy validation - only check when actually used (not during build)
+    this.ensureConfigured();
+    
     // Generate request ID if not provided
     const requestId = request.requestId || nanoid();
 
