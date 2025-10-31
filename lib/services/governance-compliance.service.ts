@@ -1,9 +1,16 @@
 import { db, generateId } from '@/lib/db'
 import { piiDetections, auditLogs, stories, organizations } from '@/lib/db/schema'
 import { eq, and, gte, desc } from 'drizzle-orm'
-import Anthropic from '@anthropic-ai/sdk'
+import { openai, MODEL } from '@/lib/ai/client'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  if (model.includes('/')) return model;
+  if (model.startsWith('claude')) return `anthropic/${model}`;
+  return model;
+}
 
 export interface PIIDetection {
   storyId: string
@@ -97,18 +104,18 @@ Respond in JSON:
   "recommendations": ["Remove PII from story", "Use placeholder data"]
 }`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const response = await openai.chat.completions.create({
+    model: getOpenRouterModel(MODEL),
     max_tokens: 1500,
     temperature: 0.1,
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') throw new Error('No text content')
+  const content = response.choices[0]?.message?.content
+  if (!content) throw new Error('No text content')
 
-  const jsonMatch = textContent.text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-  const jsonString = jsonMatch ? jsonMatch[1] : textContent.text
+  const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+  const jsonString = jsonMatch ? jsonMatch[1] : content
   const parsedData = JSON.parse(jsonString.trim())
 
   return {

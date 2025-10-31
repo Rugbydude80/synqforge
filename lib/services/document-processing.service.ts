@@ -3,9 +3,18 @@
  * Handles file uploads, AI extraction, and document intelligence
  */
 
-import { AIService } from './ai.service'
+import { openai } from '@/lib/ai/client'
 import mammoth from 'mammoth'
 import pdf from 'pdf-parse'
+
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  if (model.includes('/')) return model;
+  if (model.startsWith('claude')) return `anthropic/${model}`;
+  return model;
+}
 
 export interface DocumentExtractionResult {
   text: string
@@ -34,25 +43,13 @@ export interface RequirementsExtractionResult {
   summary: string
 }
 
+import { openai, MODEL } from '@/lib/ai/client'
+
 export class DocumentProcessingService {
-  private aiService: AIService
+  private model: string = MODEL
 
   constructor() {
-    this.aiService = new AIService()
-  }
-
-  /**
-   * Get access to Anthropic client
-   */
-  private get anthropic() {
-    return (this.aiService as any).anthropic
-  }
-
-  /**
-   * Get model config
-   */
-  private get model() {
-    return 'claude-sonnet-4-20250514'
+    // Service initialization
   }
 
   /**
@@ -126,8 +123,8 @@ export class DocumentProcessingService {
     const prompt = this.buildRequirementsPrompt(documentText, projectContext)
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
+      const response = await openai.chat.completions.create({
+        model: getOpenRouterModel(this.model),
         max_tokens: 4096,
         temperature: 0.3,
         messages: [
@@ -138,13 +135,13 @@ export class DocumentProcessingService {
         ],
       })
 
-      const content = response.content[0]
-      if (content.type !== 'text') {
+      const content = response.choices[0]?.message?.content
+      if (!content) {
         throw new Error('Unexpected response type from AI')
       }
 
       // Parse AI response
-      const result = JSON.parse(content.text)
+      const result = JSON.parse(content)
 
       return {
         epics: result.epics || [],
@@ -198,8 +195,8 @@ Return ONLY valid JSON.
 `
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
+      const response = await openai.chat.completions.create({
+        model: getOpenRouterModel(this.model),
         max_tokens: 3000,
         temperature: 0.2,
         messages: [
@@ -210,12 +207,12 @@ Return ONLY valid JSON.
         ],
       })
 
-      const content = response.content[0]
-      if (content.type !== 'text') {
+      const content = response.choices[0]?.message?.content
+      if (!content) {
         throw new Error('Unexpected response type from AI')
       }
 
-      const result = JSON.parse(content.text)
+      const result = JSON.parse(content)
       return result.tasks || []
     } catch (error) {
       console.error('Implementation task extraction error:', error)
@@ -270,8 +267,8 @@ Return ONLY valid JSON.
 `
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
+      const response = await openai.chat.completions.create({
+        model: getOpenRouterModel(this.model),
         max_tokens: 2048,
         temperature: 0.4,
         messages: [
@@ -282,12 +279,12 @@ Return ONLY valid JSON.
         ],
       })
 
-      const content = response.content[0]
-      if (content.type !== 'text') {
+      const content = response.choices[0]?.message?.content
+      if (!content) {
         throw new Error('Unexpected response type from AI')
       }
 
-      return JSON.parse(content.text)
+      return JSON.parse(content)
     } catch (error) {
       console.error('Retro analysis error:', error)
       throw new Error('Failed to analyze retrospective notes')

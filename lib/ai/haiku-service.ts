@@ -1,9 +1,9 @@
 /**
- * Claude 4.5 Haiku Service
+ * Claude 4.5 Haiku Service (via OpenRouter)
  * Unified AI service with cost controls and tier-aware prompting
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import { openai } from '@/lib/ai/client'
 import type { SubscriptionTier } from '@/lib/utils/subscription'
 import {
   AI_MODEL_CONFIG,
@@ -22,9 +22,21 @@ import {
   checkDuplicatePrompts,
 } from './usage-enforcement'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+/**
+ * Convert model name to OpenRouter format
+ */
+function getOpenRouterModel(model: string): string {
+  // If already in OpenRouter format, return as-is
+  if (model.includes('/')) {
+    return model;
+  }
+  // Convert Anthropic model names to OpenRouter format
+  if (model.startsWith('claude')) {
+    return `anthropic/${model}`;
+  }
+  // Return as-is for other models
+  return model;
+}
 
 interface AIRequest {
   organizationId: string
@@ -88,9 +100,10 @@ export class HaikuService {
       throw new Error('Duplicate request detected. Please vary your inputs or wait before retrying.')
     }
 
-    // Call Claude API
-    const response = await anthropic.messages.create({
-      model: AI_MODEL_CONFIG.model,
+    // Call OpenRouter API
+    const openRouterModel = getOpenRouterModel(AI_MODEL_CONFIG.model);
+    const response = await openai.chat.completions.create({
+      model: openRouterModel,
       max_tokens: maxOutputTokens,
       temperature: AI_MODEL_CONFIG.temperature,
       messages: [
@@ -102,7 +115,7 @@ export class HaikuService {
     })
 
     const latencyMs = Date.now() - startTime
-    const content = response.content[0].type === 'text' ? response.content[0].text : ''
+    const content = response.choices[0]?.message?.content || ''
 
     // Record usage
     await recordUsage(
@@ -110,12 +123,12 @@ export class HaikuService {
       request.userId,
       'general',
       {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
         model: AI_MODEL_CONFIG.model,
         latencyMs,
-        cacheHit: false, // Haiku doesn't support prompt caching yet
+        cacheHit: false,
         promptSha256: promptHash,
       },
       {
@@ -127,9 +140,9 @@ export class HaikuService {
     return {
       content,
       usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
       },
       model: AI_MODEL_CONFIG.model,
       cached: false,
@@ -163,24 +176,25 @@ export class HaikuService {
 
     const promptHash = hashPrompt(storyPrompt)
 
-    const response = await anthropic.messages.create({
-      model: AI_MODEL_CONFIG.model,
+    const openRouterModel = getOpenRouterModel(AI_MODEL_CONFIG.model);
+    const response = await openai.chat.completions.create({
+      model: openRouterModel,
       max_tokens: maxOutputTokens,
       temperature: 0.7,
       messages: [{ role: 'user', content: storyPrompt }],
     })
 
     const latencyMs = Date.now() - startTime
-    const content = response.content[0].type === 'text' ? response.content[0].text : ''
+    const content = response.choices[0]?.message?.content || ''
 
     await recordUsage(
       request.organizationId,
       request.userId,
       'story_generation',
       {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
         model: AI_MODEL_CONFIG.model,
         latencyMs,
         cacheHit: false,
@@ -191,9 +205,9 @@ export class HaikuService {
     return {
       content,
       usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
       },
       model: AI_MODEL_CONFIG.model,
       cached: false,
@@ -239,24 +253,25 @@ export class HaikuService {
 
     const promptHash = hashPrompt(decomposerPrompt)
 
-    const response = await anthropic.messages.create({
-      model: AI_MODEL_CONFIG.model,
+    const openRouterModel = getOpenRouterModel(AI_MODEL_CONFIG.model);
+    const response = await openai.chat.completions.create({
+      model: openRouterModel,
       max_tokens: maxOutputTokens,
       temperature: 0.7,
       messages: [{ role: 'user', content: decomposerPrompt }],
     })
 
     const latencyMs = Date.now() - startTime
-    const content = response.content[0].type === 'text' ? response.content[0].text : ''
+    const content = response.choices[0]?.message?.content || ''
 
     await recordUsage(
       request.organizationId,
       request.userId,
       'requirements_analysis',
       {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
         model: AI_MODEL_CONFIG.model,
         latencyMs,
         cacheHit: false,
@@ -271,9 +286,9 @@ export class HaikuService {
     return {
       content,
       usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
       },
       model: AI_MODEL_CONFIG.model,
       cached: false,
@@ -314,24 +329,25 @@ export class HaikuService {
 
     const promptHash = hashPrompt(velocityPrompt)
 
-    const response = await anthropic.messages.create({
-      model: AI_MODEL_CONFIG.model,
+    const openRouterModel = getOpenRouterModel(AI_MODEL_CONFIG.model);
+    const response = await openai.chat.completions.create({
+      model: openRouterModel,
       max_tokens: maxOutputTokens,
       temperature: 0.5, // Lower for numerical planning
       messages: [{ role: 'user', content: velocityPrompt }],
     })
 
     const latencyMs = Date.now() - startTime
-    const content = response.content[0].type === 'text' ? response.content[0].text : ''
+    const content = response.choices[0]?.message?.content || ''
 
     await recordUsage(
       request.organizationId,
       request.userId,
       'planning_forecast',
       {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
         model: AI_MODEL_CONFIG.model,
         latencyMs,
         cacheHit: false,
@@ -346,9 +362,9 @@ export class HaikuService {
     return {
       content,
       usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
       },
       model: AI_MODEL_CONFIG.model,
       cached: false,

@@ -3,7 +3,7 @@
  * Breaks requirements into capabilities with merging and caps enforcement
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
+import { openai, MODEL } from '@/lib/ai/client';
 import {
   DecompositionRequest,
   DecompositionResponse,
@@ -17,16 +17,22 @@ import { logger } from '@/lib/observability/logger';
 import { metrics, METRICS } from '@/lib/observability/metrics';
 
 export class DecompositionService {
-  private anthropic: Anthropic;
   private readonly SOFT_CAP = 4;
   private readonly HARD_CAP = 6;
 
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not found');
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY is required');
     }
-    this.anthropic = new Anthropic({ apiKey });
+  }
+
+  /**
+   * Convert model name to OpenRouter format
+   */
+  private getOpenRouterModel(model: string): string {
+    if (model.includes('/')) return model;
+    if (model.startsWith('claude')) return `anthropic/${model}`;
+    return model;
   }
 
   /**
@@ -49,8 +55,9 @@ export class DecompositionService {
 
     // Call AI
     const startTime = Date.now();
-    const response = await this.anthropic.messages.create({
-      model: request.model,
+    const openRouterModel = this.getOpenRouterModel(request.model || MODEL);
+    const response = await openai.chat.completions.create({
+      model: openRouterModel,
       max_tokens: 4000,
       temperature: 0.7,
       messages: [{
@@ -63,13 +70,13 @@ export class DecompositionService {
     metrics.timing(METRICS.AI_LATENCY, latency, { operation: 'decomposition' });
 
     // Extract text
-    const textContent = response.content.find(block => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
       throw new Error('No text content in AI response');
     }
 
     // Parse capabilities
-    let capabilities = this.parseCapabilities(textContent.text);
+    let capabilities = this.parseCapabilities(content);
 
     // Audit log output
     piiRedactionService.auditLog('decomposition.output', { capabilities }, { requestId });
@@ -130,9 +137,9 @@ export class DecompositionService {
 
     // Token usage
     const usage = {
-      promptTokens: response.usage.input_tokens,
-      completionTokens: response.usage.output_tokens,
-      totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
     };
 
     metrics.increment(METRICS.AI_TOKENS, usage.totalTokens, {

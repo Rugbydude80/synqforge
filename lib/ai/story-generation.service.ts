@@ -3,7 +3,7 @@
  * Generates user stories from capabilities with validation and auto-fix
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
+import { openai } from '@/lib/ai/client';
 import { nanoid } from 'nanoid';
 import {
   GenerateStoryRequest,
@@ -17,14 +17,26 @@ import { metrics } from '@/lib/observability/metrics';
 import { callAIWithRetry } from '@/lib/utils/ai-retry';
 
 export class StoryGenerationService {
-  private anthropic: Anthropic;
-
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not found');
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY is required');
     }
-    this.anthropic = new Anthropic({ apiKey });
+  }
+
+  /**
+   * Convert model name to OpenRouter format
+   */
+  private getOpenRouterModel(model: string): string {
+    // If already in OpenRouter format, return as-is
+    if (model.includes('/')) {
+      return model;
+    }
+    // Convert Anthropic model names to OpenRouter format
+    if (model.startsWith('claude')) {
+      return `anthropic/${model}`;
+    }
+    // Return as-is for other models (e.g., qwen models)
+    return model;
   }
 
   /**
@@ -46,11 +58,12 @@ export class StoryGenerationService {
     // Audit log (1% sample with PII redaction)
     piiRedactionService.auditLog('story-generation.prompt', { prompt }, { requestId });
 
-    // Call AI with retry logic
+    // Call AI with retry logic via OpenRouter
     const startTime = Date.now();
+    const openRouterModel = this.getOpenRouterModel(request.model);
     const response = await callAIWithRetry(
-      () => this.anthropic.messages.create({
-        model: request.model,
+      () => openai.chat.completions.create({
+        model: openRouterModel,
         max_tokens: 3000,
         temperature: 0.7,
         messages: [{
@@ -68,14 +81,14 @@ export class StoryGenerationService {
     const latency = Date.now() - startTime;
     metrics.timing('ai.latency', latency, { operation: 'story-generation' });
 
-    // Extract text
-    const textContent = response.content.find(block => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
+    // Extract text (OpenRouter/OpenAI format)
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
       throw new Error('No text content in AI response');
     }
 
     // Parse story
-    const story = this.parseStory(textContent.text);
+    const story = this.parseStory(content);
 
     // Audit log output
     piiRedactionService.auditLog('story-generation.output', { story }, { requestId });
@@ -88,11 +101,11 @@ export class StoryGenerationService {
       request.qualityThreshold
     );
 
-    // Token usage
+    // Token usage (OpenRouter/OpenAI format)
     const usage = {
-      promptTokens: response.usage.input_tokens,
-      completionTokens: response.usage.output_tokens,
-      totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
     };
 
     metrics.increment('ai.tokens', usage.totalTokens, {
