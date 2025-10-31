@@ -106,7 +106,7 @@ export class SimilarityService {
    */
   private generateMergeReason(cap1: Capability, cap2: Capability, similarity: number): string {
     const pct = (similarity * 100).toFixed(0);
-    const sharedThemes = cap1.themes.filter(t => cap2.themes.includes(t));
+    const sharedThemes = cap1.themes.filter((t: string) => cap2.themes.includes(t));
 
     if (sharedThemes.length > 0) {
       return `${pct}% similar - both handle ${sharedThemes.join(', ')}`;
