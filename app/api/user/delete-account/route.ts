@@ -10,9 +10,19 @@ import { users, organizations, aiGenerations, auditLogs } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
+// Lazy initialization - only validate API key when actually used
+// This prevents build-time errors when env vars aren't available
+function getStripeClient(): Stripe {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  
+  if (!apiKey) {
+    throw new Error('STRIPE_SECRET_KEY is not set');
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2025-09-30.clover',
+  });
+}
 
 export async function DELETE(req: NextRequest) {
   const session = await auth();
@@ -63,6 +73,7 @@ export async function DELETE(req: NextRequest) {
 
         if (organization?.stripeCustomerId) {
           // Get all active subscriptions
+          const stripe = getStripeClient();
           const subscriptions = await stripe.subscriptions.list({
             customer: organization.stripeCustomerId,
             status: 'active',

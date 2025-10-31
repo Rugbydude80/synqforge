@@ -1,9 +1,25 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
+// Lazy initialization - only validate API key when actually used
+// This prevents build-time errors when env vars aren't available
+let stripeInstance: Stripe | null = null;
+
+function getStripeClient(): Stripe {
+  if (!stripeInstance) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+
+    stripeInstance = new Stripe(apiKey, {
+      apiVersion: '2025-09-30.clover',
+    });
+  }
+
+  return stripeInstance;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +30,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
+    const stripe = getStripeClient();
+    
     // Fetch all active prices with product details
     const prices = await stripe.prices.list({
       active: true,
