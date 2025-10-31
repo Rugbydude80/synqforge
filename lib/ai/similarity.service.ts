@@ -3,7 +3,7 @@
  * Implements semantic similarity scoring for decomposition
  */
 
-import { Capability, MergeSuggestion } from './types';
+import { Capability, MergeSuggestion, ACCEPTANCE_THEMES } from './types';
 import { logger } from '@/lib/observability/logger';
 
 export class SimilarityService {
