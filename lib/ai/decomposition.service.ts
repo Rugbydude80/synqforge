@@ -17,16 +17,19 @@ import { logger } from '@/lib/observability/logger';
 import { metrics, METRICS } from '@/lib/observability/metrics';
 
 export class DecompositionService {
-  private anthropic: Anthropic;
+  private anthropic: Anthropic | null = null;
   private readonly SOFT_CAP = 4;
   private readonly HARD_CAP = 6;
 
-  constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not found');
+  private getAnthropic(): Anthropic {
+    if (!this.anthropic) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new Error('ANTHROPIC_API_KEY not found');
+      }
+      this.anthropic = new Anthropic({ apiKey });
     }
-    this.anthropic = new Anthropic({ apiKey });
+    return this.anthropic;
   }
 
   /**
