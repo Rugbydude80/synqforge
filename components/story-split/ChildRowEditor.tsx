@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Trash2, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { ChildStoryInput } from '@/lib/services/story-split-validation.service';
 import type { ChildValidationResult } from '@/lib/services/story-split-validation.service';
 import { useTranslation } from '@/lib/i18n';
@@ -19,6 +19,8 @@ interface ChildRowEditorProps {
   onChange: (child: ChildStoryInput) => void;
   onRemove: () => void;
   disabled?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
 }
 
 export function ChildRowEditor({
@@ -28,9 +30,23 @@ export function ChildRowEditor({
   onChange,
   onRemove,
   disabled,
+  expanded = false,
+  onToggle,
 }: ChildRowEditorProps) {
   const { t } = useTranslation();
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
+  // Calculate INVEST score
+  const investPasses = [
+    validation?.valuable,
+    validation?.independent,
+    validation?.small,
+    validation?.testable,
+  ].filter(Boolean).length;
+
+  const hasErrors = validation && !validation.valid;
+  const hasWarnings = validation && validation.warnings.length > 0 && validation.valid;
+  const hasEmptyFields = !child.title || !child.personaGoal;
 
   const updateField = (field: keyof ChildStoryInput, value: any) => {
     onChange({ ...child, [field]: value });
@@ -80,40 +96,87 @@ export function ChildRowEditor({
   };
 
   return (
-    <Card className={`${validation?.valid === false ? 'border-red-500 border-2 bg-red-50 dark:bg-red-950/20' : 'border-border'}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">
-              {t('story.split.child.number', { number: index + 1 })}
+    <Card className={`transition-all ${
+      hasErrors ? 'border-red-500 border-2 bg-red-50 dark:bg-red-950/20' : 
+      hasEmptyFields ? 'border-orange-300 border-2' :
+      'border-border hover:shadow-sm'
+    }`}>
+      {/* Collapsible Header */}
+      <CardHeader 
+        className={`pb-3 ${onToggle ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Story Index */}
+            <span className="font-semibold text-sm text-muted-foreground flex-shrink-0">
+              Story {index + 1}
             </span>
-            {validation?.valid === false && (
-              <Badge variant="destructive" className="text-xs">
-                <XCircle className="h-3 w-3 mr-1" />
-                Errors
-              </Badge>
+            
+            {/* Chevron Icon */}
+            {onToggle && (
+              expanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              )
             )}
-            {validation?.valid === true && (
-              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Valid
-              </Badge>
+            
+            {/* Preview (when collapsed or no toggle) */}
+            {(!expanded || !onToggle) && (
+              <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden">
+                {child.title ? (
+                  <>
+                    <span className="font-medium text-sm truncate">{child.title}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{child.estimatePoints} pts</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{child.acceptanceCriteria?.length || 0} criteria</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-red-600 italic">Empty story - needs data</span>
+                )}
+              </div>
             )}
-            <InvestBadges validation={validation} />
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            disabled={disabled}
-            aria-label={t('story.split.child.remove')}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
+          {/* Right side: INVEST score and status */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* INVEST Score */}
+            <div className="flex flex-col items-center px-2 py-1 bg-secondary rounded-md">
+              <span className="text-lg font-bold leading-none">{investPasses}/4</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">INVEST</span>
+            </div>
+            
+            {/* Status Indicators */}
+            {hasErrors && (
+              <XCircle className="h-5 w-5 text-red-600" />
+            )}
+            {hasWarnings && !hasErrors && (
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            )}
+            
+            {/* Remove Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              disabled={disabled}
+              aria-label={t('story.split.child.remove')}
+              className="ml-2"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      {/* Expanded Content */}
+      {(!onToggle || expanded) && (
+        <CardContent className="space-y-4 pt-4">
         <div>
           <label htmlFor={`title-${index}`} className="text-sm font-medium">
             {t('story.split.child.title')} <span className="text-red-500">*</span>
@@ -303,42 +366,52 @@ export function ChildRowEditor({
               </p>
             ))}
           </div>
-        )}
-      </CardContent>
+          {/* INVEST Analysis Section */}
+          <div className="pt-4 border-t space-y-2">
+            <label className="text-sm font-medium">INVEST Score</label>
+            <div className="flex gap-2 flex-wrap">
+              <InvestBadge pass={validation?.valuable} label="Valuable" />
+              <InvestBadge pass={validation?.independent} label="Independent" />
+              <InvestBadge pass={validation?.small} label="Small" />
+              <InvestBadge pass={validation?.testable} label="Testable" />
+            </div>
+          </div>
+
+          {/* Coupling Warnings - Only show if significant */}
+          {validation && validation.warnings.length > 0 && (
+            <div className="flex gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <strong className="text-sm block mb-1 text-orange-900 dark:text-orange-100">Potential coupling detected</strong>
+                {validation.warnings
+                  .filter(w => w.includes('coupling') || w.includes('dependencies'))
+                  .map((warning, i) => {
+                    // Extract story references if present
+                    const parts = warning.split(':');
+                    const warningKey = parts[0];
+                    const storyRefs = parts[1];
+                    
+                    return (
+                      <p key={i} className="text-sm text-muted-foreground">
+                        {storyRefs ? `${t(warningKey)}: ${storyRefs}` : t(warning)}
+                      </p>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
 
-function InvestBadges({ validation }: { validation?: ChildValidationResult }) {
-  if (!validation) return null;
-
+function InvestBadge({ pass, label }: { pass?: boolean; label: string }) {
   return (
-    <div className="flex gap-1">
-      {validation.valuable && (
-        <Badge variant="outline" className="text-xs">
-          <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-          V
-        </Badge>
-      )}
-      {validation.independent && (
-        <Badge variant="outline" className="text-xs">
-          <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-          I
-        </Badge>
-      )}
-      {validation.small && (
-        <Badge variant="outline" className="text-xs">
-          <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-          S
-        </Badge>
-      )}
-      {validation.testable && (
-        <Badge variant="outline" className="text-xs">
-          <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-          T
-        </Badge>
-      )}
-    </div>
+    <Badge variant={pass ? "default" : "outline"} className={pass ? "bg-green-600" : ""}>
+      {pass ? <CheckCircle2 className="h-3 w-3 mr-1" /> : null}
+      {label}
+    </Badge>
   );
 }
 
