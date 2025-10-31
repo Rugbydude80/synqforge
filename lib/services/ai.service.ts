@@ -122,13 +122,9 @@ export class AIService {
   private isConfigured: boolean = false;
 
   constructor() {
+    // Don't throw during build - validate lazily when actually used
     const apiKey = process.env.OPENROUTER_API_KEY || '';
-
-    if (!apiKey) {
-      throw new Error('OPENROUTER_API_KEY is required. Please configure it in your environment variables.');
-    }
-
-    this.isConfigured = true;
+    this.isConfigured = !!apiKey;
   }
 
   /**
@@ -136,6 +132,15 @@ export class AIService {
    */
   isReady(): boolean {
     return this.isConfigured;
+  }
+
+  /**
+   * Ensure API key is available before making requests
+   */
+  private ensureConfigured(): void {
+    if (!this.isConfigured) {
+      throw new Error('OPENROUTER_API_KEY is required. Please configure it in your environment variables.');
+    }
   }
 
   /**
@@ -292,6 +297,8 @@ export class AIService {
    * Core AI generation method
    */
   private async generate(request: AIGenerationRequest): Promise<AIGenerationResponse> {
+    this.ensureConfigured();
+    
     try {
       const completion = await openai.chat.completions.create({
         model: request.model,

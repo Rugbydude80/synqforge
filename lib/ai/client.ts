@@ -1,16 +1,37 @@
 // lib/ai/client.ts
 import OpenAI from "openai";
 
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error("OPENROUTER_API_KEY environment variable is required");
+// Lazy initialization - only validate API key when actually used
+// This prevents build-time errors when env vars aren't available
+let openaiInstance: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY environment variable is required");
+    }
+
+    openaiInstance = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: apiKey,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://synqforge.com",
+        "X-Title": "SynqForge",
+      },
+    });
+  }
+
+  return openaiInstance;
 }
 
-export const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://synqforge.com",
-    "X-Title": "SynqForge",
+// Export a getter that initializes on first use
+export const openai = new Proxy({} as OpenAI, {
+  get(_target, prop) {
+    const client = getOpenAIClient();
+    const value = (client as any)[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
   },
 });
 
