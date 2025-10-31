@@ -52,7 +52,7 @@ export class StoryGenerationService {
     // Call AI with retry logic
     const startTime = Date.now();
     const response = await callAIWithRetry(
-      () => this.anthropic.messages.create({
+      () => this.getAnthropic().messages.create({
         model: request.model,
         max_tokens: 3000,
         temperature: 0.7,
