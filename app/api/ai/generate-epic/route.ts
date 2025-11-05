@@ -9,6 +9,7 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
+import { piiDetectionService } from '@/lib/services/pii-detection.service';
 
 /**
  * POST /api/ai/generate-epic
@@ -68,6 +69,36 @@ export const POST = withAuth(
       // Show 90% warning if approaching limit
       if (aiCheck.isWarning && aiCheck.reason) {
         console.warn(`Fair-usage warning for org ${user.organizationId}: ${aiCheck.reason}`)
+      }
+
+      // ✅ CRITICAL: PII Detection - Block prompts with sensitive data
+      try {
+        const piiCheck = await piiDetectionService.scanForPII(
+          validatedData.description,
+          user.organizationId,
+          { userId: user.id, feature: 'epic_generation' }
+        );
+
+        if (piiCheck.hasPII && piiCheck.severity !== 'low') {
+          console.warn(`PII detected in epic generation for org ${user.organizationId}:`, piiCheck.detectedTypes);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'PII_DETECTED',
+                message: 'Your prompt contains sensitive personal information that cannot be processed',
+                detectedTypes: piiCheck.detectedTypes,
+                severity: piiCheck.severity,
+                recommendations: piiCheck.recommendations,
+                redactedPreview: piiCheck.redactedText?.substring(0, 200),
+              },
+            },
+            { status: 400 }
+          );
+        }
+      } catch (piiError) {
+        // Log PII detection error but don't block request
+        console.error('PII detection error:', piiError);
       }
 
       // Legacy usage check (keep for backward compatibility)

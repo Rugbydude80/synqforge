@@ -12,6 +12,7 @@ import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fai
 import { EmbeddingsService } from '@/lib/services/embeddings.service';
 import { ContextLevel } from '@/lib/types/context.types';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
+import { piiDetectionService } from '@/lib/services/pii-detection.service';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -78,6 +79,33 @@ async function generateStories(req: NextRequest, context: AuthContext) {
     // Show 90% warning if approaching limit
     if (aiCheck.isWarning && aiCheck.reason) {
       console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // ✅ CRITICAL: PII Detection - Block prompts with sensitive data
+    try {
+      const piiCheck = await piiDetectionService.scanForPII(
+        validatedData.requirements,
+        context.user.organizationId,
+        { userId: context.user.id, feature: 'bulk_story_generation' }
+      );
+
+      if (piiCheck.hasPII && piiCheck.severity !== 'low') {
+        console.warn(`PII detected in bulk story generation for org ${context.user.organizationId}:`, piiCheck.detectedTypes);
+        return NextResponse.json(
+          {
+            error: 'PII_DETECTED',
+            message: 'Your prompt contains sensitive personal information that cannot be processed',
+            detectedTypes: piiCheck.detectedTypes,
+            severity: piiCheck.severity,
+            recommendations: piiCheck.recommendations,
+            redactedPreview: piiCheck.redactedText?.substring(0, 200),
+          },
+          { status: 400 }
+        );
+      }
+    } catch (piiError) {
+      // Log PII detection error but don't block request
+      console.error('PII detection error:', piiError);
     }
 
     // Legacy usage check (keep for backward compatibility)

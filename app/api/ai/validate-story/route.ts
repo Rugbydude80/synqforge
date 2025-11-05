@@ -10,6 +10,7 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
+import { piiDetectionService } from '@/lib/services/pii-detection.service';
 
 /**
  * POST /api/ai/validate-story
@@ -137,6 +138,37 @@ export const POST = withAuth(
             .filter((criteria) => criteria.length > 0) || [],
         projectId,
       };
+
+      // ✅ CRITICAL: PII Detection - Block prompts with sensitive data
+      try {
+        const storyText = `${storyData.title}\n${storyData.description}\n${storyData.acceptanceCriteria.join('\n')}`;
+        const piiCheck = await piiDetectionService.scanForPII(
+          storyText,
+          user.organizationId,
+          { userId: user.id, feature: 'story_validation' }
+        );
+
+        if (piiCheck.hasPII && piiCheck.severity !== 'low') {
+          console.warn(`PII detected in story validation for org ${user.organizationId}:`, piiCheck.detectedTypes);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'PII_DETECTED',
+                message: 'Your story contains sensitive personal information that cannot be processed',
+                detectedTypes: piiCheck.detectedTypes,
+                severity: piiCheck.severity,
+                recommendations: piiCheck.recommendations,
+                redactedPreview: piiCheck.redactedText?.substring(0, 200),
+              },
+            },
+            { status: 400 }
+          );
+        }
+      } catch (piiError) {
+        // Log PII detection error but don't block request
+        console.error('PII detection error:', piiError);
+      }
 
       // Validate story using AI
       const response = await aiService.validateStory(

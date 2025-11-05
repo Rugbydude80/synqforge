@@ -7,6 +7,7 @@ import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/li
 import { checkAIUsageLimit, checkDocumentAnalysisAccess } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage, canIngestDocument, incrementDocIngestion } from '@/lib/billing/fair-usage-guards';
+import { piiDetectionService } from '@/lib/services/pii-detection.service';
 
 async function analyzeDocument(req: NextRequest, context: AuthContext) {
   try {
@@ -116,6 +117,33 @@ async function analyzeDocument(req: NextRequest, context: AuthContext) {
       file.name
     );
     const extractedText = processed.content;
+
+    // ✅ CRITICAL: PII Detection - Block documents with sensitive data
+    try {
+      const piiCheck = await piiDetectionService.scanForPII(
+        extractedText,
+        context.user.organizationId,
+        { userId: context.user.id, feature: 'document_analysis' }
+      );
+
+      if (piiCheck.hasPII && piiCheck.severity !== 'low') {
+        console.warn(`PII detected in document analysis for org ${context.user.organizationId}:`, piiCheck.detectedTypes);
+        return NextResponse.json(
+          {
+            error: 'PII_DETECTED',
+            message: 'Your document contains sensitive personal information that cannot be processed',
+            detectedTypes: piiCheck.detectedTypes,
+            severity: piiCheck.severity,
+            recommendations: piiCheck.recommendations,
+            redactedPreview: piiCheck.redactedText?.substring(0, 200),
+          },
+          { status: 400 }
+        );
+      }
+    } catch (piiError) {
+      // Log PII detection error but don't block request
+      console.error('PII detection error:', piiError);
+    }
 
     // Analyze the document with AI
     const response = await aiService.analyzeDocument(
