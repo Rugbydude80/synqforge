@@ -108,10 +108,18 @@ export class CustomDocumentTemplatesRepository {
         .where(and(...conditions))
         .orderBy(desc(customDocumentTemplates.usageCount), desc(customDocumentTemplates.createdAt))
       
-      return templates
-    } catch (error) {
+      return templates || []
+    } catch (error: any) {
       console.error('List custom templates error:', error)
-      throw new Error('Failed to list custom templates')
+      
+      // Check if table doesn't exist
+      if (error?.message?.includes('does not exist') || error?.code === '42P01') {
+        console.error('Custom document templates table does not exist. Migration may not have been run.')
+        // Return empty array instead of throwing - allows UI to work gracefully
+        return []
+      }
+      
+      throw new Error(`Failed to list custom templates: ${error?.message || 'Unknown error'}`)
     }
   }
   

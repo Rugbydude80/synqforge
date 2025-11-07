@@ -185,7 +185,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ templates })
   } catch (error) {
     console.error('List custom templates error:', error)
-    return NextResponse.json({ error: 'Failed to list templates' }, { status: 500 })
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      organizationId: session?.user?.organizationId,
+    })
+    return NextResponse.json(
+      { 
+        error: 'Failed to list templates',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
 }
 
