@@ -15,7 +15,26 @@ export const GET = withAuth(
       const repository = new ProjectsRepository(user)
       const projects = await repository.getProjects()
 
-      return successResponse(projects, { total: projects.length })
+      // Transform repository fields to match frontend expectations
+      const transformedProjects = projects.map((project: any) => {
+        const totalStories = Number(project.storyCount || 0)
+        const completedStories = Number(project.completedStoryCount || 0)
+        const progressPercentage = totalStories > 0
+          ? Math.round((completedStories / totalStories) * 100)
+          : 0
+
+        return {
+          ...project,
+          totalStories,
+          completedStories,
+          progressPercentage,
+          // Keep original fields for backward compatibility if needed
+          storyCount: totalStories,
+          completedStoryCount: completedStories,
+        }
+      })
+
+      return successResponse(transformedProjects, { total: transformedProjects.length })
     } catch (error) {
       return errorResponse(error)
     }
@@ -69,7 +88,24 @@ export const POST = withAuth(
       const repository = new ProjectsRepository(user)
       const project = await repository.createProject(data)
 
-      return successResponse(project, { status: 201 })
+      // Transform repository fields to match frontend expectations
+      const totalStories = Number((project as any).storyCount || 0)
+      const completedStories = Number((project as any).completedStoryCount || 0)
+      const progressPercentage = totalStories > 0
+        ? Math.round((completedStories / totalStories) * 100)
+        : 0
+
+      const transformedProject = {
+        ...project,
+        totalStories,
+        completedStories,
+        progressPercentage,
+        // Keep original fields for backward compatibility if needed
+        storyCount: totalStories,
+        completedStoryCount: completedStories,
+      }
+
+      return successResponse(transformedProject, { status: 201 })
     } catch (error) {
       return errorResponse(error)
     }

@@ -13,7 +13,25 @@ async function getProject(_request: NextRequest, context: any) {
 
   try {
     const project = await projectsRepo.getProjectById(projectId)
-    return NextResponse.json(project)
+    
+    // Transform repository fields to match frontend expectations
+    const totalStories = Number((project as any).storyCount || 0)
+    const completedStories = Number((project as any).completedStoryCount || 0)
+    const progressPercentage = totalStories > 0
+      ? Math.round((completedStories / totalStories) * 100)
+      : 0
+
+    const transformedProject = {
+      ...project,
+      totalStories,
+      completedStories,
+      progressPercentage,
+      // Keep original fields for backward compatibility if needed
+      storyCount: totalStories,
+      completedStoryCount: completedStories,
+    }
+    
+    return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Error fetching project:', error)
 
@@ -59,7 +77,25 @@ async function updateProject(req: NextRequest, context: any) {
     if (body.settings !== undefined) updateData.settings = body.settings
 
     const project = await projectsRepo.updateProject(projectId, updateData)
-    return NextResponse.json(project)
+    
+    // Transform repository fields to match frontend expectations
+    const totalStories = Number((project as any).storyCount || 0)
+    const completedStories = Number((project as any).completedStoryCount || 0)
+    const progressPercentage = totalStories > 0
+      ? Math.round((completedStories / totalStories) * 100)
+      : 0
+
+    const transformedProject = {
+      ...project,
+      totalStories,
+      completedStories,
+      progressPercentage,
+      // Keep original fields for backward compatibility if needed
+      storyCount: totalStories,
+      completedStoryCount: completedStories,
+    }
+    
+    return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Error updating project:', error)
 

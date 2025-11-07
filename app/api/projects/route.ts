@@ -16,7 +16,27 @@ async function getProjects(_request: NextRequest, context: any) {
 
   try {
     const projects = await projectsRepo.getProjects()
-    return NextResponse.json({ data: projects, total: projects.length })
+    
+    // Transform repository fields to match frontend expectations
+    const transformedProjects = projects.map((project: any) => {
+      const totalStories = Number(project.storyCount || 0)
+      const completedStories = Number(project.completedStoryCount || 0)
+      const progressPercentage = totalStories > 0
+        ? Math.round((completedStories / totalStories) * 100)
+        : 0
+
+      return {
+        ...project,
+        totalStories,
+        completedStories,
+        progressPercentage,
+        // Keep original fields for backward compatibility if needed
+        storyCount: totalStories,
+        completedStoryCount: completedStories,
+      }
+    })
+    
+    return NextResponse.json({ data: transformedProjects, total: transformedProjects.length })
   } catch (error) {
     console.error('Error fetching projects:', error)
     return NextResponse.json(
@@ -85,7 +105,24 @@ async function createProject(req: NextRequest, context: any) {
       organizationId: context.user.organizationId,
     })
     
-    return NextResponse.json(project, { status: 201 })
+    // Transform repository fields to match frontend expectations
+    const totalStories = Number((project as any).storyCount || 0)
+    const completedStories = Number((project as any).completedStoryCount || 0)
+    const progressPercentage = totalStories > 0
+      ? Math.round((completedStories / totalStories) * 100)
+      : 0
+
+    const transformedProject = {
+      ...project,
+      totalStories,
+      completedStories,
+      progressPercentage,
+      // Keep original fields for backward compatibility if needed
+      storyCount: totalStories,
+      completedStoryCount: completedStories,
+    }
+    
+    return NextResponse.json(transformedProject, { status: 201 })
   } catch (error) {
     console.error('Error creating project:', error)
 
