@@ -193,6 +193,36 @@ export class CustomDocumentTemplatesRepository {
   }
   
   /**
+   * Count templates for an organization
+   */
+  async count(organizationId: string, includeInactive: boolean = false): Promise<number> {
+    try {
+      const conditions = includeInactive
+        ? [eq(customDocumentTemplates.organizationId, organizationId)]
+        : [
+            eq(customDocumentTemplates.organizationId, organizationId),
+            eq(customDocumentTemplates.isActive, true),
+          ]
+      
+      const [result] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(customDocumentTemplates)
+        .where(and(...conditions))
+      
+      return Number(result?.count || 0)
+    } catch (error: any) {
+      console.error('Count custom templates error:', error)
+      
+      // Check if table doesn't exist
+      if (error?.message?.includes('does not exist') || error?.code === '42P01') {
+        return 0
+      }
+      
+      throw new Error(`Failed to count custom templates: ${error?.message || 'Unknown error'}`)
+    }
+  }
+  
+  /**
    * Get template file bytes (for download)
    */
   async getFileBytes(id: string, organizationId: string): Promise<Buffer | null> {

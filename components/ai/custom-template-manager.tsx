@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Upload, FileText, Loader2, Trash2 } from 'lucide-react'
+import { Upload, FileText, Loader2, Trash2, Download, CheckCircle2, XCircle, AlertCircle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -153,6 +153,17 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
   const [templateName, setTemplateName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([])
+  const [isValidating, setIsValidating] = useState(false)
+  const [previewData, setPreviewData] = useState<{
+    sections: string[]
+    format: any
+    content: string
+  } | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -181,17 +192,35 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
     fetchTemplates()
   }, [fetchTemplates])
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Reset validation state and preview
+    setValidationErrors([])
+    setValidationWarnings([])
+    setIsValidating(true)
+    setPreviewData(null)
+    setShowPreview(false)
+
+    const errors: string[] = []
+    const warnings: string[] = []
+
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB')
-      return
+      errors.push('File size exceeds 10MB limit')
+    } else if (file.size > 5 * 1024 * 1024) {
+      warnings.push('Large file size may take longer to process')
     }
 
-    // Validate file type
+    // Validate file type by extension
+    const allowedExtensions = ['.pdf', '.docx', '.txt', '.md']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!allowedExtensions.includes(fileExtension)) {
+      errors.push('Invalid file type. Allowed: PDF, DOCX, TXT, MD')
+    }
+
+    // Validate file type by MIME type
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -200,7 +229,25 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
     ]
 
     if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|docx|txt|md)$/i)) {
-      toast.error('Please upload a PDF, DOCX, TXT, or MD file')
+      errors.push('File type mismatch. Please ensure file extension matches content type')
+    }
+
+    // Validate file name
+    if (file.name.length > 255) {
+      errors.push('File name too long (max 255 characters)')
+    }
+
+    // Check for suspicious file names
+    if (file.name.match(/[<>:"|?*\x00-\x1f]/)) {
+      errors.push('File name contains invalid characters')
+    }
+
+    setValidationErrors(errors)
+    setValidationWarnings(warnings)
+    setIsValidating(false)
+
+    if (errors.length > 0) {
+      toast.error(`Validation failed: ${errors[0]}`)
       return
     }
 
@@ -211,6 +258,72 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
       setTemplateName(nameWithoutExt)
     }
+
+    if (warnings.length > 0) {
+      toast.warning(warnings[0])
+    }
+  }
+
+  const handlePreview = async () => {
+    if (!selectedFile) {
+      toast.error('Please select a file first')
+      return
+    }
+
+    if (validationErrors.length > 0) {
+      toast.error('Please fix validation errors before previewing')
+      return
+    }
+
+    try {
+      setPreviewLoading(true)
+      setShowPreview(true)
+
+      // Create FormData for preview
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+
+      const response = await fetch('/api/custom-templates/preview', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to preview template')
+      }
+
+      setPreviewData(data)
+    } catch (error: any) {
+      console.error('Error previewing template:', error)
+      toast.error(error.message || 'Failed to preview template')
+      setShowPreview(false)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handleDownloadStarter = async () => {
+    try {
+      const response = await fetch('/api/custom-templates/download-starter')
+      if (!response.ok) {
+        throw new Error('Failed to download starter template')
+      }
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'synqforge-starter-template.md'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success('Starter template downloaded successfully!')
+    } catch (error: any) {
+      console.error('Error downloading starter template:', error)
+      toast.error(error.message || 'Failed to download starter template')
+    }
   }
 
   const handleUpload = async () => {
@@ -219,8 +332,25 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
       return
     }
 
+    if (validationErrors.length > 0) {
+      toast.error('Please fix validation errors before uploading')
+      return
+    }
+
     try {
       setUploading(true)
+      setUploadProgress(0)
+
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return prev
+          }
+          return prev + 10
+        })
+      }, 200)
 
       const formData = new FormData()
       formData.append('file', selectedFile)
@@ -234,9 +364,16 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
         body: formData,
       })
 
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+
       const data = await response.json()
 
       if (!response.ok) {
+        // Enhanced error handling
+        if (data.details) {
+          setValidationErrors(Array.isArray(data.details) ? data.details : [data.details])
+        }
         throw new Error(data.error || 'Failed to upload template')
       }
 
@@ -245,11 +382,17 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
       setTemplateName('')
       setDescription('')
       setSelectedFile(null)
+      setValidationErrors([])
+      setValidationWarnings([])
+      setUploadProgress(0)
+      setPreviewData(null)
+      setShowPreview(false)
       fetchTemplates()
       onTemplateUploaded?.()
     } catch (error: any) {
       console.error('Error uploading template:', error)
       toast.error(error.message || 'Failed to upload template')
+      setUploadProgress(0)
     } finally {
       setUploading(false)
     }
@@ -302,13 +445,22 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
               When a template is selected, all generated stories will follow its structure.
             </CardDescription>
           </div>
-          <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Template
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDownloadStarter}
+              className="border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/20"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Starter Template
+            </Button>
+            <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Template
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Upload Custom Template</DialogTitle>
@@ -353,15 +505,172 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
                     onChange={handleFileSelect}
                   />
                   {selectedFile && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4" />
-                      {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                      </div>
+                      {isValidating && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Validating file...
+                        </div>
+                      )}
+                      {validationErrors.length > 0 && (
+                        <div className="space-y-1">
+                          {validationErrors.map((error, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm text-destructive">
+                              <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{error}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {validationWarnings.length > 0 && (
+                        <div className="space-y-1">
+                          {validationWarnings.map((warning, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-400">
+                              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{warning}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {!isValidating && validationErrors.length === 0 && selectedFile && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4" />
+                            File validation passed
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePreview}
+                            disabled={previewLoading}
+                            className="w-full"
+                          >
+                            {previewLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Generating preview...
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview Template Structure
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {showPreview && previewData && (
+                    <div className="mt-4 p-4 border rounded-lg bg-muted/50 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm">Template Preview</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowPreview(false)}
+                          className="h-6 px-2"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-muted-foreground">Detected Sections:</span>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {previewData.sections && previewData.sections.length > 0 ? (
+                              previewData.sections.map((section, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {section}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground text-xs">No sections detected</span>
+                            )}
+                          </div>
+                        </div>
+                        {previewData.format && (
+                          <>
+                            {previewData.format.titleFormat && (
+                              <div>
+                                <span className="font-medium text-muted-foreground">Title Format:</span>
+                                <p className="text-xs mt-1 font-mono bg-background p-2 rounded border">
+                                  {previewData.format.titleFormat}
+                                </p>
+                              </div>
+                            )}
+                            {previewData.format.acceptanceCriteriaFormat && (
+                              <div>
+                                <span className="font-medium text-muted-foreground">Acceptance Criteria Format:</span>
+                                <p className="text-xs mt-1 font-mono bg-background p-2 rounded border">
+                                  {previewData.format.acceptanceCriteriaFormat}
+                                </p>
+                              </div>
+                            )}
+                            {previewData.format.priorityFormat && previewData.format.priorityFormat.length > 0 && (
+                              <div>
+                                <span className="font-medium text-muted-foreground">Priority Options:</span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {previewData.format.priorityFormat.map((priority: string, idx: number) => (
+                                    <Badge key={idx} variant="outline" className="text-xs">
+                                      {priority}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {previewData.format.style && (
+                              <div>
+                                <span className="font-medium text-muted-foreground">Style:</span>
+                                <div className="flex gap-4 mt-1 text-xs">
+                                  {previewData.format.style.language && (
+                                    <span>Language: {previewData.format.style.language}</span>
+                                  )}
+                                  {previewData.format.style.tone && (
+                                    <span>Tone: {previewData.format.style.tone}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {previewData.content && (
+                          <div>
+                            <span className="font-medium text-muted-foreground">Content Preview:</span>
+                            <div className="mt-1 max-h-32 overflow-y-auto text-xs bg-background p-2 rounded border font-mono whitespace-pre-wrap">
+                              {previewData.content.substring(0, 500)}
+                              {previewData.content.length > 500 && '...'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Uploading...</span>
+                        <span className="text-muted-foreground">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
                     </div>
                   )}
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p>📋 <strong>Required sections:</strong> Title, Description, or Acceptance Criteria</p>
                     <p>✅ <strong>Best practices:</strong> Use clear section headers, include examples, specify format (Given/When/Then)</p>
                     <p>⚠️ <strong>Constraints:</strong> Max 10MB, professional content only, clear structure required</p>
+                    <p>💡 <strong>Tip:</strong> Download the starter template to see the expected format</p>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
@@ -372,7 +681,10 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleUpload} disabled={uploading || !selectedFile || !templateName.trim()}>
+                  <Button 
+                    onClick={handleUpload} 
+                    disabled={uploading || !selectedFile || !templateName.trim() || validationErrors.length > 0 || isValidating}
+                  >
                     {uploading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -389,6 +701,7 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
