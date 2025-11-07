@@ -8,139 +8,70 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants'
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Check if Redis is configured
+const isRedisConfigured = !!(
+  process.env.UPSTASH_REDIS_REST_URL &&
+  process.env.UPSTASH_REDIS_REST_TOKEN
+)
+
+// Initialize Redis client (only if configured)
+const redis = isRedisConfigured
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null
+
+// Helper function to create rate limiters (handles null redis)
+function createRateLimiter(prefix: string, limit: number, duration: `${number} ${'s' | 'm' | 'h' | 'd'}`) {
+  if (!redis) {
+    return null
+  }
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(limit, duration),
+    analytics: true,
+    prefix,
+  })
+}
 
 // Rate limiters for different tiers
 const rateLimiters = {
   free: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:free',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(1, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:free',
-    }),
+    standard: createRateLimiter('ratelimit:ai:free', 10, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:free', 1, '60 s'),
   },
   starter: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:starter',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(1, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:free',
-    }),
+    standard: createRateLimiter('ratelimit:ai:starter', 5, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:free', 1, '60 s'),
   },
   solo: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:solo',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(3, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:solo',
-    }),
+    standard: createRateLimiter('ratelimit:ai:solo', 30, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:solo', 3, '60 s'),
   },
   core: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:core',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(3, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:core',
-    }),
+    standard: createRateLimiter('ratelimit:ai:core', 30, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:core', 3, '60 s'),
   },
   admin: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(1000, '60 s'), // Effectively unlimited
-      analytics: true,
-      prefix: 'ratelimit:ai:admin',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(100, '60 s'), // Effectively unlimited
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:admin',
-    }),
+    standard: createRateLimiter('ratelimit:ai:admin', 1000, '60 s'), // Effectively unlimited
+    heavy: createRateLimiter('ratelimit:ai_heavy:admin', 100, '60 s'), // Effectively unlimited
   },
   team: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:team',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(6, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:team',
-    }),
+    standard: createRateLimiter('ratelimit:ai:team', 60, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:team', 6, '60 s'),
   },
   pro: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(90, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:pro',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(9, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:pro',
-    }),
+    standard: createRateLimiter('ratelimit:ai:pro', 90, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:pro', 9, '60 s'),
   },
   business: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:business',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(6, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:business',
-    }),
+    standard: createRateLimiter('ratelimit:ai:business', 60, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:business', 6, '60 s'),
   },
   enterprise: {
-    standard: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(120, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai:enterprise',
-    }),
-    heavy: new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(12, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit:ai_heavy:enterprise',
-    }),
+    standard: createRateLimiter('ratelimit:ai:enterprise', 120, '60 s'),
+    heavy: createRateLimiter('ratelimit:ai_heavy:enterprise', 12, '60 s'),
   },
 }
 
@@ -159,8 +90,18 @@ export async function checkAIRateLimit(
   organizationId: string,
   tier: 'free' | 'starter' | 'solo' | 'core' | 'team' | 'pro' | 'business' | 'enterprise'
 ): Promise<RateLimitResult> {
+  // If Redis is not configured, allow all requests
+  const limiter = rateLimiters[tier]?.standard
+  if (!limiter) {
+    return {
+      success: true,
+      limit: 60,
+      remaining: 60,
+      reset: new Date(Date.now() + 60000),
+    }
+  }
+
   try {
-    const limiter = rateLimiters[tier].standard
     const result = await limiter.limit(organizationId)
 
     return {
@@ -199,8 +140,18 @@ export async function checkHeavyJobRateLimit(
     }
   }
   
+  // If Redis is not configured, allow all requests
+  const limiter = rateLimiters[tier]?.heavy
+  if (!limiter) {
+    return {
+      success: true,
+      limit: 6,
+      remaining: 6,
+      reset: new Date(Date.now() + 60000),
+    }
+  }
+  
   try {
-    const limiter = rateLimiters[tier].heavy
     const result = await limiter.limit(organizationId)
 
     return {
@@ -255,6 +206,22 @@ export async function getAIQuota(
   const heavyKey = `ratelimit:ai_heavy:${tier}:${organizationId}`
 
   try {
+    if (!redis) {
+      // If Redis is not configured, return limits from subscription config
+      return {
+        standard: {
+          limit: limits.aiActionsPerMinute,
+          remaining: limits.aiActionsPerMinute,
+          reset: new Date(Date.now() + 60000),
+        },
+        heavy: {
+          limit: limits.heavyJobsPerMinute,
+          remaining: limits.heavyJobsPerMinute,
+          reset: new Date(Date.now() + 60000),
+        },
+      }
+    }
+
     const [standardData, heavyData] = await Promise.all([
       redis.get(standardKey),
       redis.get(heavyKey),
@@ -297,6 +264,10 @@ export async function getAIQuota(
  * Reset rate limits for an organization (admin function)
  */
 export async function resetRateLimits(organizationId: string): Promise<void> {
+  if (!redis) {
+    return // No-op if Redis is not configured
+  }
+
   const tiers = ['free', 'starter', 'solo', 'core', 'team', 'pro', 'business', 'enterprise', 'admin'] as const
 
   try {
