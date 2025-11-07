@@ -1,16 +1,18 @@
 method,route,auth,planGate,limit,notes,file,lineStart,lineEnd
 POST,/api/ai/generate-stories,withAuth,starter,AI actions,Generates multiple stories from requirements. Pro+ enables Smart Context (semantic search).,app/api/ai/generate-stories/route.ts,21,432
 POST,/api/ai/generate-single-story,withAuth,starter,AI actions,Generates single story from requirements.,app/api/ai/generate-single-story/route.ts,28,233
-POST,/api/ai/build-epic,withAuth,starter,AI actions,Builds epic with child stories from capabilities.,app/api/ai/build-epic/route.ts
-POST,/api/ai/generate-epic,withAuth,starter,AI actions,Generates epic from requirements.,app/api/ai/generate-epic/route.ts
+POST,/api/ai/build-epic,withAuth,starter,AI actions,Builds epic with child stories from capabilities.,app/api/ai/build-epic/route.ts,17,178
+POST,/api/ai/generate-epic,withAuth,starter,AI actions,Generates epic from requirements.,app/api/ai/generate-epic/route.ts,18,203
 POST,/api/ai/analyze-document,withAuth,starter,2 actions,Analyzes uploaded document and extracts requirements.,app/api/ai/analyze-document/route.ts,12,199
 POST,/api/stories/[storyId]/split,withAuth,core,1 action,Core: max 3 children. Team: max 7. Enterprise: unlimited. Requires 100% AC coverage.,app/api/stories/[storyId]/split/route.ts,26,176
 POST,/api/stories/[storyId]/split-enhanced,withAuth,core,1 action,Enhanced split with INVEST/SPIDR analysis.,app/api/stories/[storyId]/split-enhanced/route.ts,16,131
 GET,/api/stories/[storyId]/split-analysis,withAuth,core,1 action,Pre-flight analysis for story splitting.,app/api/stories/[storyId]/split-analysis/route.ts,7,102
 POST,/api/custom-templates,withAuth,core,None,Upload custom document template. Pro+ for shared templates.,app/api/custom-templates/route.ts,24,70
 GET,/api/custom-templates,withAuth,core,None,List custom templates. Pro+ shows shared templates.,app/api/custom-templates/route.ts,50,70
-POST,/api/custom-templates/[templateId]/preview,withAuth,core,None,Preview template format structure.,app/api/custom-templates/preview/route.ts
-DELETE,/api/custom-templates/[templateId],withAuth,core,None,Delete custom template.,app/api/custom-templates/[templateId]/route.ts
+POST,/api/custom-templates/[templateId]/preview,withAuth,core,None,Preview template format structure.,app/api/custom-templates/preview/route.ts,13,89
+GET,/api/custom-templates/[templateId],withAuth,core,None,Get custom template details.,app/api/custom-templates/[templateId]/route.ts,22,187
+PUT,/api/custom-templates/[templateId],withAuth,core,None,Update custom template.,app/api/custom-templates/[templateId]/route.ts,60,120
+DELETE,/api/custom-templates/[templateId],withAuth,core,None,Delete custom template.,app/api/custom-templates/[templateId]/route.ts,122,187
 POST,/api/documents/upload,withAuth,starter,10MB max,Upload PDF/DOCX/TXT/MD file.,app/api/documents/upload/route.ts,9,80
 POST,/api/projects/[projectId]/files/process-and-analyze,withAuth,starter,10MB max,Upload file, extract text, analyze with AI, optionally create stories.,app/api/projects/[projectId]/files/process-and-analyze/route.ts,14,124
 GET,/api/projects/[projectId]/export,withAuth,core,None,Export project to Word/Excel/PDF. Core+ required.,app/api/projects/[projectId]/export/route.ts,17,97
@@ -65,5 +67,97 @@ POST,/api/ai/autopilot,withAuth,team,3 actions,Backlog autopilot analysis. Team+
 POST,/api/ai/test-generator/[artefactId],withAuth,team,None,Generate test artifacts. Team+ required.,app/api/ai/test-generator/[artefactId]/route.ts
 POST,/api/integrations/webhooks,withAuth,enterprise,None,Configure webhooks. Enterprise required.,app/api/integrations/webhooks/route.ts
 GET,/api/integrations/api-keys,withAuth,enterprise,None,Get API keys. Enterprise required.,app/api/integrations/api-keys/route.ts
-POST,/api/integrations/api-keys,withAuth,enterprise,None,Create API key. Enterprise required.,app/api/integrations/api-keys/route.ts
-
+POST,/api/integrations/api-keys,withAuth,enterprise,None,Create API key. Enterprise required.,app/api/integrations/api-keys/route.ts,31,49
+GET,/api/integrations,withAuth,enterprise,None,List available integrations. Enterprise required.,app/api/integrations/route.ts
+GET,/api/comments,withAuth,starter,None,List comments for a story.,app/api/comments/route.ts
+POST,/api/comments,withAuth,starter,None,Create comment on story. Supports mentions and replies.,app/api/comments/route.ts,16,99
+GET,/api/comments/[commentId],withAuth,starter,None,Get comment details.,app/api/comments/[commentId]/route.ts
+PUT,/api/comments/[commentId],withAuth,starter,None,Update comment.,app/api/comments/[commentId]/route.ts
+DELETE,/api/comments/[commentId],withAuth,starter,None,Delete comment.,app/api/comments/[commentId]/route.ts
+POST,/api/comments/[commentId]/reactions,withAuth,starter,None,Add reaction to comment.,app/api/comments/[commentId]/reactions/route.ts
+GET,/api/notifications,withAuth,starter,None,List user notifications. Supports unreadOnly filter.,app/api/notifications/route.ts,6,30
+POST,/api/notifications/mark-read,withAuth,starter,None,Mark notifications as read.,app/api/notifications/mark-read/route.ts
+GET,/api/notifications/unread-count,withAuth,starter,None,Get count of unread notifications.,app/api/notifications/unread-count/route.ts
+GET,/api/notifications/preferences,withAuth,starter,None,Get notification preferences.,app/api/notifications/preferences/route.ts
+PUT,/api/notifications/preferences,withAuth,starter,None,Update notification preferences.,app/api/notifications/preferences/route.ts
+GET,/api/documents,withAuth,starter,None,List documents for a project.,app/api/documents/route.ts,6,27
+GET,/api/documents/[documentId]/download,withAuth,starter,None,Download document file.,app/api/documents/[documentId]/download/route.ts
+GET,/api/custom-templates/download-starter,None,None,None,Download starter template file (public).,app/api/custom-templates/download-starter/route.ts,9,29
+GET,/api/templates/[templateId],withAuth,core,None,Get template details. Core+ required.,app/api/templates/[templateId]/route.ts
+PUT,/api/templates/[templateId],withAuth,core,None,Update template. Core+ required.,app/api/templates/[templateId]/route.ts
+DELETE,/api/templates/[templateId],withAuth,core,None,Delete template. Core+ required.,app/api/templates/[templateId]/route.ts
+POST,/api/templates/seed,withAuth,admin,None,Seed default templates (admin only).,app/api/templates/seed/route.ts
+GET,/api/team/invite/[invitationId],None,None,None,Accept team invitation (public endpoint).,app/api/team/invite/[invitationId]/route.ts
+DELETE,/api/team/invite/[invitationId],withAuth,team,None,Cancel/revoke team invitation. Team+ admin required.,app/api/team/invite/[invitationId]/route.ts,12,85
+GET,/api/tasks,withAuth,starter,None,List tasks with filtering and pagination.,app/api/tasks/route.ts,17,117
+POST,/api/tasks,withAuth,starter,None,Create new task.,app/api/tasks/route.ts
+GET,/api/tasks/[taskId],withAuth,starter,None,Get task details.,app/api/tasks/[taskId]/route.ts,9,43
+PUT,/api/tasks/[taskId],withAuth,starter,None,Update task.,app/api/tasks/[taskId]/route.ts,48,111
+DELETE,/api/tasks/[taskId],withAuth,starter,None,Delete task.,app/api/tasks/[taskId]/route.ts
+POST,/api/tasks/reorder,withAuth,starter,None,Reorder tasks within a story.,app/api/tasks/reorder/route.ts
+GET,/api/sprints/[sprintId],withAuth,starter,None,Get sprint details.,app/api/sprints/[sprintId]/route.ts
+PUT,/api/sprints/[sprintId],withAuth,starter,None,Update sprint.,app/api/sprints/[sprintId]/route.ts
+POST,/api/sprints/[sprintId]/actions,withAuth,starter,None,Perform sprint actions (start, complete, cancel).,app/api/sprints/[sprintId]/actions/route.ts,15,109
+GET,/api/sprints/[sprintId]/stories,withAuth,starter,None,List stories in sprint.,app/api/sprints/[sprintId]/stories/route.ts
+POST,/api/sprints/[sprintId]/stories/manage,withAuth,starter,None,Manage sprint story assignments.,app/api/sprints/[sprintId]/stories/manage/route.ts
+GET,/api/sprints/[sprintId]/burndown,withAuth,starter,None,Get sprint burndown chart data.,app/api/sprints/[sprintId]/burndown/route.ts
+GET,/api/sprints/[sprintId]/velocity,withAuth,starter,None,Get sprint velocity metrics.,app/api/sprints/[sprintId]/velocity/route.ts
+GET,/api/sprints/[sprintId]/metrics,withAuth,starter,None,Get sprint metrics.,app/api/sprints/[sprintId]/metrics/route.ts
+GET,/api/projects/[projectId]/sprints,withAuth,starter,None,List sprints in project.,app/api/projects/[projectId]/sprints/route.ts
+GET,/api/projects/[projectId]/sprints/active,withAuth,starter,None,Get active sprint for project.,app/api/projects/[projectId]/sprints/active/route.ts
+POST,/api/projects/[projectId]/archive,withAuth,starter,None,Archive project.,app/api/projects/[projectId]/archive/route.ts
+POST,/api/projects/[projectId]/activate,withAuth,starter,None,Activate archived project.,app/api/projects/[projectId]/activate/route.ts
+GET,/api/projects/[projectId]/stats,withAuth,starter,None,Get project statistics.,app/api/projects/[projectId]/stats/route.ts
+GET,/api/projects/[projectId]/velocity,withAuth,starter,None,Get project velocity metrics.,app/api/projects/[projectId]/velocity/route.ts
+GET,/api/epics/[epicId]/status,withAuth,starter,None,Get/update epic status with validation.,app/api/epics/[epicId]/status/route.ts,20,59
+GET,/api/epics/[epicId]/progress,withAuth,starter,None,Get epic progress metrics.,app/api/epics/[epicId]/progress/route.ts
+GET,/api/stories/[storyId]/tasks,withAuth,starter,None,List tasks for a story.,app/api/stories/[storyId]/tasks/route.ts
+POST,/api/stories/[storyId]/tasks,withAuth,starter,None,Create task for a story.,app/api/stories/[storyId]/tasks/route.ts
+POST,/api/stories/[storyId]/sprint,withAuth,starter,None,Assign story to sprint.,app/api/stories/[storyId]/sprint/route.ts
+GET,/api/stories/[storyId]/ai-split-suggestions,withAuth,core,1 action,Get AI suggestions for splitting story.,app/api/stories/[storyId]/ai-split-suggestions/route.ts
+GET,/api/analytics/velocity,withAuth,starter,None,Get velocity analytics.,app/api/analytics/velocity/route.ts
+GET,/api/analytics/burndown,withAuth,starter,None,Get burndown analytics.,app/api/analytics/burndown/route.ts
+GET,/api/analytics/sprint-health,withAuth,starter,None,Get sprint health metrics.,app/api/analytics/sprint-health/route.ts
+POST,/api/ai/scoring,withAuth,team,None,Generate RICE, WSJF, or effort estimates. Team+ required.,app/api/ai/scoring/route.ts,15,77
+GET,/api/ai/scoring,withAuth,team,None,Get scoring history for a story. Team+ required.,app/api/ai/scoring/route.ts,59,77
+POST,/api/ai/planning,withAuth,team,None,Generate sprint forecast with AI. Team+ required.,app/api/ai/planning/route.ts,14,46
+GET,/api/ai/planning,withAuth,team,None,Get forecast or calculate velocity. Team+ required.,app/api/ai/planning/route.ts,44,46
+POST,/api/ai/planning/release,withAuth,team,None,Generate release forecast. Team+ required.,app/api/ai/planning/release/route.ts
+GET,/api/ai/planning/[sprintId]/history,withAuth,team,None,Get planning history for sprint. Team+ required.,app/api/ai/planning/[sprintId]/history/route.ts
+GET,/api/ai/ac-validator/[storyId]/history,withAuth,team,None,Get AC validation history. Team+ required.,app/api/ai/ac-validator/[storyId]/history/route.ts
+POST,/api/ai/autopilot/[jobId]/approve,withAuth,team,None,Approve autopilot job actions. Team+ required.,app/api/ai/autopilot/[jobId]/approve/route.ts
+POST,/api/ai/autopilot/[jobId]/retry,withAuth,team,None,Retry failed autopilot job. Team+ required.,app/api/ai/autopilot/[jobId]/retry/route.ts
+POST,/api/ai/decompose,withAuth,starter,AI actions,Decompose requirements into capabilities.,app/api/ai/decompose/route.ts,15,108
+POST,/api/ai/generate-from-capability,withAuth,starter,AI actions,Generate story from capability definition.,app/api/ai/generate-from-capability/route.ts,14,108
+POST,/api/ai/generate-story-haiku,withAuth,starter,1 action,Generate single story using Haiku model.,app/api/ai/generate-story-haiku/route.ts,16,103
+POST,/api/ai/batch-create-stories,withAuth,pro,Multiple actions,Batch create stories from requirements. Pro+ required.,app/api/ai/batch-create-stories/route.ts
+GET,/api/users/me,withAuth,starter,None,Get current user profile.,app/api/users/me/route.ts
+GET,/api/users/search,withAuth,starter,None,Search users in organization.,app/api/users/search/route.ts
+GET,/api/users/[userId],withAuth,starter,None,Get user details.,app/api/users/[userId]/route.ts
+GET,/api/users/[userId]/stats,withAuth,starter,None,Get user statistics.,app/api/users/[userId]/stats/route.ts,1,53
+GET,/api/users/[userId]/stories,withAuth,starter,None,List stories assigned to user.,app/api/users/[userId]/stories/route.ts
+GET,/api/users/[userId]/activity,withAuth,starter,None,Get user activity feed.,app/api/users/[userId]/activity/route.ts
+GET,/api/dashboard/stats,withAuth,starter,None,Get dashboard statistics.,app/api/dashboard/stats/route.ts
+POST,/api/user/delete-account,withAuth,None,None,Delete user account.,app/api/user/delete-account/route.ts
+GET,/api/user/export-data,withAuth,None,None,Export user data (GDPR).,app/api/user/export-data/route.ts
+GET,/api/organizations/[orgId]/projects,withAuth,starter,None,List projects in organization.,app/api/organizations/[orgId]/projects/route.ts
+GET,/api/organizations/[orgId]/projects/[projectId],withAuth,starter,None,Get project in organization context.,app/api/organizations/[orgId]/projects/[projectId]/route.ts
+GET,/api/billing/usage,withAuth,starter,None,Get billing usage statistics.,app/api/billing/usage/route.ts
+POST,/api/billing/checkout,withAuth,None,None,Create checkout session (legacy).,app/api/billing/checkout/route.ts
+POST,/api/billing/confirm-tokens,withAuth,starter,None,Confirm token purchase.,app/api/billing/confirm-tokens/route.ts
+GET,/api/subscriptions/usage,withAuth,starter,None,Get subscription usage stats.,app/api/subscriptions/usage/route.ts
+GET,/api/subscriptions/features,withAuth,starter,None,Get available features for tier.,app/api/subscriptions/features/route.ts
+POST,/api/subscriptions/enforce-limit,withAuth,None,None,Enforce subscription limits (internal).,app/api/subscriptions/enforce-limit/route.ts
+GET,/api/embeddings/health,None,None,None,Check embeddings service health.,app/api/embeddings/health/route.ts
+GET,/api/realtime/auth,withAuth,starter,None,Get realtime connection auth token.,app/api/realtime/auth/route.ts
+GET,/api/debug/session,withAuth,None,None,Debug session information (dev only).,app/api/debug/session/route.ts
+POST,/api/cron/daily-analytics,None,Cron secret,Generate daily analytics snapshots.,app/api/cron/daily-analytics/route.ts,20,132
+POST,/api/cron/daily-snapshots,None,Cron secret,Create daily data snapshots.,app/api/cron/daily-snapshots/route.ts
+POST,/api/cron/email-digests,None,Cron secret,Send email digests to users.,app/api/cron/email-digests/route.ts
+POST,/api/cron/expire-addons,None,Cron secret,Expire add-ons past their expiry date.,app/api/cron/expire-addons/route.ts
+POST,/api/cron/expire-trials,None,Cron secret,Expire trial periods.,app/api/cron/expire-trials/route.ts
+POST,/api/cron/reset-billing-periods,None,Cron secret,Reset AI action billing periods.,app/api/cron/reset-billing-periods/route.ts
+POST,/api/cron/subscription-health,None,Cron secret,Check subscription health and send alerts.,app/api/cron/subscription-health/route.ts
+GET,/api/admin/prompt-templates,withAuth,admin,None,List prompt templates (admin only).,app/api/admin/prompt-templates/route.ts
+GET,/api/ai/prompt-templates,withAuth,starter,None,List available prompt templates.,app/api/ai/prompt-templates/route.ts
+POST,/api/story,withAuth,starter,None,Create story (legacy endpoint).,app/api/story/route.ts,16,76
