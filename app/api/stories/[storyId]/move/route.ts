@@ -3,6 +3,7 @@ import { withAuth, canModify } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { safeValidateMoveStory, MoveStoryInput } from '@/lib/validations/story';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
+import { realtimeService } from '@/lib/services/realtime.service';
 
 /**
  * PATCH /api/stories/[storyId]/move - Move story to different status (Kanban board)
@@ -46,12 +47,28 @@ async function moveStory(req: NextRequest, context: { user: any }) {
 
     await assertStoryAccessible(storyId, context.user.organizationId);
 
+    // Get existing story to get old status and project ID
+    const existingStory = await storiesRepository.getById(storyId);
+    const oldStatus = existingStory.status;
+
     // Move the story (update status)
     const updatedStory = await storiesRepository.update(
       storyId,
       { status: moveData.newStatus },
       context.user.id
     );
+
+    // Broadcast real-time update (non-blocking)
+    if (realtimeService.isEnabled() && existingStory.projectId) {
+      realtimeService.broadcastStoryMoved(
+        context.user.organizationId,
+        existingStory.projectId,
+        storyId,
+        context.user.id,
+        oldStatus || 'backlog',
+        moveData.newStatus
+      ).catch(err => console.warn('Failed to broadcast story move:', err));
+    }
 
     return NextResponse.json({
       success: true,
