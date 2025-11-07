@@ -30,6 +30,11 @@ Sentry.init({
     'NetworkError',
     'Non-Error promise rejection captured',
     'Stripe.js not available',
+    // Browser extension errors
+    'Attempting to use a disconnected port object',
+    'disconnected port object',
+    'MessagePort closed',
+    'Extension context invalidated',
   ],
   
   beforeSend(event, hint) {

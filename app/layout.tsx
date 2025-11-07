@@ -41,6 +41,25 @@ export default function RootLayout({
                   }
                 }
               })();
+              
+              // Suppress browser extension errors
+              (function() {
+                const originalError = console.error;
+                console.error = function(...args) {
+                  const message = args.join(' ');
+                  if (
+                    message.includes('disconnected port object') ||
+                    message.includes('Extension context invalidated') ||
+                    message.includes('MessagePort closed') ||
+                    message.includes('proxy.js') ||
+                    message.includes('backendManager.js')
+                  ) {
+                    // Silently ignore browser extension errors
+                    return;
+                  }
+                  originalError.apply(console, args);
+                };
+              })();
             `,
           }}
         />
