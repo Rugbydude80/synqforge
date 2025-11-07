@@ -13,6 +13,9 @@ import { EmbeddingsService } from '@/lib/services/embeddings.service';
 import { ContextLevel } from '@/lib/types/context.types';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 import { piiDetectionService } from '@/lib/services/pii-detection.service';
+import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-document-templates.repository';
+import { customTemplateParserService } from '@/lib/services/custom-template-parser.service';
+import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -215,18 +218,65 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       );
     }
 
+    // Handle custom document template if provided
+    let customTemplateFormat: string | undefined;
+    let customTemplateId: string | undefined;
+    
+    if (validatedData.customTemplateId) {
+      // Check subscription tier for custom templates
+      const tierCheck = await checkSubscriptionTier(context.user.organizationId, 'pro');
+      if (!tierCheck.hasAccess) {
+        return NextResponse.json(
+          {
+            error: 'Custom document templates are only available on Pro, Team, or Enterprise plans',
+            currentTier: tierCheck.currentTier,
+            requiredTier: 'pro',
+            upgradeUrl: tierCheck.upgradeUrl || '/settings/billing',
+          },
+          { status: 403 }
+        );
+      }
+
+      // Load custom template
+      const customTemplate = await customDocumentTemplatesRepository.getById(
+        validatedData.customTemplateId,
+        context.user.organizationId
+      );
+
+      if (!customTemplate || !customTemplate.isActive) {
+        return NextResponse.json(
+          { error: 'Custom template not found or inactive' },
+          { status: 404 }
+        );
+      }
+
+      // Generate prompt enhancement from template format
+      if (customTemplate.templateFormat) {
+        customTemplateFormat = customTemplateParserService.generatePromptEnhancement(
+          customTemplate.templateFormat as any
+        );
+        customTemplateId = customTemplate.id;
+        
+        // Increment usage count (async, don't block)
+        customDocumentTemplatesRepository.incrementUsage(customTemplate.id).catch(
+          (err) => console.error('Failed to increment template usage:', err)
+        );
+      }
+    }
+
     // Combine project context with semantic context
     const enhancedContext = validatedData.projectContext 
       ? `${validatedData.projectContext}\n${semanticContext}`
       : semanticContext;
 
-    // Generate stories using AI with selected template
+    // Generate stories using AI with selected template and custom format
     const response = await aiService.generateStories(
       validatedData.requirements,
       enhancedContext,
       5,
       undefined, // Use default model
-      templateKey
+      templateKey,
+      customTemplateFormat
     );
 
     // Track AI usage with real token data and template selection
@@ -240,6 +290,7 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       JSON.stringify(response.stories),
       {
         promptTemplate: templateKey,
+        customTemplateId: customTemplateId,
         storiesCount: response.stories.length,
         semanticSearchUsed
       }

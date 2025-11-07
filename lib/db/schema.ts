@@ -911,6 +911,36 @@ export const templateVersions = pgTable(
 )
 
 // ============================================
+// CUSTOM DOCUMENT TEMPLATES - User-uploaded story format templates
+// ============================================
+
+export const customDocumentTemplates = pgTable(
+  'custom_document_templates',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    templateName: varchar('template_name', { length: 255 }).notNull(),
+    description: text('description'),
+    fileName: varchar('file_name', { length: 255 }).notNull(),
+    fileType: fileTypeEnum('file_type').notNull(),
+    fileSize: integer('file_size').notNull(),
+    fileBytes: bytea('file_bytes').notNull(),
+    extractedContent: text('extracted_content'), // Extracted text from document
+    templateFormat: json('template_format').$type<Record<string, any>>(), // Parsed template structure
+    usageCount: integer('usage_count').default(0),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_custom_templates_org').on(table.organizationId),
+    creatorIdx: index('idx_custom_templates_creator').on(table.createdBy),
+    activeIdx: index('idx_custom_templates_active').on(table.organizationId, table.isActive),
+  })
+)
+
+// ============================================
 // RELATIONS
 // ============================================
 
@@ -1880,6 +1910,17 @@ export const templateStoriesRelations = relations(templateStories, ({ one }) => 
   template: one(storyTemplates, {
     fields: [templateStories.templateId],
     references: [storyTemplates.id],
+  }),
+}))
+
+export const customDocumentTemplatesRelations = relations(customDocumentTemplates, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [customDocumentTemplates.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [customDocumentTemplates.createdBy],
+    references: [users.id],
   }),
 }))
 

@@ -9,6 +9,7 @@ export const generateStoriesSchema = z.object({
   businessGoals: z.string().optional(),
   model: z.string().optional(),
   promptTemplate: z.string().optional(), // Template selection
+  customTemplateId: z.string().optional(), // Custom document template ID
 });
 
 export const generateEpicSchema = z.object({

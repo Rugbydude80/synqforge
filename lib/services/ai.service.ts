@@ -151,9 +151,10 @@ export class AIService {
     context?: string,
     count: number = 5,
     model: string = MODEL,
-    promptTemplate?: string
+    promptTemplate?: string,
+    customTemplateFormat?: string // Custom template format enhancement
   ): Promise<StoryGenerationResponse> {
-    const prompt = this.buildStoryGenerationPrompt(requirements, context, count, promptTemplate);
+    const prompt = this.buildStoryGenerationPrompt(requirements, context, count, promptTemplate, customTemplateFormat);
 
     const response = await this.generate({
       model,
@@ -374,11 +375,17 @@ export class AIService {
     requirements: string, 
     context?: string, 
     count: number = 5,
-    promptTemplate?: string
+    promptTemplate?: string,
+    customTemplateFormat?: string // Custom template format enhancement
   ): string {
     // Get the system prompt for the selected template (server-side only)
     const templateKey = promptTemplate || getDefaultTemplateKey();
-    const systemPrompt = getSystemPromptForTemplate(templateKey);
+    let systemPrompt = getSystemPromptForTemplate(templateKey);
+    
+    // If custom template format is provided, append it to the system prompt
+    if (customTemplateFormat) {
+      systemPrompt += customTemplateFormat;
+    }
     
     // Inject requirements and context into the template
     const contextSection = context ? `Context: ${context}\n\n` : '';
