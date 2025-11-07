@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
@@ -39,45 +39,13 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [activityFilter, setActivityFilter] = useState<string>('all')
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
-  const [, forceUpdate] = useState({})
   const [orgInfo, setOrgInfo] = useState<{
     trialEndsAt: Date | null
     subscriptionStatus: string
     plan: string | null
   } | null>(null)
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-      return
-    }
-
-    if (status === 'authenticated') {
-      fetchDashboardData()
-    }
-  }, [status, router])
-
-  // Update the display every 10 seconds to refresh the relative time
-  useEffect(() => {
-    const interval = setInterval(() => {
-      forceUpdate({}) // Force re-render to update relative time
-    }, 10000) // Update every 10 seconds
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Auto-refresh dashboard data every 30 seconds to keep it live
-  useEffect(() => {
-    if (status !== 'authenticated') return
-
-    const interval = setInterval(() => {
-      fetchDashboardData(true) // Silent refresh
-    }, 30000) // Refresh every 30 seconds
-
-    return () => clearInterval(interval)
-  }, [status])
-
-  const fetchDashboardData = async (isRefresh = false) => {
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true)
@@ -122,7 +90,39 @@ export default function DashboardPage() {
         setLoading(false)
       }
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+
+    if (status === 'authenticated') {
+      fetchDashboardData()
+    }
+  }, [status, router, fetchDashboardData])
+
+  // Update the display every 10 seconds to refresh the relative time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Use a timestamp update instead of forceUpdate to avoid object reference issues
+      setLastSyncTime(new Date())
+    }, 10000) // Update every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // Auto-refresh dashboard data every 30 seconds to keep it live
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const interval = setInterval(() => {
+      fetchDashboardData(true) // Silent refresh
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [status, fetchDashboardData])
 
   const handleActivateProject = async (projectId: string) => {
     try {
@@ -234,9 +234,9 @@ export default function DashboardPage() {
     ]
   }
 
-  const metrics = calculateMetrics()
+  const metrics = useMemo(() => calculateMetrics(), [stats])
 
-  const formatActivity = (activity: any) => {
+  const formatActivity = useCallback((activity: any) => {
     const actionMap: Record<string, { title: string; type: string; status: string }> = {
       created_project: {
         title: `Created ${activity.projectName || 'project'}`,
@@ -296,17 +296,19 @@ export default function DashboardPage() {
       timestamp: new Date(activity.createdAt),
       status: mappedActivity.status,
     }
-  }
+  }, [])
 
-  const recentActivity = activities
-    .map(formatActivity)
-    .filter((activity) => {
-      if (activityFilter === 'all') return true
-      if (activityFilter === 'ai') return activity.type === 'ai_generated'
-      if (activityFilter === 'completed') return activity.status === 'done'
-      if (activityFilter === 'deleted') return activity.status === 'deleted'
-      return true
-    })
+  const recentActivity = useMemo(() => {
+    return activities
+      .map(formatActivity)
+      .filter((activity) => {
+        if (activityFilter === 'all') return true
+        if (activityFilter === 'ai') return activity.type === 'ai_generated'
+        if (activityFilter === 'completed') return activity.status === 'done'
+        if (activityFilter === 'deleted') return activity.status === 'deleted'
+        return true
+      })
+  }, [activities, formatActivity, activityFilter])
 
   const quickActions = [
     {
