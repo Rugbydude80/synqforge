@@ -1,6 +1,5 @@
 import { FileText, Upload, CheckCircle2, Shield, Download } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export function CustomTemplatesFeature() {

@@ -1,4 +1,4 @@
-import { Brain, Zap, TrendingDown, CheckCircle, Shield } from 'lucide-react'
+import { Brain, Zap, CheckCircle, Shield } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
