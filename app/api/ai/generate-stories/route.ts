@@ -301,9 +301,82 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
     const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
     await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
 
-    // Generate embeddings for new stories (async, don't block response)
-    if (response.stories && Array.isArray(response.stories)) {
-      response.stories.forEach((story: any) => {
+    // CRITICAL: Validate and sanitize all generated stories
+    const validatedStories = []
+    const validationErrors: string[] = []
+    
+    for (const story of response.stories || []) {
+      // Validate content (inappropriate language, format, etc.)
+      const contentValidation = contentValidationService.validateStoryContent({
+        title: story.title || '',
+        description: story.description,
+        acceptanceCriteria: story.acceptanceCriteria || story.acceptance_criteria || [],
+        priority: story.priority,
+        storyPoints: story.storyPoints,
+      })
+
+      // If content has errors (inappropriate language, etc.), skip this story
+      if (!contentValidation.isValid) {
+        console.warn(`Story validation failed: ${contentValidation.errors.join(', ')}`)
+        validationErrors.push(`Story "${story.title?.substring(0, 50)}": ${contentValidation.errors.join(', ')}`)
+        continue // Skip invalid stories
+      }
+
+      // If custom template is used, validate template compliance
+      if (customTemplate && customTemplate.templateFormat) {
+        const templateValidation = contentValidationService.validateTemplateCompliance(
+          {
+            title: story.title || '',
+            description: story.description,
+            acceptanceCriteria: story.acceptanceCriteria || story.acceptance_criteria || [],
+            priority: story.priority,
+            storyPoints: story.storyPoints,
+          },
+          customTemplate.templateFormat as any
+        )
+
+        // Template compliance errors are warnings, not blockers (but log them)
+        if (!templateValidation.isValid) {
+          console.warn(`Template compliance issues: ${templateValidation.errors.join(', ')}`)
+        }
+        if (templateValidation.warnings.length > 0) {
+          console.info(`Template compliance warnings: ${templateValidation.warnings.join(', ')}`)
+        }
+      }
+
+      // Use sanitized content if available, otherwise use original
+      const finalStory = contentValidation.sanitizedContent || story
+      
+      validatedStories.push({
+        ...story,
+        title: finalStory.title,
+        description: finalStory.description,
+        acceptanceCriteria: finalStory.acceptanceCriteria,
+        priority: finalStory.priority,
+        storyPoints: finalStory.storyPoints,
+      })
+    }
+
+    // If all stories were filtered out, return error
+    if (validatedStories.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'All generated stories failed validation',
+          details: validationErrors,
+          message: 'Generated stories contained inappropriate content or did not meet quality standards. Please try again with different requirements.',
+        },
+        { status: 400 }
+      )
+    }
+
+    // If some stories were filtered, log warning but continue
+    if (validatedStories.length < response.stories.length) {
+      console.warn(`Filtered ${response.stories.length - validatedStories.length} invalid stories`)
+    }
+
+    // Generate embeddings for validated stories (async, don't block response)
+    if (validatedStories && Array.isArray(validatedStories)) {
+      validatedStories.forEach((story: any) => {
         if (story.id && story.title) {
           embeddingsService
             .embedStory(story.id, {
@@ -321,13 +394,16 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
 
     return NextResponse.json({
       success: true,
-      stories: response.stories,
-      count: response.stories.length,
+      stories: validatedStories,
+      count: validatedStories.length,
       usage: response.usage,
       fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
       meta: {
         semanticSearchUsed,
         contextLength: enhancedContext.length,
+        originalCount: response.stories.length,
+        filteredCount: response.stories.length - validatedStories.length,
+        validationWarnings: validationErrors.length > 0 ? validationErrors : undefined,
       },
     });
 
