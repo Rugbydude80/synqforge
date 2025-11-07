@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { RefreshCw, Clock, CheckCircle2, XCircle, AlertCircle, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,8 +29,15 @@ export function AutopilotJobsList({ refreshTrigger, onJobSelect, className }: Au
   const [jobs, setJobs] = useState<AutopilotJob[]>([])
   const [loading, setLoading] = useState(true)
   const [retrying, setRetrying] = useState<string | null>(null)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchJobs = async () => {
+  // Memoize the check for active jobs to avoid unnecessary effect re-runs
+  const hasActiveJobs = useMemo(
+    () => jobs.some((job) => ['queued', 'processing'].includes(job.status)),
+    [jobs]
+  )
+
+  const fetchJobs = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/ai/autopilot', {
@@ -50,26 +57,34 @@ export function AutopilotJobsList({ refreshTrigger, onJobSelect, className }: Au
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchJobs()
-  }, [refreshTrigger])
+  }, [refreshTrigger, fetchJobs])
 
   // Poll for updates on jobs that are processing
   useEffect(() => {
-    const hasActiveJobs = jobs.some((job) =>
-      ['queued', 'processing'].includes(job.status)
-    )
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
 
     if (!hasActiveJobs) return
 
-    const interval = setInterval(() => {
+    // Set up polling interval
+    pollingIntervalRef.current = setInterval(() => {
       fetchJobs()
     }, 5000) // Poll every 5 seconds
 
-    return () => clearInterval(interval)
-  }, [jobs])
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [hasActiveJobs, fetchJobs])
 
   const handleRetry = async (jobId: string) => {
     try {

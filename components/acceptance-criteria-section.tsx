@@ -157,6 +157,11 @@ export function AcceptanceCriteriaSection({
   const [completed, setCompleted] = React.useState<Set<number>>(new Set())
   const [saving, setSaving] = React.useState(false)
 
+  // Sync local state with props when they change
+  React.useEffect(() => {
+    setCriteria(acceptanceCriteria)
+  }, [acceptanceCriteria])
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
