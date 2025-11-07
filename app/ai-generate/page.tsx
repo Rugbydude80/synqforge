@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
 import { toast } from 'sonner'
 import { PromptTemplateSelector } from '@/components/ai/prompt-template-selector'
+import { CustomTemplateSelector } from '@/components/ai/custom-template-manager'
 
 interface GeneratedStory {
   id: string
@@ -62,6 +63,7 @@ export default function AIGeneratePage() {
   const [generatedStories, setGeneratedStories] = useState<GeneratedStory[]>([])
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [promptTemplate, setPromptTemplate] = useState<string>('standard')
+  const [customTemplateId, setCustomTemplateId] = useState<string | undefined>(undefined)
 
   // Fetch projects on mount
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function AIGeneratePage() {
         requirements,
         projectContext: `Project ID: ${projectId}`,
         promptTemplate: promptTemplate,
+        customTemplateId: customTemplateId,
       })
 
       // Map AI response to our story format
@@ -371,6 +374,11 @@ export default function AIGeneratePage() {
               <PromptTemplateSelector
                 value={promptTemplate}
                 onChange={setPromptTemplate}
+                disabled={processing || analyzing}
+              />
+              <CustomTemplateSelector
+                value={customTemplateId}
+                onChange={setCustomTemplateId}
                 disabled={processing || analyzing}
               />
               <Textarea

@@ -12,11 +12,13 @@ import {
   Database,
   Zap,
   CreditCard,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
+import { CustomTemplateManager } from '@/components/ai/custom-template-manager'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -49,6 +51,7 @@ export default function SettingsPage() {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'integrations', label: 'Integrations', icon: Database },
   ]
@@ -110,6 +113,7 @@ export default function SettingsPage() {
             {activeTab === 'security' && <SecuritySettings />}
             {activeTab === 'notifications' && <NotificationSettings />}
             {activeTab === 'appearance' && <AppearanceSettings />}
+            {activeTab === 'templates' && <TemplatesSettings />}
             {activeTab === 'billing' && <BillingSettings />}
             {activeTab === 'integrations' && <IntegrationSettings />}
           </div>
@@ -502,6 +506,25 @@ function LogoPreview({ colorScheme }: { colorScheme: string }) {
       <span className={`text-3xl font-bold bg-gradient-to-r ${colors.text} bg-clip-text text-transparent`}>
         SynqForge
       </span>
+    </div>
+  )
+}
+
+function TemplatesSettings() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Custom Document Templates</CardTitle>
+          <CardDescription>
+            Upload document templates to define custom story formats for AI generation.
+            Available on Pro, Team, and Enterprise plans.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomTemplateManager />
+        </CardContent>
+      </Card>
     </div>
   )
 }
