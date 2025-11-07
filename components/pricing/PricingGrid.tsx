@@ -87,8 +87,8 @@ export function PricingGrid({ plans, billingInterval, currency, onSelectPlan, lo
   }
 
   const getButtonText = (plan: Plan) => {
-    if (plan.id === 'starter') return 'Get Started'
-    if (plan.id === 'enterprise') return 'Contact Sales'
+    if (plan.id === 'starter') return 'Continue with Starter Plan'
+    if (plan.id === 'enterprise') return 'Contact Sales →'
     return 'Start Free Trial'
   }
 

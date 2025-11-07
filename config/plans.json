@@ -14,7 +14,7 @@
         "EUR": { "monthly": 0, "annual": 0 },
         "USD": { "monthly": 0, "annual": 0 }
       },
-      "description": "Individuals exploring SynqForge",
+      "description": "For individuals exploring SynqForge",
       "minSeats": 1,
       "maxSeats": 1,
       "trial": 7,
@@ -27,20 +27,12 @@
       },
       "features": [
         "25 AI actions per month",
-        "7-day trial",
-        "Single story Split with INVEST gating",
-        "Story Update with side-by-side diff",
-        "SPIDR hints for splitting",
-        "Up to 3 children per split",
-        "Preflight cost estimates",
-        "Manual editing always available",
-        "Community support"
+        "7-day trial of premium features",
+        "Single story generation with INVEST gating",
+        "Story comparison (side-by-side diff view)",
+        "Export to Word or Excel"
       ],
-      "limitations": [
-        "No pooling across team",
-        "No rollover of unused actions",
-        "No bulk operations"
-      ]
+      "limitations": []
     },
     "core": {
       "id": "core",
@@ -53,7 +45,7 @@
         "EUR": { "monthly": 11.99, "annual": 119.90 },
         "USD": { "monthly": 12.00, "annual": 120.00 }
       },
-      "description": "Freelancers & solo analysts",
+      "description": "For freelancers and solo business analysts",
       "minSeats": 1,
       "maxSeats": 1,
       "actions": 400,
@@ -67,22 +59,19 @@
         "version": "2025-10-24"
       },
       "features": [
+        "Everything in Starter",
         "400 AI actions per user/month",
         "20% rollover of unused actions",
         "Advanced Gherkin acceptance criteria",
-        "Split up to 3 children per story",
-        "SPIDR presets & INVEST validation",
-        "Update with per-section accept/reject",
-        "Preflight estimates",
-        "Export functionality",
-        "Custom templates",
-        "Email support (48h SLA)"
+        "Split stories into up to 3 child stories",
+        "Priority generation queue",
+        "Access to Custom Document Templates (upload & validation included)"
       ],
       "limitations": []
     },
     "pro": {
       "id": "pro",
-      "name": "Pro (Collaborative)",
+      "name": "Pro",
       "label": "Pro",
       "price": 19.99,
       "priceAnnual": 199.90,
@@ -91,7 +80,7 @@
         "EUR": { "monthly": 21.99, "annual": 219.90 },
         "USD": { "monthly": 22.00, "annual": 220.00 }
       },
-      "description": "Small delivery teams",
+      "description": "For small delivery teams",
       "minSeats": 1,
       "maxSeats": 4,
       "actions": 800,
@@ -107,25 +96,19 @@
         "version": "2025-10-24"
       },
       "features": [
+        "Everything in Core",
         "800 AI actions per user/month",
         "20% rollover of unused actions",
-        "🎯 NEW: Smart Context — AI learns from similar stories (75% faster)",
-        "Semantic search finds relevant examples automatically",
-        "Shared templates across team",
-        "Update Story with structured patching",
-        "Bulk split stories (up to 3 at once)",
-        "Team collaboration features",
-        "Advanced Gherkin templates",
-        "Priority email support (24h SLA)",
-        "Export to Jira, Linear, CSV",
-        "Custom fields",
-        "Integrations (coming Q2 2026)"
+        "Smart Context — AI learns from your similar stories for 75% better accuracy",
+        "Semantic search to locate relevant examples automatically",
+        "Custom Document Templates — upload, manage, and version your own structured story templates",
+        "Fast export to Jira, CSV, Word, or PDF"
       ],
       "limitations": []
     },
     "team": {
       "id": "team",
-      "name": "Team (5+)",
+      "name": "Team",
       "label": "Team",
       "price": 16.99,
       "priceAnnual": 169.90,
@@ -134,7 +117,7 @@
         "EUR": { "monthly": 18.99, "annual": 189.90 },
         "USD": { "monthly": 20.00, "annual": 200.00 }
       },
-      "description": "Larger agile teams",
+      "description": "For larger Agile teams",
       "minSeats": 5,
       "maxSeats": null,
       "actionsBase": 10000,
@@ -153,21 +136,12 @@
         "version": "2025-10-24"
       },
       "features": [
+        "Everything in Pro",
         "10,000 base + 1,000 AI actions per seat",
-        "Pooled sharing across team",
-        "🎯 NEW: Smart Context + Deep Reasoning mode",
-        "AI analyzes complex compliance & security stories",
-        "Semantic search across all epic stories",
-        "Approval flows for Done items",
-        "Split up to 7 children per story",
-        "Bulk operations (split/update)",
-        "SPIDR playbooks & structured patching",
-        "Policy rules (max children, actions)",
-        "1-year audit logs with revision links",
-        "Advanced AI modules (6 modules)",
-        "Priority support (24h SLA)",
-        "SSO/SAML authentication",
-        "API & Integrations (coming Q2 2026)"
+        "Shared AI pool across the team",
+        "Smart Context + Deep Reasoning Mode — enhanced understanding for complex, compliance, and security stories",
+        "Team template library with shared permissions",
+        "Admin dashboard for project oversight"
       ],
       "limitations": []
     },
@@ -182,7 +156,7 @@
         "EUR": { "monthly": "custom", "annual": "custom" },
         "USD": { "monthly": "custom", "annual": "custom" }
       },
-      "description": "Scaled organisations",
+      "description": "For scaled organisations and secure deployments",
       "minSeats": 10,
       "maxSeats": null,
       "actionsBase": "custom",
@@ -198,20 +172,13 @@
         "version": "2025-10-24"
       },
       "features": [
-        "Custom AI action pools",
-        "Department budget allocations",
-        "🎯 Smart Context + Deep Reasoning + Custom models",
-        "Semantic search with custom similarity thresholds",
-        "Unlimited children per split",
-        "Org-wide enforced templates",
-        "Enforced INVEST checklists",
-        "Admin-only cost policies",
-        "All 12 AI modules",
-        "SSO/SAML authentication",
-        "Data residency options",
-        "SLA guarantees (99.9% uptime)",
-        "Dedicated account manager",
-        "24/7 priority support"
+        "Everything in Team",
+        "Custom AI action pools and dedicated API keys",
+        "Department-level budget and quota controls",
+        "Deep Reasoning + Custom Models tuned to your story language and domain",
+        "Private semantic search with configurable similarity thresholds",
+        "Enterprise-grade template management and versioning",
+        "Compliance, audit logging, and private cloud options"
       ],
       "limitations": []
     }

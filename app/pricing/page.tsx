@@ -193,12 +193,10 @@ export default function PricingPage() {
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
           <h1 className="text-5xl font-bold tracking-tight mb-4">
-            Simple plans. Built for how you work.
+            Choose your plan
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Every plan includes AI-powered story generation, structured exports, and secure storage.
-            <br />
-            Upgrade only when you need more capacity.
+            Find the right plan for your workflow — from solo analysts to full Agile delivery teams.
           </p>
 
           {/* Currency & Billing Toggle */}
@@ -323,16 +321,17 @@ export default function PricingPage() {
 
         {/* Footer CTA */}
         <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold mb-2">
+            Get started in minutes.
+          </h2>
+          <p className="text-lg text-muted-foreground mb-6">
+            Start free today — no setup required.
+          </p>
           <div className="flex gap-4 justify-center mb-8">
             <Button size="lg" onClick={() => router.push('/auth/signup')}>
-              Start Free — Upgrade Anytime
+              Try SynqForge Free
             </Button>
           </div>
-          
-          {/* Footer reassurance */}
-          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-            Every plan includes full data security, export access, and cancellation at any time.
-          </p>
         </div>
 
         {/* Disclaimer */}
