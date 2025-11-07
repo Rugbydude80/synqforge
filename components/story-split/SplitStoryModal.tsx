@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -90,14 +90,14 @@ export function SplitStoryModal({ storyId, open, onClose }: SplitStoryModalProps
     }
   };
 
-  const handleValidationChange = (valid: boolean, results?: ChildValidationResult[]) => {
+  const handleValidationChange = useCallback((valid: boolean, results?: ChildValidationResult[]) => {
     setCanSubmit(valid);
     if (results) {
       setValidationResults(results);
       // Show validation summary if invalid
       setShowValidationSummary(!valid);
     }
-  };
+  }, []);
 
   if (isLoading) {
     return (
