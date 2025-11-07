@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
-import { BillingContent } from '@/app/(dashboard)/settings/billing/BillingContent'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -83,7 +82,13 @@ export default function SettingsPage() {
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => {
+                        if (tab.id === 'billing') {
+                          router.push('/settings/billing')
+                        } else {
+                          setActiveTab(tab.id)
+                        }
+                      }}
                       className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                         activeTab === tab.id
                           ? 'bg-gradient-primary text-white shadow-lg shadow-brand-purple-500/20'
@@ -502,24 +507,15 @@ function LogoPreview({ colorScheme }: { colorScheme: string }) {
 }
 
 function BillingSettings() {
-  const { data: session } = useSession()
-  const organizationId = session?.user?.organizationId
+  // This component should not be rendered anymore as billing tab navigates directly
+  // Keeping as fallback in case of direct navigation
+  const router = useRouter()
   
-  if (!organizationId) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing & Subscription</CardTitle>
-          <CardDescription>Manage your subscription and billing</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Unable to load billing information.</p>
-        </CardContent>
-      </Card>
-    )
-  }
+  useEffect(() => {
+    router.push('/settings/billing')
+  }, [router])
 
-  return <BillingContent organizationId={organizationId} />
+  return null
 }
 
 function IntegrationSettings() {
