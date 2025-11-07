@@ -1,0 +1,69 @@
+method,route,auth,planGate,limit,notes,file,lineStart,lineEnd
+POST,/api/ai/generate-stories,withAuth,starter,AI actions,Generates multiple stories from requirements. Pro+ enables Smart Context (semantic search).,app/api/ai/generate-stories/route.ts,21,432
+POST,/api/ai/generate-single-story,withAuth,starter,AI actions,Generates single story from requirements.,app/api/ai/generate-single-story/route.ts,28,233
+POST,/api/ai/build-epic,withAuth,starter,AI actions,Builds epic with child stories from capabilities.,app/api/ai/build-epic/route.ts
+POST,/api/ai/generate-epic,withAuth,starter,AI actions,Generates epic from requirements.,app/api/ai/generate-epic/route.ts
+POST,/api/ai/analyze-document,withAuth,starter,2 actions,Analyzes uploaded document and extracts requirements.,app/api/ai/analyze-document/route.ts,12,199
+POST,/api/stories/[storyId]/split,withAuth,core,1 action,Core: max 3 children. Team: max 7. Enterprise: unlimited. Requires 100% AC coverage.,app/api/stories/[storyId]/split/route.ts,26,176
+POST,/api/stories/[storyId]/split-enhanced,withAuth,core,1 action,Enhanced split with INVEST/SPIDR analysis.,app/api/stories/[storyId]/split-enhanced/route.ts,16,131
+GET,/api/stories/[storyId]/split-analysis,withAuth,core,1 action,Pre-flight analysis for story splitting.,app/api/stories/[storyId]/split-analysis/route.ts,7,102
+POST,/api/custom-templates,withAuth,core,None,Upload custom document template. Pro+ for shared templates.,app/api/custom-templates/route.ts,24,70
+GET,/api/custom-templates,withAuth,core,None,List custom templates. Pro+ shows shared templates.,app/api/custom-templates/route.ts,50,70
+POST,/api/custom-templates/[templateId]/preview,withAuth,core,None,Preview template format structure.,app/api/custom-templates/preview/route.ts
+DELETE,/api/custom-templates/[templateId],withAuth,core,None,Delete custom template.,app/api/custom-templates/[templateId]/route.ts
+POST,/api/documents/upload,withAuth,starter,10MB max,Upload PDF/DOCX/TXT/MD file.,app/api/documents/upload/route.ts,9,80
+POST,/api/projects/[projectId]/files/process-and-analyze,withAuth,starter,10MB max,Upload file, extract text, analyze with AI, optionally create stories.,app/api/projects/[projectId]/files/process-and-analyze/route.ts,14,124
+GET,/api/projects/[projectId]/export,withAuth,core,None,Export project to Word/Excel/PDF. Core+ required.,app/api/projects/[projectId]/export/route.ts,17,97
+GET,/api/stories/export,withAuth,core,None,Export stories to Word/Excel/PDF/CSV. Core+ required. Pro+ for Jira (stub).,app/api/stories/export/route.ts,19,157
+GET,/api/billing/ai-actions-usage,withAuth,starter,None,Get current AI action usage, allowance, rollover amount, breakdown by operation.,app/api/billing/ai-actions-usage/route.ts
+GET,/api/billing/prices,withAuth,None,None,Fetch Stripe prices for all plans and currencies.,app/api/billing/prices/route.ts
+POST,/api/billing/create-checkout,withAuth,None,None,Create Stripe checkout session for plan upgrade.,app/api/billing/create-checkout/route.ts,152,169
+GET,/api/billing/portal,withAuth,None,None,Get Stripe customer portal URL for subscription management.,app/api/billing/portal/route.ts
+POST,/api/billing/add-ons,withAuth,starter,None,Purchase add-on (AI Booster, Actions Pack, Priority Support).,app/api/billing/add-ons/route.ts
+POST,/api/billing/add-ons/[id]/cancel,withAuth,starter,None,Cancel recurring add-on subscription.,app/api/billing/add-ons/[id]/cancel/route.ts
+POST,/api/auth/signup,None,None,Rate limit,Create user account and organization. Always starts as Starter tier.,app/api/auth/signup/route.ts,41,349
+POST,/api/auth/forgot-password,None,None,Rate limit,Request password reset email.,app/api/auth/forgot-password/route.ts
+POST,/api/auth/reset-password,None,None,Rate limit,Reset password using token.,app/api/auth/reset-password/route.ts
+GET,/api/auth/[...nextauth],NextAuth,None,None,NextAuth.js authentication endpoints.,app/api/auth/[...nextauth]/route.ts
+GET,/api/projects,withAuth,starter,None,List user's projects.,app/api/projects/route.ts
+POST,/api/projects,withAuth,starter,None,Create new project.,app/api/projects/route.ts
+GET,/api/projects/[projectId],withAuth,starter,None,Get project details.,app/api/projects/[projectId]/route.ts
+PUT,/api/projects/[projectId],withAuth,starter,None,Update project.,app/api/projects/[projectId]/route.ts
+GET,/api/projects/[projectId]/stories,withAuth,starter,None,List stories in project.,app/api/projects/[projectId]/stories/route.ts
+GET,/api/projects/[projectId]/epics,withAuth,starter,None,List epics in project.,app/api/projects/[projectId]/epics/route.ts
+GET,/api/epics,withAuth,starter,None,List epics.,app/api/epics/route.ts
+POST,/api/epics,withAuth,starter,None,Create epic.,app/api/epics/route.ts
+GET,/api/epics/[epicId],withAuth,starter,None,Get epic details.,app/api/epics/[epicId]/route.ts
+PUT,/api/epics/[epicId],withAuth,starter,None,Update epic.,app/api/epics/[epicId]/route.ts
+POST,/api/epics/[epicId]/publish,withAuth,starter,None,Publish epic.,app/api/epics/[epicId]/publish/route.ts
+GET,/api/epics/[epicId]/stories,withAuth,starter,None,List stories in epic.,app/api/epics/[epicId]/stories/route.ts
+GET,/api/stories,withAuth,starter,None,List stories.,app/api/stories/route.ts
+POST,/api/stories,withAuth,starter,None,Create story.,app/api/stories/route.ts
+GET,/api/stories/[storyId],withAuth,starter,None,Get story details.,app/api/stories/[storyId]/route.ts
+PUT,/api/stories/[storyId],withAuth,starter,None,Update story.,app/api/stories/[storyId]/route.ts
+DELETE,/api/stories/[storyId],withAuth,starter,None,Delete story.,app/api/stories/[storyId]/route.ts
+POST,/api/stories/bulk,withAuth,pro,None,Bulk operations on stories. Pro+ required.,app/api/stories/bulk/route.ts
+GET,/api/stories/stats,withAuth,starter,None,Get story statistics.,app/api/stories/stats/route.ts
+POST,/api/stories/[storyId]/move,withAuth,starter,None,Move story to different epic/project.,app/api/stories/[storyId]/move/route.ts
+GET,/api/templates,withAuth,core,None,List story templates. Core+ required.,app/api/templates/route.ts
+POST,/api/templates,withAuth,core,None,Create story template. Core+ required.,app/api/templates/route.ts
+POST,/api/templates/[templateId]/apply,withAuth,core,None,Apply template to project. Core+ required.,app/api/templates/[templateId]/apply/route.ts
+GET,/api/team,withAuth,team,None,Get team information. Team+ required.,app/api/team/route.ts
+GET,/api/team/limits,withAuth,team,None,Get team AI action limits and usage. Team+ required.,app/api/team/limits/route.ts
+POST,/api/team/invite,withAuth,team,None,Invite team member. Team+ required.,app/api/team/invite/route.ts
+GET,/api/organizations/me,withAuth,starter,None,Get current user's organization.,app/api/organizations/me/route.ts
+POST,/api/organizations/downgrade-to-free,withAuth,None,None,Downgrade organization to Starter tier.,app/api/organizations/downgrade-to-free/route.ts
+POST,/api/webhooks/stripe,None,None,Stripe signature,Handle Stripe webhook events (subscription updates, payment confirmations).,app/api/webhooks/stripe/route.ts
+GET,/api/health,None,None,None,Health check endpoint.,app/api/health/route.ts
+GET,/api/metrics,withAuth,None,None,Get application metrics (if enabled).,app/api/metrics/route.ts
+GET,/api/usage/current,withAuth,starter,None,Get current AI usage stats.,app/api/usage/current/route.ts
+GET,/api/usage,withAuth,starter,None,Get historical AI usage.,app/api/usage/route.ts
+POST,/api/ai/validate-story,withAuth,starter,1 action,Validate story against INVEST principles.,app/api/ai/validate-story/route.ts
+POST,/api/ai/ac-validator,withAuth,team,None,AC validator for Team+ plans.,app/api/ai/ac-validator/route.ts
+GET,/api/ai/ac-validator/rules,withAuth,team,None,Get AC validation rules. Team+ required.,app/api/ai/ac-validator/rules/route.ts
+POST,/api/ai/autopilot,withAuth,team,3 actions,Backlog autopilot analysis. Team+ required.,app/api/ai/autopilot/route.ts
+POST,/api/ai/test-generator/[artefactId],withAuth,team,None,Generate test artifacts. Team+ required.,app/api/ai/test-generator/[artefactId]/route.ts
+POST,/api/integrations/webhooks,withAuth,enterprise,None,Configure webhooks. Enterprise required.,app/api/integrations/webhooks/route.ts
+GET,/api/integrations/api-keys,withAuth,enterprise,None,Get API keys. Enterprise required.,app/api/integrations/api-keys/route.ts
+POST,/api/integrations/api-keys,withAuth,enterprise,None,Create API key. Enterprise required.,app/api/integrations/api-keys/route.ts
+

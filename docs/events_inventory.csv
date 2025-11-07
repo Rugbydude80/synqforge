@@ -1,0 +1,22 @@
+event_name,trigger_location,key_payload_fields,plan_gates,file,lineStart,lineEnd
+story.created,Story creation API,storyId,projectId,userId,None,lib/observability/metrics.ts,91,91
+story_split.committed,Story split API,parentStoryId,childCount,convertedToEpic,None,lib/services/story-split.service.ts,162,166
+story_split_suggested,Story split analysis API,child_count,None,app/api/stories/[storyId]/split/route.ts,34,36
+story_split_blocked,Story split validation failure,reason,coverage,None,app/api/stories/[storyId]/split/route.ts,63,65
+ai.latency,AI generation completion,operation,latency_ms,None,lib/ai/story-generation.service.ts,93,93
+ai.request.count,AI API call,operation_type,model,None,lib/observability/metrics.ts,82,82
+ai.tokens.used,AI token usage,tokens,model,None,lib/observability/metrics.ts,83,83
+rate_limit.hit,Rate limit exceeded,endpoint,user_id,None,lib/observability/metrics.ts,87,87
+subscription.created,Stripe webhook,plan_id,tier,None,lib/observability/metrics.ts,88,88
+subscription.upgraded,Stripe webhook,from_tier,to_tier,None,lib/observability/metrics.ts,89,89
+seat.added,Team member added,organization_id,seat_count,team,lib/observability/metrics.ts,90,90
+split.recommended_rate,Story split recommendation,None,None,lib/ai/observability.service.ts,30,30
+cap.softCapExceeded_rate,Team pool soft cap exceeded,None,team,lib/ai/observability.service.ts,36,37
+api.request.count,API endpoint call,endpoint,method,None,lib/observability/metrics.ts,79,79
+api.request.latency,API endpoint latency,endpoint,latency_ms,None,lib/observability/metrics.ts,80,80
+api.error.count,API error,endpoint,error_code,None,lib/observability/metrics.ts,81,81
+db.query.count,Database query,table,operation,None,lib/observability/metrics.ts,85,85
+db.query.latency,Database query latency,table,latency_ms,None,lib/observability/metrics.ts,86,86
+sentry.error,Client-side error,Sentry,error_message,stack_trace,None,instrumentation-client.ts,1,59
+sentry.router_transition,Client-side navigation,Sentry,route_path,None,instrumentation-client.ts,59,59
+

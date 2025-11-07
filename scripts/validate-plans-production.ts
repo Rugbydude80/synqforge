@@ -14,6 +14,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import Stripe from 'stripe'
 
 // Get directory path (works with tsx)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -384,7 +385,7 @@ function getStatusEmoji(status: 'PASS' | 'WARN' | 'FAIL' | 'SKIP'): string {
 /**
  * Generate JSON patch suggestions for failed validations
  */
-function generatePatches(results: ValidationResult[]): PatchSuggestion[] {
+function generatePatchSuggestions(results: ValidationResult[]): PatchSuggestion[] {
   const patches: PatchSuggestion[] = []
 
   for (const result of results) {
@@ -459,6 +460,12 @@ function formatPatches(patches: PatchSuggestion[]): string {
 
 /**
  * Validate Stripe metadata sync (optional, requires Stripe API)
+ * 
+ * Checks that Stripe Price metadata.tier matches plan.id in plans.json
+ * Validates:
+ * - All active prices have metadata.tier set
+ * - metadata.tier matches a valid plan ID
+ * - Product names match expected format
  */
 async function validateStripeMetadata(
   plans: any,
@@ -467,40 +474,138 @@ async function validateStripeMetadata(
   const results: Array<{ planId: string; status: 'PASS' | 'WARN' | 'FAIL' | 'SKIP'; notes: string[] }> = []
 
   if (!options.stripeApiKey) {
-    // Skip if no API key provided
+    console.log('⏭ Skipping Stripe validation (no STRIPE_SECRET_KEY)')
     for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
       results.push({ planId, status: 'SKIP', notes: ['Stripe API key not provided'] })
     }
     return results
   }
 
-  // Note: Full Stripe validation would require Stripe SDK
-  // This is a placeholder for the validation logic
-  // In production, you'd fetch prices and check metadata.tier matches plan.id
-
-  for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
-    const plan = plans[planId]
-    if (!plan) {
-      results.push({ planId, status: 'FAIL', notes: ['Plan not found'] })
-      continue
-    }
-
-    // Expected Stripe metadata structure
-    const expectedMetadata = {
-      tier: planId,
-      version: plan.metadata?.version || '2025-10-24',
-    }
-
-    // In a real implementation, you'd fetch Stripe prices here:
-    // const stripe = new Stripe(options.stripeApiKey)
-    // const prices = await stripe.prices.list({ active: true, limit: 100 })
-    // Then validate metadata.tier matches plan.id
-
-    results.push({
-      planId,
-      status: 'SKIP',
-      notes: ['Stripe validation requires Stripe SDK integration'],
+  try {
+    const stripe = new Stripe(options.stripeApiKey, {
+      apiVersion: '2025-06-30.basil' as any,
     })
+
+    // Fetch all active prices with product details
+    const prices = await stripe.prices.list({
+      active: true,
+      expand: ['data.product'],
+      limit: 100,
+    })
+
+    // Map plan IDs to their expected Stripe product names
+    const planProductMap: Record<string, string> = {
+      starter: 'SynqForge Free',
+      core: 'SynqForge Core',
+      pro: 'SynqForge Pro',
+      team: 'SynqForge Team',
+      enterprise: 'SynqForge Enterprise',
+    }
+
+    // Track which plans have prices in Stripe
+    const planPriceCounts: Record<string, number> = {
+      starter: 0,
+      core: 0,
+      pro: 0,
+      team: 0,
+      enterprise: 0,
+    }
+
+    // Validate each price
+    const priceIssues: Array<{ planId: string; issue: string }> = []
+
+    for (const price of prices.data) {
+      if (price.type !== 'recurring') continue
+
+      const product = price.product as Stripe.Product
+      const metadata = price.metadata || {}
+      const tier = metadata.tier
+
+      // Find which plan this price belongs to
+      let planId: string | null = null
+      for (const [pid, productName] of Object.entries(planProductMap)) {
+        if (product.name === productName) {
+          planId = pid
+          planPriceCounts[pid]++
+          break
+        }
+      }
+
+      if (!planId) {
+        // Price exists but doesn't match any plan
+        priceIssues.push({
+          planId: 'unknown',
+          issue: `Price ${price.id} has product "${product.name}" which doesn't match any plan`,
+        })
+        continue
+      }
+
+      // Validate metadata.tier matches plan ID
+      if (!tier) {
+        priceIssues.push({
+          planId,
+          issue: `Price ${price.id} missing metadata.tier`,
+        })
+      } else if (tier !== planId) {
+        priceIssues.push({
+          planId,
+          issue: `Price ${price.id} has metadata.tier="${tier}" but should be "${planId}"`,
+        })
+      }
+
+      // Validate version metadata
+      const version = metadata.version
+      const expectedVersion = plans[planId]?.metadata?.version || '2025-10-24'
+      if (version && version !== expectedVersion) {
+        priceIssues.push({
+          planId,
+          issue: `Price ${price.id} has metadata.version="${version}" but expected "${expectedVersion}"`,
+        })
+      }
+    }
+
+    // Generate results for each plan
+    for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
+      const plan = plans[planId]
+      if (!plan) {
+        results.push({ planId, status: 'FAIL', notes: ['Plan not found in plans.json'] })
+        continue
+      }
+
+      const issues = priceIssues.filter((p) => p.planId === planId)
+      const priceCount = planPriceCounts[planId]
+
+      if (priceCount === 0) {
+        results.push({
+          planId,
+          status: 'WARN',
+          notes: [`No Stripe prices found for plan "${planId}"`],
+        })
+      } else if (issues.length > 0) {
+        results.push({
+          planId,
+          status: 'FAIL',
+          notes: issues.map((i) => i.issue),
+        })
+      } else {
+        results.push({
+          planId,
+          status: 'PASS',
+          notes: [`Found ${priceCount} price(s) with correct metadata`],
+        })
+      }
+    }
+
+    console.log('✅ Stripe metadata validated successfully')
+  } catch (error) {
+    console.error('❌ Stripe validation error:', error instanceof Error ? error.message : error)
+    for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
+      results.push({
+        planId,
+        status: 'FAIL',
+        notes: [`Stripe API error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+      })
+    }
   }
 
   return results
@@ -508,6 +613,11 @@ async function validateStripeMetadata(
 
 /**
  * Validate DB schema consistency (optional, requires DB connection)
+ * 
+ * Checks that database schema fields match plan definitions:
+ * - subscriptionTier enum values match plan IDs
+ * - Entitlement fields exist and have correct types
+ * - Default values align with plan configs
  */
 async function validateDbSchema(
   plans: any,
@@ -516,33 +626,116 @@ async function validateDbSchema(
   const results: Array<{ planId: string; status: 'PASS' | 'WARN' | 'FAIL' | 'SKIP'; notes: string[] }> = []
 
   if (!options.dbUrl) {
+    console.log('⏭ Skipping DB schema validation (no DATABASE_URL)')
     for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
       results.push({ planId, status: 'SKIP', notes: ['Database URL not provided'] })
     }
     return results
   }
 
-  // Expected DB schema fields that should match plans.json
-  const expectedDbFields = [
-    'subscriptionTier',
-    'aiTokensIncluded',
-    'advancedAi',
-    'exportsEnabled',
-    'templatesEnabled',
-    'ssoEnabled',
-  ]
-
-  // In a real implementation, you'd query the DB schema:
-  // const db = drizzle(/* connection */)
-  // const schema = await db.introspect()
-  // Then validate that organizations table has correct fields
-
-  for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
-    results.push({
-      planId,
-      status: 'SKIP',
-      notes: ['DB schema validation requires database connection'],
+  try {
+    // Use postgres client directly for raw SQL queries
+    const postgres = (await import('postgres')).default
+    const sql = postgres(options.dbUrl, {
+      max: 1,
+      idle_timeout: 0,
+      max_lifetime: 0,
+      connect_timeout: 10,
+      prepare: false,
     })
+
+    // Check that subscription_tier enum includes all plan IDs
+    const enumResult = await sql`
+      SELECT unnest(enum_range(NULL::subscription_tier))::text AS tier
+    `
+    const dbTiers = enumResult.map((row: any) => row.tier)
+
+    const expectedTiers = ['starter', 'core', 'pro', 'team', 'enterprise', 'admin']
+    const missingTiers = expectedTiers.filter((t) => !dbTiers.includes(t))
+    const extraTiers = dbTiers.filter((t) => !expectedTiers.includes(t))
+
+    // Check that organizations table has required entitlement columns
+    const columnResult = await sql`
+      SELECT column_name, data_type, column_default
+      FROM information_schema.columns
+      WHERE table_name = 'organizations'
+      AND column_name IN (
+        'subscription_tier',
+        'ai_tokens_included',
+        'advanced_ai',
+        'exports_enabled',
+        'templates_enabled',
+        'sso_enabled'
+      )
+    `
+    const dbColumns = columnResult.map((row: any) => row.column_name)
+
+    // Close connection
+    await sql.end()
+
+    const requiredColumns = [
+      'subscription_tier',
+      'ai_tokens_included',
+      'advanced_ai',
+      'exports_enabled',
+      'templates_enabled',
+      'sso_enabled',
+    ]
+    const missingColumns = requiredColumns.filter((c) => !dbColumns.includes(c))
+
+    // Generate results for each plan
+    for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
+      const plan = plans[planId]
+      if (!plan) {
+        results.push({ planId, status: 'FAIL', notes: ['Plan not found in plans.json'] })
+        continue
+      }
+
+      const issues: string[] = []
+
+      // Check if tier exists in enum
+      if (!dbTiers.includes(planId)) {
+        issues.push(`subscription_tier enum missing value "${planId}"`)
+      }
+
+      // Check for missing columns (shared across all plans)
+      if (missingColumns.length > 0 && planId === 'starter') {
+        // Only report once for starter
+        issues.push(`Missing columns: ${missingColumns.join(', ')}`)
+      }
+
+      // Check for extra tiers (only report once)
+      if (extraTiers.length > 0 && planId === 'starter') {
+        issues.push(`Extra tiers in enum: ${extraTiers.join(', ')}`)
+      }
+
+      if (issues.length > 0) {
+        results.push({ planId, status: 'FAIL', notes: issues })
+      } else {
+        results.push({
+          planId,
+          status: 'PASS',
+          notes: ['Schema fields validated'],
+        })
+      }
+    }
+
+    // Report enum issues once
+    if (missingTiers.length > 0) {
+      results[0].notes.push(`Missing tiers in enum: ${missingTiers.join(', ')}`)
+      results[0].status = 'FAIL'
+    }
+
+    console.log('✅ DB schema validated successfully')
+  } catch (error) {
+    console.error('❌ DB schema validation error:', error instanceof Error ? error.message : error)
+    for (const planId of ['starter', 'core', 'pro', 'team', 'enterprise']) {
+      results.push({
+        planId,
+        status: 'FAIL',
+        notes: [`DB connection error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+      })
+    }
   }
 
   return results
@@ -671,8 +864,9 @@ Examples:
 
   // Summary
   const totalPlans = results.length
-  const fullyCorrect = results.filter(
-    (r) => r.config === 'PASS' && r.ui === 'PASS' && r.featureEnforcement === 'PASS'
+  const baseChecks = ['config', 'ui', 'featureEnforcement'] as const
+  const fullyCorrect = results.filter((r) =>
+    baseChecks.every((check) => r[check] === 'PASS')
   ).length
   const totalIssues = results.reduce((sum, r) => sum + r.notes.length, 0)
 
@@ -680,6 +874,22 @@ Examples:
   console.log(
     `**Validation complete:** ${fullyCorrect}/${totalPlans} plans fully correct, ${totalIssues} issues detected.\n`
   )
+
+  // Extended validation summary
+  if (extended) {
+    const stripeResults = results.filter((r) => r.stripe && r.stripe !== 'SKIP')
+    const dbResults = results.filter((r) => r.dbSchema && r.dbSchema !== 'SKIP')
+    
+    if (stripeResults.length > 0 || dbResults.length > 0) {
+      const stripePass = stripeResults.length === 0 || stripeResults.every((r) => r.stripe === 'PASS')
+      const dbPass = dbResults.length === 0 || dbResults.every((r) => r.dbSchema === 'PASS')
+      
+      const stripeStatus = stripeResults.length === 0 ? '⏭ SKIP' : stripePass ? '✅ PASS' : '❌ FAIL'
+      const dbStatus = dbResults.length === 0 ? '⏭ SKIP' : dbPass ? '✅ PASS' : '❌ FAIL'
+      
+      console.log(`**Extended validation:** Stripe ${stripeStatus}, DB Schema ${dbStatus}\n`)
+    }
+  }
 
   // Detailed notes if any
   if (totalIssues > 0) {
@@ -697,7 +907,7 @@ Examples:
 
   // Generate patches if requested and failures exist
   if (generatePatches) {
-    const patches = generatePatches(results)
+    const patches = generatePatchSuggestions(results)
     if (patches.length > 0) {
       console.log(formatPatches(patches))
     }

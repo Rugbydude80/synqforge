@@ -28,7 +28,9 @@
     "test:context-access": "node --import tsx --test --test-reporter spec tests/unit/context-access.test.ts",
     "test:context-api": "node --import tsx --test --test-reporter spec tests/integration/context-access-api.test.ts",
     "test:tier-access": "npm run test:context-access && npm run test:context-api",
-    "validate:plans": "tsx scripts/validate-plans-production.ts"
+    "validate:plans": "tsx scripts/validate-plans-production.ts",
+    "test:plans": "vitest run __tests__/pricing-components.test.tsx",
+    "test:plans:coverage": "vitest run --coverage __tests__/pricing-components.test.tsx"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
@@ -94,6 +96,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@playwright/test": "^1.49.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/pdf-parse": "^1.1.5",
@@ -103,16 +108,21 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/coverage-v8": "^4.0.8",
+    "@vitest/ui": "^4.0.8",
     "autoprefixer": "^10.4.21",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
     "esbuild": "^0.25.10",
     "eslint": "9.37.0",
     "eslint-config-next": "15.5.4",
+    "jsdom": "^27.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
     "tsx": "^4.20.6",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.0.8"
   },
   "overrides": {
     "esbuild": "$esbuild"

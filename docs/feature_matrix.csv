@@ -1,0 +1,37 @@
+Feature,Starter,Core,Pro,Team,Enterprise
+AI Actions Monthly,25,400,800,10000 base + 1000/seat,custom
+AI Actions Rollover,0%,20%,20%,20%,policy
+AI Actions Pooling,N,N,N,Y,Y
+Smart Context,N,N,Y,Y,Y
+Deep Reasoning,N,N,N,Y,Y
+Semantic Search,N,N,Y,Y,Y
+Custom Document Templates,N,Y,Y,Y,Y
+Shared Templates,N,N,Y,Y,Y
+Team Template Library,N,N,N,Y,Y
+Story Splitting Max Children,3,3,3,7,unlimited
+Story Splitting INVEST/SPIDR,Y,Y,Y,Y,Y
+Bulk Split,N,N,N,Y,Y
+Export Word/Excel,Y,Y,Y,Y,Y
+Export PDF,N,Y,Y,Y,Y
+Export CSV,N,N,Y,Y,Y
+Export Jira,N,N,Y (stub),Y (stub),Y (stub)
+Document Upload,Y,Y,Y,Y,Y
+Document Analysis,2 actions,2 actions,2 actions,2 actions,2 actions
+Epic Creation,Y,Y,Y,Y,Y
+Admin Dashboard,N,N,N,Y,Y
+Approval Flows,N,N,N,Y,Y
+Audit Logging,N,N,N,Y,Y
+SSO/SAML,N,N,N,N,Y
+RBAC,N,N,N,N,Y
+Private Cloud,N,N,N,N,Y
+Compliance Features,N,N,N,N,Y
+Priority Queue,N,N,Y,Y,Y
+Structured Patching,N,N,Y,Y,Y
+Bulk Update,N,N,N,Y,Y
+API Access,N,N,N,N,Y
+Webhooks,N,N,N,N,Y
+Min Seats,1,1,1,5,10
+Max Seats,1,1,4,unlimited,unlimited
+Trial Days,7,14,14,14,custom
+Add-ons Available,Y (AI Booster),Y (Actions Pack),Y (Actions Pack),Y (Actions Pack),N
+

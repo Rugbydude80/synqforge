@@ -145,10 +145,27 @@ npm run validate:plans -- --extended
 ```
 
 Extended checks include:
-- **Stripe Metadata Sync**: Validates `stripe.prices.metadata.tier` matches `plan.id` (requires `STRIPE_SECRET_KEY`)
-- **DB Schema Consistency**: Validates database schema fields match plan definitions (requires `DATABASE_URL`)
 
-Note: Extended checks require environment variables and may skip if not provided.
+#### Stripe Metadata Sync
+- Validates `stripe.prices.metadata.tier` matches `plan.id` in `config/plans.json`
+- Checks that all active Stripe prices have correct metadata
+- Verifies product names match expected format (`SynqForge Free`, `SynqForge Core`, etc.)
+- Validates metadata version consistency
+- **Requires**: `STRIPE_SECRET_KEY` environment variable
+
+#### DB Schema Consistency
+- Validates `subscription_tier` enum includes all plan IDs (`starter`, `core`, `pro`, `team`, `enterprise`, `admin`)
+- Checks that `organizations` table has required entitlement columns:
+  - `subscription_tier`
+  - `ai_tokens_included`
+  - `advanced_ai`
+  - `exports_enabled`
+  - `templates_enabled`
+  - `sso_enabled`
+- Detects missing or extra enum values
+- **Requires**: `DATABASE_URL` environment variable
+
+Note: Extended checks gracefully skip if environment variables are not provided, showing `⏭ SKIP` status.
 
 ## Usage in CI/CD
 
@@ -195,6 +212,49 @@ The script exits with code `1` if any failures are detected, making it suitable 
    - Verify plan descriptions match expected taglines
    - Check PricingGrid component button text logic
 
+## Component-Level Validation
+
+In addition to config validation, component tests verify UI rendering:
+
+```bash
+# Run component tests
+npm run test:plans
+
+# Run with coverage report
+npm run test:plans:coverage
+```
+
+**Test Coverage:**
+- ✅ Plan rendering (all 5 plans display correctly)
+- ✅ Plan ordering (Starter → Core → Pro → Team → Enterprise)
+- ✅ Button text validation (per plan)
+- ✅ Feature visibility gating:
+  - Smart Context (Pro+)
+  - Deep Reasoning (Team+)
+  - Custom Templates (Core+)
+  - Admin Dashboard (Team+)
+  - Compliance (Enterprise only)
+- ✅ Price display (Free, £10.99, Custom, etc.)
+- ✅ "Most Popular" badge (Pro only)
+- ✅ Interactive behavior (button clicks, loading states)
+- ✅ **Plan upgrade/downgrade simulation** (new)
+  - Upgrade scenarios (Core → Pro, Starter → Team)
+  - Downgrade scenarios (Team → Core, Enterprise → Pro)
+  - Feature unlock/lock detection
+  - Invalid upgrade prevention
+
+**Test Files:**
+- `__tests__/pricing-components.test.tsx` - Component tests
+- `test-utils/pricing.ts` - Upgrade/downgrade simulation helpers
+
+**Coverage Reports:**
+Coverage reports are generated in multiple formats:
+- `coverage/index.html` - Interactive HTML report
+- `coverage/lcov.info` - LCOV format for CI/CD integration
+- `coverage/coverage-final.json` - JSON format
+
+Current coverage: **~85%** for pricing components.
+
 ## Extending the Script
 
 To add new validation checks:
@@ -202,6 +262,55 @@ To add new validation checks:
 1. Update `EXPECTED_PLANS` interface with new expected values
 2. Add validation logic in `validatePlan()` function
 3. Update feature checks in the feature enforcement section
+4. Add component tests for new UI features
+
+## Weekly Automated Validation
+
+To detect silent Stripe/DB drift, run extended validation weekly:
+
+### GitHub Actions (Recommended)
+
+A GitHub Actions workflow runs every Monday at 9:00 AM UTC:
+
+```yaml
+# .github/workflows/weekly-plan-validation.yml
+```
+
+**Features:**
+- Runs extended validation (Stripe + DB schema)
+- Uploads validation report as artifact
+- Creates GitHub issue on failure
+- Comments on PRs if triggered manually
+
+**Setup:**
+1. Add secrets to GitHub repository:
+   - `STRIPE_SECRET_KEY`
+   - `DATABASE_URL`
+2. Workflow runs automatically on schedule
+3. Manual trigger available via `workflow_dispatch`
+
+### Local Cron Job
+
+For local or server-based monitoring:
+
+```bash
+# Add to crontab (runs every Monday at 9 AM)
+0 9 * * 1 /path/to/synqforge/scripts/weekly-plan-validation.sh
+```
+
+**Script Features:**
+- Logs to `logs/plan-validation-YYYYMMDD.log`
+- Generates markdown report
+- Sends notifications (configure `send_notification()` function)
+- Gracefully handles missing environment variables
+
+**Environment Variables:**
+```bash
+export STRIPE_SECRET_KEY="sk_..."
+export DATABASE_URL="postgresql://..."
+export LOG_FILE="/path/to/logs/plan-validation.log"  # Optional
+export REPORT_FILE="/path/to/logs/plan-validation-report.md"  # Optional
+```
 
 ## Related Files
 
@@ -209,4 +318,9 @@ To add new validation checks:
 - `components/pricing/PricingGrid.tsx` - UI component
 - `lib/config/tiers.ts` - Tier configuration
 - `lib/middleware/feature-gate.ts` - Feature enforcement
+- `__tests__/pricing-components.test.tsx` - Component tests
+- `test-utils/pricing.ts` - Upgrade/downgrade simulation helpers
+- `scripts/validate-plans-production.ts` - Validation script
+- `scripts/weekly-plan-validation.sh` - Weekly cron script
+- `.github/workflows/weekly-plan-validation.yml` - GitHub Actions workflow
 
