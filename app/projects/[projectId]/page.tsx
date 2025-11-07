@@ -245,14 +245,28 @@ export default function ProjectDetailPage() {
     const storyId = active.id as string
     const overId = over.id as string
 
-    // Check if dropping on a column
-    const targetColumn = columns.find(col => col.id === overId)
-    if (!targetColumn) return
+    // Determine target column - check if dropped on column or on another story
+    const validColumns: Story['status'][] = ['backlog', 'ready', 'in_progress', 'review', 'done']
+    let targetColumnId: Story['status'] | null = null
+
+    // Check if dropped directly on a column
+    if (validColumns.includes(overId as Story['status'])) {
+      targetColumnId = overId as Story['status']
+    } else {
+      // Dropped on another story - find its column
+      const targetStory = stories.find(s => s.id === overId)
+      if (targetStory) {
+        targetColumnId = targetStory.status
+      }
+    }
+
+    // If we couldn't determine the target column, exit
+    if (!targetColumnId) return
 
     const story = stories.find(s => s.id === storyId)
-    if (!story || story.status === targetColumn.id) return
+    if (!story || story.status === targetColumnId) return
 
-    const newStatus = targetColumn.id
+    const newStatus = targetColumnId
 
     // Optimistic update
     const previousStories = stories
@@ -263,10 +277,14 @@ export default function ProjectDetailPage() {
     try {
       await api.stories.move(storyId, { newStatus })
       toast.success('Story moved successfully')
+      
+      // Refresh data to ensure consistency
+      fetchProjectData()
     } catch (err: any) {
       // Rollback on error
       setStories(previousStories)
       toast.error(err.message || 'Failed to move story')
+      console.error('Error moving story:', err)
     }
   }
 
