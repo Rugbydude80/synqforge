@@ -5,20 +5,20 @@ export function HowItWorks() {
   const steps = [
     {
       icon: Upload,
-      title: 'Paste your notes',
-      description: 'Meeting minutes, ideas, or requirements.',
+      title: 'Paste or upload your notes',
+      description: 'Meeting minutes, feature briefs, or requirements — in plain text or document form.',
       color: 'purple' as const,
     },
     {
       icon: Sparkles,
       title: 'Generate with AI',
-      description: 'SynqForge structures them into sprint-ready user stories.',
+      description: 'SynqForge structures them into sprint-ready user stories with ACs and story points.',
       color: 'emerald' as const,
     },
     {
       icon: Download,
-      title: 'Export anywhere',
-      description: 'Download or share for planning.',
+      title: 'Refine and export anywhere',
+      description: 'Collaborate, adjust, and export to Word, Excel, Jira, or CSV for planning.',
       color: 'purple' as const,
     },
   ]
@@ -30,7 +30,7 @@ export function HowItWorks() {
           How It Works
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          No templates. No learning curve. Just stories ready for delivery.
+          No templates. No training. Just delivery-ready stories.
         </p>
       </div>
 

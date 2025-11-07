@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { FileText, CheckCircle2, Download } from 'lucide-react'
 
 export function ExampleOutput() {
@@ -16,6 +17,11 @@ export function ExampleOutput() {
 
       <div className="max-w-4xl mx-auto">
         <Card className="p-8 sm:p-12 gradient-border">
+          {/* Sample Export Label */}
+          <div className="mb-4">
+            <Badge variant="outline" className="text-xs">Sample Export</Badge>
+          </div>
+          
           {/* Sample Story Preview */}
           <div className="mb-8 pb-8 border-b border-border">
             <div className="flex items-start gap-3 mb-4">
@@ -104,9 +110,6 @@ export function ExampleOutput() {
                 Download Sample Export (Word)
               </Button>
             </a>
-            <p className="text-xs text-muted-foreground mt-4">
-              [Download Example in Word]
-            </p>
           </div>
         </Card>
       </div>

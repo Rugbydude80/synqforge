@@ -6,7 +6,7 @@ export function WhoFor() {
     {
       icon: Briefcase,
       title: 'Business Analysts',
-      description: 'Generate stories and acceptance criteria in seconds.',
+      description: 'Generate detailed stories and acceptance criteria instantly.',
     },
     {
       icon: TrendingUp,
@@ -14,14 +14,14 @@ export function WhoFor() {
       description: 'Clarify scope without writing specs by hand.',
     },
     {
-      icon: Rocket,
-      title: 'Founders',
-      description: 'Document features without learning Jira.',
+      icon: Users,
+      title: 'Delivery Leads',
+      description: 'Reduce backlog noise and prepare sprints faster.',
     },
     {
-      icon: Users,
-      title: 'Delivery Teams',
-      description: 'Prepare sprints faster and reduce backlog chaos.',
+      icon: Rocket,
+      title: 'Founders & SMEs',
+      description: 'Document features clearly without learning Jira.',
     },
   ]
 
@@ -29,7 +29,7 @@ export function WhoFor() {
     <section className="max-w-7xl mx-auto px-6 py-16 sm:py-24">
       <div className="text-center mb-12 sm:mb-16">
         <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-          Who Uses SynqForge
+          Designed for delivery professionals, not prompt engineers.
         </h2>
       </div>
 

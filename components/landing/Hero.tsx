@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, LogIn } from 'lucide-react'
 
 export function Hero() {
   return (
@@ -12,18 +12,12 @@ export function Hero() {
         <div className="text-center space-y-8">
           {/* Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
-            From messy notes to
-            <br />
-            <span className="gradient-text">sprint-ready user stories — in minutes.</span>
+            Turn messy notes into sprint-ready user stories — accurately, every time.
           </h1>
 
           {/* Description */}
           <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            SynqForge turns raw requirements into consistent stories with acceptance criteria and estimates.
-            <br />
-            <span className="font-semibold text-foreground">NEW:</span> AI that learns from your similar stories for 75% better context.
-            <br />
-            Built by analysts for teams that need to move fast and stay accurate.
+            SynqForge is the AI co-pilot for Agile delivery. It transforms meeting notes, feature briefs, and requirements into structured, validated user stories with acceptance criteria and estimates — in minutes, not hours.
           </p>
 
           {/* CTA Buttons */}
@@ -33,17 +27,29 @@ export function Hero() {
                 size="lg" 
                 className="group w-full sm:w-auto text-base px-8 py-6 h-auto"
                 data-cta="try-synqforge-free"
-                aria-label="Try SynqForge Free"
+                aria-label="Try SynqForge Free — no setup required"
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Try SynqForge Free — no credit card, no setup
+                Try SynqForge Free — no setup required
+              </Button>
+            </Link>
+            <Link href="/auth/signin" className="w-full sm:w-auto">
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="group w-full sm:w-auto text-base px-8 py-6 h-auto"
+                data-cta="sign-in"
+                aria-label="Sign in to your account"
+              >
+                <LogIn className="h-5 w-5 mr-2" />
+                Sign In
               </Button>
             </Link>
           </div>
 
-          {/* Proof Points */}
+          {/* Tagline */}
           <div className="pt-8 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Deliver quality stories, faster</p>
+            <p className="font-medium text-foreground">Deliver consistent, production-ready stories faster.</p>
           </div>
         </div>
       </div>

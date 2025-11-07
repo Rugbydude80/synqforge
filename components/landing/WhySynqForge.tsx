@@ -5,18 +5,18 @@ export function WhySynqForge() {
   const benefits = [
     {
       icon: Zap,
-      title: 'AI that learns from your stories',
-      description: 'Smart Context finds similar stories automatically — 75% more relevant context.',
+      title: 'Learns from your stories',
+      description: 'Smart Context reuses your own backlog data for 75% more relevant output.',
     },
     {
       icon: Layers,
-      title: '100% consistent output',
-      description: 'Every story follows INVEST and Gherkin standards.',
+      title: 'Consistent formatting',
+      description: 'Every story follows INVEST and Gherkin standards automatically.',
     },
     {
       icon: Settings,
-      title: 'Export instantly',
-      description: 'Word, Excel, or PDF.',
+      title: 'Instant export',
+      description: 'Word, Excel, or Jira — ready for sprint planning in seconds.',
     },
   ]
 
@@ -25,8 +25,11 @@ export function WhySynqForge() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Deliver quality stories, faster
+            Deliver Quality Stories, Faster
           </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-4">
+            Every team wants speed — but accuracy matters more. SynqForge combines both.
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

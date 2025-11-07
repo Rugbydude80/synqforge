@@ -1,4 +1,4 @@
-import { Brain, Zap, TrendingDown, CheckCircle } from 'lucide-react'
+import { Brain, Zap, TrendingDown, CheckCircle, Shield } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -8,18 +8,13 @@ export function SmartContextFeature() {
       <div className="grid lg:grid-cols-2 gap-12 items-center">
         {/* Left Column - Content */}
         <div className="space-y-6">
-          <Badge className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-700 border-purple-200">
-            <Zap className="h-3 w-3" />
-            NEW FEATURE — Pro+ Exclusive
-          </Badge>
-          
           <h2 className="text-3xl sm:text-4xl font-bold">
-            AI that learns from your <span className="gradient-text">similar stories</span>
+            AI that learns from your own stories.
           </h2>
           
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Smart Context automatically finds the 5 most relevant stories in your epic using semantic search. 
-            The AI sees only what matters, generating stories that are more consistent and accurate.
+            SynqForge analyses your existing backlog to produce more relevant, on-brand, and context-aware stories. 
+            It references the top five similar stories in your workspace for each new generation — improving precision and cutting token costs.
           </p>
 
           <div className="space-y-4 pt-4">
@@ -29,33 +24,42 @@ export function SmartContextFeature() {
               </div>
               <div>
                 <p className="font-semibold">75% token reduction</p>
-                <p className="text-sm text-muted-foreground">
-                  Instead of dumping 50+ stories into context, AI sees only the top 5 most similar ones.
-                </p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <Brain className="h-4 w-4 text-blue-600" />
+                <Zap className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <p className="font-semibold">Better quality stories</p>
-                <p className="text-sm text-muted-foreground">
-                  AI learns from relevant examples, not random ones. Your stories stay consistent with patterns that work.
-                </p>
+                <p className="font-semibold">Faster generation (2× average speed)</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                <TrendingDown className="h-4 w-4 text-purple-600" />
+                <Brain className="h-4 w-4 text-purple-600" />
               </div>
               <div>
-                <p className="font-semibold">Faster generation</p>
-                <p className="text-sm text-muted-foreground">
-                  Smaller context means faster API calls. Get your stories 2x quicker on average.
-                </p>
+                <p className="font-semibold">Better story alignment with team standards</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <Shield className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold">Secure, context-aware generation</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold">Export-ready output in Word or CSV</p>
               </div>
             </div>
           </div>
@@ -123,22 +127,14 @@ export function SmartContextFeature() {
         </div>
       </div>
 
-      {/* Pro+ Call out */}
-      <div className="mt-12 p-6 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-2xl border-2 border-purple-200 dark:border-purple-800">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-bold mb-1">Available on Pro, Team, and Enterprise plans</h3>
-            <p className="text-sm text-muted-foreground">
-              Upgrade to unlock Smart Context and generate higher quality stories faster
-            </p>
-          </div>
-          <a
-            href="/pricing"
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors whitespace-nowrap"
-          >
-            View Pricing →
-          </a>
-        </div>
+      {/* Upgrade CTA */}
+      <div className="mt-12 text-center">
+        <a
+          href="/pricing"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
+        >
+          Upgrade to Pro to unlock Smart Context →
+        </a>
       </div>
     </section>
   )
