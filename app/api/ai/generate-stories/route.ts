@@ -306,11 +306,14 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
     const validationErrors: string[] = []
     
     for (const story of response.stories || []) {
+      // Normalize acceptance criteria field name (handle both camelCase and snake_case)
+      const acceptanceCriteria = story.acceptanceCriteria || (story as any).acceptance_criteria || []
+      
       // Validate content (inappropriate language, format, etc.)
       const contentValidation = contentValidationService.validateStoryContent({
         title: story.title || '',
         description: story.description,
-        acceptanceCriteria: story.acceptanceCriteria || story.acceptance_criteria || [],
+        acceptanceCriteria,
         priority: story.priority,
         storyPoints: story.storyPoints,
       })
@@ -328,7 +331,7 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
           {
             title: story.title || '',
             description: story.description,
-            acceptanceCriteria: story.acceptanceCriteria || story.acceptance_criteria || [],
+            acceptanceCriteria,
             priority: story.priority,
             storyPoints: story.storyPoints,
           },

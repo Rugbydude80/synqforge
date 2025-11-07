@@ -200,13 +200,13 @@ export function ChildrenEditor({
   // Memoize keyboard shortcut handlers to avoid recreating them
   const handleExpandAll = useCallback(() => {
     expandAll();
-  }, [childStories.length]);
+  }, [expandAll]);
 
   const handleCollapseAll = useCallback(() => {
     collapseAll();
-  }, [childStories.length]);
+  }, [collapseAll]);
 
-  const handleQuickAddStoryForCriterion = async (criterion: string, criterionIndex: number) => {
+  const handleQuickAddStoryForCriterion = async (criterion: string, _criterionIndex: number) => {
     if (!analysis) return;
 
     setIsLoadingAI(true);
