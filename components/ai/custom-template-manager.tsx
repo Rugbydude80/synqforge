@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Upload, FileText, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,11 +52,7 @@ export function CustomTemplateSelector({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [])
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/custom-templates')
@@ -83,7 +79,11 @@ export function CustomTemplateSelector({
     } finally {
       setLoading(false)
     }
-  }
+  }, [value, onChange])
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
   if (error) {
     return (
@@ -154,11 +154,7 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
   const [description, setDescription] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [])
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/custom-templates')
@@ -179,7 +175,11 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

@@ -35,11 +35,7 @@ export function PromptTemplateSelector({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = React.useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/ai/prompt-templates');
@@ -61,7 +57,11 @@ export function PromptTemplateSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [value, onChange]);
+
+  React.useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const selectedTemplate = templates.find((t) => t.key === value);
 

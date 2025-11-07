@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
@@ -36,11 +36,7 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    loadComments()
-  }, [storyId])
-
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       const res = await fetch(`/api/comments?storyId=${storyId}`)
       if (!res.ok) throw new Error('Failed to load comments')
@@ -49,7 +45,11 @@ export function CommentThread({ storyId, currentUserId }: CommentThreadProps) {
     } catch {
       toast.error('Failed to load comments')
     }
-  }
+  }, [storyId])
+
+  useEffect(() => {
+    loadComments()
+  }, [loadComments])
 
   const handleSubmit = async (parentId: string | null = null) => {
     if (!newComment.trim()) return

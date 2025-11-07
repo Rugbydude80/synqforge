@@ -4,7 +4,7 @@
  */
 
 // Common profanity/inappropriate words (basic list - can be expanded)
-const INAPPROPRIATE_WORDS = [
+const INAPPROPRIATE_WORDS: string[] = [
   // Add common inappropriate words here - keeping minimal for now
   // This should be expanded with a proper profanity filter library
 ]

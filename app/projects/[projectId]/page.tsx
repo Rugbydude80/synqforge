@@ -67,7 +67,7 @@ function DraggableStoryCard({ story, onClick }: { story: Story; onClick: (storyI
     }
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (_e: React.MouseEvent) => {
     // Only navigate if not dragging
     if (!isDragging) {
       onClick(story.id)

@@ -144,8 +144,9 @@ export async function POST(request: NextRequest) {
  * List all custom templates for the organization
  */
 export async function GET(request: NextRequest) {
+  let session: any = null
   try {
-    const session = await getServerSession(authOptions)
+    session = await getServerSession(authOptions)
     if (!session?.user?.id || !session?.user?.organizationId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

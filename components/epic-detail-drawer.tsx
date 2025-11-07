@@ -54,13 +54,7 @@ export function EpicDetailDrawer({
   const [stories, setStories] = React.useState<Story[]>([])
   const [loading, setLoading] = React.useState(false)
 
-  React.useEffect(() => {
-    if (epic && open) {
-      fetchStories()
-    }
-  }, [epic?.id, open])
-
-  const fetchStories = async () => {
+  const fetchStories = React.useCallback(async () => {
     if (!epic) return
 
     setLoading(true)
@@ -73,7 +67,13 @@ export function EpicDetailDrawer({
     } finally {
       setLoading(false)
     }
-  }
+  }, [epic])
+
+  React.useEffect(() => {
+    if (epic && open) {
+      fetchStories()
+    }
+  }, [epic, open, fetchStories])
 
   const handleDelete = async () => {
     if (!epic) return
