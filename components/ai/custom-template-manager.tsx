@@ -309,11 +309,19 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
                 Upload Template
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Upload Custom Template</DialogTitle>
                 <DialogDescription>
-                  Upload a document (PDF, DOCX, TXT, MD) that defines your story format
+                  Upload a document (PDF, DOCX, TXT, MD) that defines your story format.
+                  <a 
+                    href="https://github.com/Rugbydude80/synqforge/blob/main/docs/CUSTOM_TEMPLATE_UPLOAD_GUIDE.md" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="ml-2 text-primary hover:underline font-medium"
+                  >
+                    View upload guide →
+                  </a>
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -350,6 +358,11 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
                       {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                     </div>
                   )}
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>📋 <strong>Required sections:</strong> Title, Description, or Acceptance Criteria</p>
+                    <p>✅ <strong>Best practices:</strong> Use clear section headers, include examples, specify format (Given/When/Then)</p>
+                    <p>⚠️ <strong>Constraints:</strong> Max 10MB, professional content only, clear structure required</p>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button
