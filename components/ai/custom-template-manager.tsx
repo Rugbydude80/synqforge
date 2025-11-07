@@ -298,12 +298,13 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
           <div>
             <CardTitle>Custom Document Templates</CardTitle>
             <CardDescription>
-              Upload document templates to define custom story formats for AI generation
+              Upload document templates to define custom story formats for AI generation.
+              When a template is selected, all generated stories will follow its structure.
             </CardDescription>
           </div>
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Template
               </Button>

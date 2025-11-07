@@ -15,6 +15,7 @@ import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-t
 import { piiDetectionService } from '@/lib/services/pii-detection.service';
 import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-document-templates.repository';
 import { customTemplateParserService } from '@/lib/services/custom-template-parser.service';
+import { contentValidationService } from '@/lib/services/content-validation.service';
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
