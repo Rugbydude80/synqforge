@@ -189,13 +189,13 @@ export function ChildrenEditor({
     setExpandedCards(newExpanded);
   };
 
-  const expandAll = () => {
+  const expandAll = useCallback(() => {
     setExpandedCards(new Array(childStories.length).fill(true));
-  };
+  }, [childStories.length]);
 
-  const collapseAll = () => {
+  const collapseAll = useCallback(() => {
     setExpandedCards(new Array(childStories.length).fill(false));
-  };
+  }, [childStories.length]);
 
   // Memoize keyboard shortcut handlers to avoid recreating them
   const handleExpandAll = useCallback(() => {

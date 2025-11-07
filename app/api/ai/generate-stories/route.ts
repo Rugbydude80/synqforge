@@ -222,6 +222,7 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
     // Handle custom document template if provided
     let customTemplateFormat: string | undefined;
     let customTemplateId: string | undefined;
+    let customTemplate: any = null; // Store template for validation
     
     if (validatedData.customTemplateId) {
       // Check subscription tier for custom templates
@@ -239,7 +240,7 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       }
 
       // Load custom template
-      const customTemplate = await customDocumentTemplatesRepository.getById(
+      customTemplate = await customDocumentTemplatesRepository.getById(
         validatedData.customTemplateId,
         context.user.organizationId
       );
