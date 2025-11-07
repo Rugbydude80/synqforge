@@ -7,11 +7,17 @@ The **Automated Plan Validation Script** is a production QA tool that validates 
 ## Quick Start
 
 ```bash
-# Run validation
+# Basic validation
 npm run validate:plans
 
-# Or directly with tsx
-npx tsx scripts/validate-plans-production.ts
+# Extended validation (Stripe, DB schema)
+npm run validate:plans -- --extended
+
+# Generate auto-fix patches for failures
+npm run validate:plans -- --generate-patches
+
+# Show help
+npx tsx scripts/validate-plans-production.ts --help
 ```
 
 ## What It Validates
@@ -106,6 +112,44 @@ The script intelligently handles "Everything in X" feature cascades:
 
 When a plan says "Everything in X", the script recursively checks the lower tier's features to validate inheritance.
 
+## Auto-Fix Patch Generation
+
+When validation fails, you can automatically generate fix suggestions:
+
+```bash
+npm run validate:plans -- --generate-patches
+```
+
+This outputs:
+- **JSON Patch format** (RFC 6902) - Ready to apply with patch tools
+- **Ready-to-apply code snippets** - TypeScript code you can copy/paste
+- **Manual edit instructions** - Step-by-step guidance
+
+Example output:
+```json
+[
+  {
+    "op": "replace",
+    "path": "/tiers/core/actions",
+    "value": 400
+  }
+]
+```
+
+## Extended Validation
+
+Enable additional checks with `--extended`:
+
+```bash
+npm run validate:plans -- --extended
+```
+
+Extended checks include:
+- **Stripe Metadata Sync**: Validates `stripe.prices.metadata.tier` matches `plan.id` (requires `STRIPE_SECRET_KEY`)
+- **DB Schema Consistency**: Validates database schema fields match plan definitions (requires `DATABASE_URL`)
+
+Note: Extended checks require environment variables and may skip if not provided.
+
 ## Usage in CI/CD
 
 Add to your deployment pipeline:
@@ -114,6 +158,21 @@ Add to your deployment pipeline:
 # Example GitHub Actions
 - name: Validate Plans
   run: npm run validate:plans
+  env:
+    STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+# With extended validation
+- name: Validate Plans (Extended)
+  run: npm run validate:plans -- --extended
+  env:
+    STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+# Generate patches on failure
+- name: Validate Plans with Patches
+  run: npm run validate:plans -- --generate-patches || true
+  continue-on-error: true
 ```
 
 The script exits with code `1` if any failures are detected, making it suitable for CI/CD integration.
