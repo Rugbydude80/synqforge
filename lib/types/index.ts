@@ -156,6 +156,7 @@ export const StoryGenerationInputSchema = z.object({
   projectId: z.string().uuid(),
   model: z.string().optional(),
   promptTemplate: z.string().optional(),
+  customTemplateId: z.string().optional(), // Custom document template ID
 })
 
 export type AIGenerationRequest = z.infer<typeof AIGenerationRequestSchema>
