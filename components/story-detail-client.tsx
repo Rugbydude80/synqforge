@@ -78,7 +78,9 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     if (story.projectId) {
       fetchEpics()
     }
-  }, [story.projectId, fetchEpics])
+    // fetchEpics is memoized with story.projectId, so we only need story.projectId in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [story.projectId])
 
   // Load tasks for the story
   const fetchTasks = React.useCallback(async () => {
@@ -163,6 +165,10 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
       toast.error(error.message || 'Failed to update story')
     }
   }
+
+  const handleAcceptanceCriteriaUpdate = React.useCallback((criteria: string[]) => {
+    setStory((prevStory) => ({ ...prevStory, acceptanceCriteria: criteria }))
+  }, [])
 
   const copyPermalink = () => {
     const url = `${window.location.origin}/stories/${story.id}`
@@ -334,7 +340,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
       <AcceptanceCriteriaSection
         storyId={story.id}
         acceptanceCriteria={story.acceptanceCriteria || []}
-        onUpdate={(criteria) => setStory({ ...story, acceptanceCriteria: criteria })}
+        onUpdate={handleAcceptanceCriteriaUpdate}
       />
 
       {/* Tasks */}
