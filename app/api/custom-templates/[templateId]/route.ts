@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-document-templates.repository'
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard'
+import { isSuperAdmin } from '@/lib/auth/super-admin'
+import { db } from '@/lib/db'
+import { users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const updateTemplateSchema = z.object({
@@ -27,18 +31,28 @@ export async function GET(
 
     const { templateId } = await params
 
-    // Check subscription tier
-    const tierCheck = await checkSubscriptionTier(session.user.organizationId, 'pro')
-    if (!tierCheck.hasAccess) {
-      return NextResponse.json(
-        {
-          error: 'Custom document templates are only available on Pro, Team, or Enterprise plans',
-          currentTier: tierCheck.currentTier,
-          requiredTier: 'pro',
-          upgradeUrl: tierCheck.upgradeUrl || '/settings/billing',
-        },
-        { status: 403 }
-      )
+    // Check subscription tier - Pro/Team/Enterprise only (or super admin)
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+
+    const isSuperAdminUser = user && isSuperAdmin(user.email)
+    
+    if (!isSuperAdminUser) {
+      const tierCheck = await checkSubscriptionTier(session.user.organizationId, 'pro')
+      if (!tierCheck.hasAccess) {
+        return NextResponse.json(
+          {
+            error: 'Custom document templates are only available on Pro, Team, or Enterprise plans',
+            currentTier: tierCheck.currentTier,
+            requiredTier: 'pro',
+            upgradeUrl: tierCheck.upgradeUrl || '/settings/billing',
+          },
+          { status: 403 }
+        )
+      }
     }
 
     const template = await customDocumentTemplatesRepository.getById(
