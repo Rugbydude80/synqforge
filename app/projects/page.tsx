@@ -55,15 +55,16 @@ export default function ProjectsPage() {
       console.log(`[Frontend] Received ${nextProjects.length} projects from API`)
       if (nextProjects.length > 0) {
         const sample = nextProjects[0]
+        const sampleAny = sample as any // Type assertion for logging
         console.log(`[Frontend] Sample project from API:`, {
           id: sample.id,
           name: sample.name,
           totalStories: sample.totalStories,
           completedStories: sample.completedStories,
           totalEpics: sample.totalEpics,
-          epicCount: sample.epicCount,
-          storyCount: sample.storyCount,
-          completedStoryCount: sample.completedStoryCount,
+          epicCount: sampleAny.epicCount,
+          storyCount: sampleAny.storyCount,
+          completedStoryCount: sampleAny.completedStoryCount,
           fullProject: sample,
         })
       }
