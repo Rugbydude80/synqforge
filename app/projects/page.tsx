@@ -50,8 +50,25 @@ export default function ProjectsPage() {
       setError(null)
       const response = await api.projects.list()
       const nextProjects = Array.isArray(response?.data) ? response.data : []
+      
+      // Log for debugging if projects have zero counts
+      if (process.env.NODE_ENV === 'development') {
+        nextProjects.forEach((project: Project) => {
+          if ((project.totalStories === 0 && project.totalEpics === 0) || 
+              project.totalStories === undefined || project.totalEpics === undefined) {
+            console.log(`[DEBUG] Project ${project.id} (${project.name}):`, {
+              totalStories: project.totalStories,
+              completedStories: project.completedStories,
+              totalEpics: project.totalEpics,
+              rawData: project
+            })
+          }
+        })
+      }
+      
       setProjects(nextProjects)
     } catch (err: any) {
+      console.error('Error fetching projects:', err)
       setError(err.message || 'Failed to load projects')
       setProjects([])
     } finally {

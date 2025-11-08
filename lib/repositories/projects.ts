@@ -17,52 +17,62 @@ export class ProjectsRepository {
    * Get all projects for user's organization
    */
   async getProjects() {
-    const query = db
-      .select({
-        id: projects.id,
-        name: projects.name,
-        description: projects.description,
-        slug: projects.slug,
-        status: projects.status,
-        ownerId: projects.ownerId,
-        settings: projects.settings,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-        // Aggregate counts
-        epicCount: sql<number>`(
-          SELECT COUNT(*) FROM ${epics}
-          WHERE ${epics.projectId} = ${projects.id}
-        )`,
-        storyCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories}
-          WHERE ${stories.projectId} = ${projects.id}
-        )`,
-        completedStoryCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories}
-          WHERE ${stories.projectId} = ${projects.id}
-          AND ${stories.status} = 'done'
-        )`,
-        aiGeneratedStoryCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories}
-          WHERE ${stories.projectId} = ${projects.id}
-          AND ${stories.aiGenerated} = true
-        )`,
-        activeSprintCount: sql<number>`(
-          SELECT COUNT(*) FROM ${sprints}
-          WHERE ${sprints.projectId} = ${projects.id}
-          AND ${sprints.status} = 'active'
-        )`,
-      })
-      .from(projects)
-      .where(eq(projects.organizationId, this.userContext.organizationId))
-      .orderBy(desc(projects.createdAt))
+    try {
+      const query = db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          description: projects.description,
+          slug: projects.slug,
+          status: projects.status,
+          ownerId: projects.ownerId,
+          settings: projects.settings,
+          createdAt: projects.createdAt,
+          updatedAt: projects.updatedAt,
+          // Aggregate counts - cast to integer to ensure proper number conversion
+          epicCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${epics}
+            WHERE ${epics.projectId} = ${projects.id}
+          )`,
+          storyCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+          )`,
+          completedStoryCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.status} = 'done'
+          )`,
+          aiGeneratedStoryCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.aiGenerated} = true
+          )`,
+          activeSprintCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${sprints}
+            WHERE ${sprints.projectId} = ${projects.id}
+            AND ${sprints.status} = 'active'
+          )`,
+        })
+        .from(projects)
+        .where(eq(projects.organizationId, this.userContext.organizationId))
+        .orderBy(desc(projects.createdAt))
 
-    // Note: Status filter removed - needs to be implemented with conditions array before select
-    // TODO: Implement filters by building conditions array before select
+      const result = await query
 
-    const result = await query
-
-    return result
+      // Ensure all count fields are properly converted to numbers
+      return result.map((project: any) => ({
+        ...project,
+        epicCount: Number(project.epicCount) || 0,
+        storyCount: Number(project.storyCount) || 0,
+        completedStoryCount: Number(project.completedStoryCount) || 0,
+        aiGeneratedStoryCount: Number(project.aiGeneratedStoryCount) || 0,
+        activeSprintCount: Number(project.activeSprintCount) || 0,
+      }))
+    } catch (error) {
+      console.error('Error in getProjects:', error)
+      throw error
+    }
   }
 
   /**
@@ -84,22 +94,22 @@ export class ProjectsRepository {
         // Owner info
         ownerName: users.name,
         ownerEmail: users.email,
-        // Aggregate counts
+        // Aggregate counts - cast to integer to ensure proper number conversion
         epicCount: sql<number>`(
-          SELECT COUNT(*) FROM ${epics} 
+          SELECT COUNT(*)::int FROM ${epics} 
           WHERE ${epics.projectId} = ${projects.id}
         )`,
         storyCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+          SELECT COUNT(*)::int FROM ${stories} 
           WHERE ${stories.projectId} = ${projects.id}
         )`,
         completedStoryCount: sql<number>`(
-          SELECT COUNT(*) FROM ${stories} 
+          SELECT COUNT(*)::int FROM ${stories} 
           WHERE ${stories.projectId} = ${projects.id} 
           AND ${stories.status} = 'done'
         )`,
         sprintCount: sql<number>`(
-          SELECT COUNT(*) FROM ${sprints} 
+          SELECT COUNT(*)::int FROM ${sprints} 
           WHERE ${sprints.projectId} = ${projects.id}
         )`,
       })
@@ -129,7 +139,14 @@ export class ProjectsRepository {
       throw error
     }
 
-    return project
+    // Ensure all count fields are properly converted to numbers
+    return {
+      ...project,
+      epicCount: Number(project.epicCount) || 0,
+      storyCount: Number(project.storyCount) || 0,
+      completedStoryCount: Number(project.completedStoryCount) || 0,
+      sprintCount: Number(project.sprintCount) || 0,
+    }
   }
 
   /**

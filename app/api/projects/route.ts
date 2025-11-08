@@ -19,12 +19,18 @@ async function getProjects(_request: NextRequest, context: any) {
     
     // Transform repository fields to match frontend expectations
     const transformedProjects = projects.map((project: any) => {
-      const totalStories = Number(project.storyCount || 0)
-      const completedStories = Number(project.completedStoryCount || 0)
-      const totalEpics = Number(project.epicCount || 0)
+      // Ensure we're working with numbers, handle BigInt or string values
+      const totalStories = Number(project.storyCount ?? 0)
+      const completedStories = Number(project.completedStoryCount ?? 0)
+      const totalEpics = Number(project.epicCount ?? 0)
       const progressPercentage = totalStories > 0
         ? Math.round((completedStories / totalStories) * 100)
         : 0
+
+      // Log for debugging if counts are zero but we expect data
+      if (process.env.NODE_ENV === 'development' && totalStories === 0 && totalEpics === 0) {
+        console.log(`[DEBUG] Project ${project.id} (${project.name}): stories=${totalStories}, epics=${totalEpics}`)
+      }
 
       return {
         ...project,
@@ -51,8 +57,13 @@ async function getProjects(_request: NextRequest, context: any) {
     )
   } catch (error) {
     console.error('Error fetching projects:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch projects' },
+      { 
+        error: 'Failed to fetch projects',
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      },
       { status: 500 }
     )
   }
