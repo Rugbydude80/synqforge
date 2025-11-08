@@ -40,35 +40,40 @@ export class ProjectsRepository {
         return []
       }
 
-      const projectIds = projectsList.map(p => p.id)
-
       // Get counts for all projects using subqueries to avoid cartesian product issues
+      // We already filtered by organizationId, so we don't need the ANY clause
       const countsResult = await db.execute(sql`
         SELECT 
-          p.id as project_id,
+          ${projects.id} as project_id,
           COALESCE((
-            SELECT COUNT(*)::int FROM ${epics} e
-            WHERE e.project_id = p.id AND e.organization_id = p.organization_id
+            SELECT COUNT(*)::int FROM ${epics}
+            WHERE ${epics.projectId} = ${projects.id}
+            AND ${epics.organizationId} = ${projects.organizationId}
           ), 0) as epic_count,
           COALESCE((
-            SELECT COUNT(*)::int FROM ${stories} s
-            WHERE s.project_id = p.id AND s.organization_id = p.organization_id
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.organizationId} = ${projects.organizationId}
           ), 0) as story_count,
           COALESCE((
-            SELECT COUNT(*)::int FROM ${stories} s
-            WHERE s.project_id = p.id AND s.organization_id = p.organization_id AND s.status = 'done'
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.organizationId} = ${projects.organizationId}
+            AND ${stories.status} = 'done'
           ), 0) as completed_story_count,
           COALESCE((
-            SELECT COUNT(*)::int FROM ${stories} s
-            WHERE s.project_id = p.id AND s.organization_id = p.organization_id AND s.ai_generated = true
+            SELECT COUNT(*)::int FROM ${stories}
+            WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.organizationId} = ${projects.organizationId}
+            AND ${stories.aiGenerated} = true
           ), 0) as ai_generated_story_count,
           COALESCE((
-            SELECT COUNT(*)::int FROM ${sprints} sp
-            WHERE sp.project_id = p.id AND sp.status = 'active'
+            SELECT COUNT(*)::int FROM ${sprints}
+            WHERE ${sprints.projectId} = ${projects.id}
+            AND ${sprints.status} = 'active'
           ), 0) as active_sprint_count
-        FROM ${projects} p
-        WHERE p.organization_id = ${this.userContext.organizationId}
-          AND p.id = ANY(${projectIds})
+        FROM ${projects}
+        WHERE ${projects.organizationId} = ${this.userContext.organizationId}
       `)
 
       // Create a map of project_id -> counts
