@@ -17,6 +17,8 @@ async function getProjects(_request: NextRequest, context: any) {
   try {
     const projects = await projectsRepo.getProjects()
     
+    console.log(`[API] Received ${projects.length} projects from repository`)
+    
     // Transform repository fields to match frontend expectations
     const transformedProjects = projects.map((project: any) => {
       // Ensure we're working with numbers, handle BigInt or string values
@@ -27,9 +29,21 @@ async function getProjects(_request: NextRequest, context: any) {
         ? Math.round((completedStories / totalStories) * 100)
         : 0
 
-      // Log for debugging if counts are zero but we expect data
-      if (process.env.NODE_ENV === 'development' && totalStories === 0 && totalEpics === 0) {
-        console.log(`[DEBUG] Project ${project.id} (${project.name}): stories=${totalStories}, epics=${totalEpics}`)
+      // Log for debugging - always log first project
+      if (project.id === projects[0]?.id) {
+        console.log(`[API] Transforming project ${project.id} (${project.name}):`, {
+          raw: {
+            storyCount: project.storyCount,
+            completedStoryCount: project.completedStoryCount,
+            epicCount: project.epicCount,
+          },
+          transformed: {
+            totalStories,
+            completedStories,
+            totalEpics,
+            progressPercentage,
+          },
+        })
       }
 
       return {
@@ -44,6 +58,19 @@ async function getProjects(_request: NextRequest, context: any) {
         epicCount: totalEpics,
       }
     })
+    
+    // Log final response
+    console.log(`[API] Returning ${transformedProjects.length} projects`)
+    if (transformedProjects.length > 0) {
+      const sample = transformedProjects[0]
+      console.log(`[API] Sample final project:`, {
+        id: sample.id,
+        name: sample.name,
+        totalStories: sample.totalStories,
+        completedStories: sample.completedStories,
+        totalEpics: sample.totalEpics,
+      })
+    }
     
     return NextResponse.json(
       { data: transformedProjects, total: transformedProjects.length },
