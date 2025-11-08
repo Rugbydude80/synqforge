@@ -147,24 +147,27 @@ export class ProjectsRepository {
         // Owner info
         ownerName: users.name,
         ownerEmail: users.email,
-        // Aggregate counts - cast to integer to ensure proper number conversion
-        epicCount: sql<number>`(
+        // Aggregate counts - cast to integer and filter by organizationId for security
+        epicCount: sql<number>`COALESCE((
           SELECT COUNT(*)::int FROM ${epics} 
           WHERE ${epics.projectId} = ${projects.id}
-        )`,
-        storyCount: sql<number>`(
+          AND ${epics.organizationId} = ${projects.organizationId}
+        ), 0)`,
+        storyCount: sql<number>`COALESCE((
           SELECT COUNT(*)::int FROM ${stories} 
           WHERE ${stories.projectId} = ${projects.id}
-        )`,
-        completedStoryCount: sql<number>`(
+          AND ${stories.organizationId} = ${projects.organizationId}
+        ), 0)`,
+        completedStoryCount: sql<number>`COALESCE((
           SELECT COUNT(*)::int FROM ${stories} 
           WHERE ${stories.projectId} = ${projects.id} 
+          AND ${stories.organizationId} = ${projects.organizationId}
           AND ${stories.status} = 'done'
-        )`,
-        sprintCount: sql<number>`(
+        ), 0)`,
+        sprintCount: sql<number>`COALESCE((
           SELECT COUNT(*)::int FROM ${sprints} 
           WHERE ${sprints.projectId} = ${projects.id}
-        )`,
+        ), 0)`,
       })
       .from(projects)
       .leftJoin(users, eq(projects.ownerId, users.id))
