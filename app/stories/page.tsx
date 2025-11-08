@@ -15,6 +15,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { StoryFormModal } from '@/components/story-form-modal'
 import { cn } from '@/lib/utils'
 import { api, type Story } from '@/lib/api-client'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 import { toast } from 'sonner'
 
 interface Project {
@@ -250,8 +251,14 @@ function StoriesPageContent() {
     }
 
     try {
+      const story = stories.find(item => item.id === storyId)
       await api.stories.delete(storyId)
       toast.success('Story deleted successfully!')
+      if (story?.projectId) {
+        emitProjectMetricsChanged(story.projectId)
+      } else {
+        emitProjectMetricsChanged()
+      }
       fetchData()
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete story')

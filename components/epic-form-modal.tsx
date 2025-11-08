@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Rocket } from 'lucide-react'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 
 interface EpicFormModalProps {
   open: boolean
@@ -121,6 +122,7 @@ export function EpicFormModal({
         targetDate: '',
       })
 
+      emitProjectMetricsChanged(epic?.projectId ?? projectId)
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
@@ -142,6 +144,7 @@ export function EpicFormModal({
     try {
       await api.epics.publish(epic.id)
       toast.success('Epic published successfully! Stories are now active.')
+      emitProjectMetricsChanged(epic.projectId)
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {

@@ -91,6 +91,7 @@ export const POST = withAuth(
       // Transform repository fields to match frontend expectations
       const totalStories = Number((project as any).storyCount || 0)
       const completedStories = Number((project as any).completedStoryCount || 0)
+      const totalEpics = Number((project as any).epicCount || 0)
       const progressPercentage = totalStories > 0
         ? Math.round((completedStories / totalStories) * 100)
         : 0
@@ -99,10 +100,12 @@ export const POST = withAuth(
         ...project,
         totalStories,
         completedStories,
+        totalEpics,
         progressPercentage,
         // Keep original fields for backward compatibility if needed
         storyCount: totalStories,
         completedStoryCount: completedStories,
+        epicCount: totalEpics,
       }
 
       return successResponse(transformedProject, { status: 201 })

@@ -83,6 +83,8 @@ export interface Project {
   totalStories?: number
   completedStories?: number
   progressPercentage?: number
+  totalEpics?: number
+  epicCount?: number
 }
 
 export interface Epic {

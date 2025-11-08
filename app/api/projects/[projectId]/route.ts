@@ -17,6 +17,7 @@ async function getProject(_request: NextRequest, context: any) {
     // Transform repository fields to match frontend expectations
     const totalStories = Number((project as any).storyCount || 0)
     const completedStories = Number((project as any).completedStoryCount || 0)
+    const totalEpics = Number((project as any).epicCount || 0)
     const progressPercentage = totalStories > 0
       ? Math.round((completedStories / totalStories) * 100)
       : 0
@@ -25,10 +26,12 @@ async function getProject(_request: NextRequest, context: any) {
       ...project,
       totalStories,
       completedStories,
+      totalEpics,
       progressPercentage,
       // Keep original fields for backward compatibility if needed
       storyCount: totalStories,
       completedStoryCount: completedStories,
+      epicCount: totalEpics,
     }
     
     return NextResponse.json(transformedProject)
@@ -81,6 +84,7 @@ async function updateProject(req: NextRequest, context: any) {
     // Transform repository fields to match frontend expectations
     const totalStories = Number((project as any).storyCount || 0)
     const completedStories = Number((project as any).completedStoryCount || 0)
+    const totalEpics = Number((project as any).epicCount || 0)
     const progressPercentage = totalStories > 0
       ? Math.round((completedStories / totalStories) * 100)
       : 0
@@ -89,10 +93,12 @@ async function updateProject(req: NextRequest, context: any) {
       ...project,
       totalStories,
       completedStories,
+      totalEpics,
       progressPercentage,
       // Keep original fields for backward compatibility if needed
       storyCount: totalStories,
       completedStoryCount: completedStories,
+      epicCount: totalEpics,
     }
     
     return NextResponse.json(transformedProject)

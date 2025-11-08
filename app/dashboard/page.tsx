@@ -25,6 +25,7 @@ import { CreateProjectModal } from '@/components/create-project-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { TrialWarningBanner } from '@/components/billing/TrialWarningBanner'
 import { cn, formatRelativeTime } from '@/lib/utils'
+import { subscribeToProjectMetrics } from '@/lib/events/project-events'
 
 export default function DashboardPage() {
   const { status } = useSession()
@@ -102,6 +103,14 @@ export default function DashboardPage() {
       fetchDashboardData()
     }
   }, [status, router, fetchDashboardData])
+
+  useEffect(() => {
+    const unsubscribe = subscribeToProjectMetrics(() => {
+      fetchDashboardData(true)
+    })
+
+    return unsubscribe
+  }, [fetchDashboardData])
 
   // Update the display every 10 seconds to refresh the relative time
   useEffect(() => {

@@ -34,6 +34,7 @@ import {
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useDroppable } from '@dnd-kit/core'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 
 // Draggable Story Card Component
 function DraggableStoryCard({ story, onClick }: { story: Story; onClick: (storyId: string) => void }) {
@@ -277,7 +278,8 @@ export default function ProjectDetailPage() {
     try {
       await api.stories.move(storyId, { newStatus })
       toast.success('Story moved successfully')
-      
+      emitProjectMetricsChanged(projectId)
+
       // Refresh data to ensure consistency
       fetchProjectData()
     } catch (err: any) {
@@ -351,6 +353,7 @@ export default function ProjectDetailPage() {
     try {
       await api.epics.delete(epicId)
       toast.success('Epic deleted successfully!')
+      emitProjectMetricsChanged(projectId)
       fetchProjectData()
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete epic')

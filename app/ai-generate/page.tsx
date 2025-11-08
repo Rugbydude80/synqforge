@@ -25,6 +25,7 @@ import { Select } from '@/components/ui/select'
 import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 import { toast } from 'sonner'
 import { PromptTemplateSelector } from '@/components/ai/prompt-template-selector'
 import { CustomTemplateSelector } from '@/components/ai/custom-template-manager'
@@ -248,6 +249,7 @@ export default function AIGeneratePage() {
         toast.success(`Successfully created ${response.created.length} stories!`)
       }
 
+      emitProjectMetricsChanged(projectId)
       // Navigate to project after a short delay
       setTimeout(() => {
         router.push(`/projects/${projectId}`)

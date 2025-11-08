@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Sparkles,
   Settings,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,7 @@ import { CreateProjectModal } from '@/components/create-project-modal'
 import { ProjectEditModal } from '@/components/project-edit-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
+import { subscribeToProjectMetrics } from '@/lib/events/project-events'
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -40,23 +42,44 @@ export default function ProjectsPage() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(12)
 
-  React.useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  const fetchProjects = async () => {
+  const fetchProjects = React.useCallback(async (options?: { silent?: boolean }) => {
     try {
-      setIsLoading(true)
+      if (!options?.silent) {
+        setIsLoading(true)
+      }
       setError(null)
       const response = await api.projects.list()
-      setProjects(Array.isArray(response?.data) ? response.data : [])
+      const nextProjects = Array.isArray(response?.data) ? response.data : []
+      setProjects(nextProjects)
     } catch (err: any) {
       setError(err.message || 'Failed to load projects')
       setProjects([])
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [])
+
+  React.useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeToProjectMetrics(() => {
+      fetchProjects({ silent: true })
+    })
+
+    return unsubscribe
+  }, [fetchProjects])
+
+  React.useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchProjects({ silent: true })
+    }, 30000)
+
+    return () => window.clearInterval(interval)
+  }, [fetchProjects])
 
 
   const filteredProjects = projects.filter(project => {
@@ -294,14 +317,14 @@ export default function ProjectsPage() {
                   )}
 
                   {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-4">
                     <div>
                       <div className="flex items-center gap-2 text-gray-400 mb-1">
                         <FolderKanban className="h-4 w-4" />
                         <span>Total Stories</span>
                       </div>
                       <div className="text-white font-semibold">
-                        {project.totalStories || 0}
+                        {project.totalStories ?? project.storyCount ?? 0}
                       </div>
                     </div>
                     <div>
@@ -310,7 +333,27 @@ export default function ProjectsPage() {
                         <span>Completed</span>
                       </div>
                       <div className="text-white font-semibold">
-                        {project.completedStories || 0}
+                        {project.completedStories ?? project.completedStoryCount ?? 0}
+                      </div>
+                    </div>
+                    <div className="hidden md:block">
+                      <div className="flex items-center gap-2 text-gray-400 mb-1">
+                        <Layers className="h-4 w-4" />
+                        <span>Epics</span>
+                      </div>
+                      <div className="text-white font-semibold">
+                        {project.totalEpics ?? project.epicCount ?? 0}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:hidden grid grid-cols-1 gap-4 text-sm mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-gray-400 mb-1">
+                        <Layers className="h-4 w-4" />
+                        <span>Epics</span>
+                      </div>
+                      <div className="text-white font-semibold">
+                        {project.totalEpics ?? project.epicCount ?? 0}
                       </div>
                     </div>
                   </div>

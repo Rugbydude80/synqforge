@@ -21,6 +21,7 @@ async function getProjects(_request: NextRequest, context: any) {
     const transformedProjects = projects.map((project: any) => {
       const totalStories = Number(project.storyCount || 0)
       const completedStories = Number(project.completedStoryCount || 0)
+      const totalEpics = Number(project.epicCount || 0)
       const progressPercentage = totalStories > 0
         ? Math.round((completedStories / totalStories) * 100)
         : 0
@@ -29,14 +30,25 @@ async function getProjects(_request: NextRequest, context: any) {
         ...project,
         totalStories,
         completedStories,
+        totalEpics,
         progressPercentage,
         // Keep original fields for backward compatibility if needed
         storyCount: totalStories,
         completedStoryCount: completedStories,
+        epicCount: totalEpics,
       }
     })
     
-    return NextResponse.json({ data: transformedProjects, total: transformedProjects.length })
+    return NextResponse.json(
+      { data: transformedProjects, total: transformedProjects.length },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching projects:', error)
     return NextResponse.json(
@@ -108,6 +120,7 @@ async function createProject(req: NextRequest, context: any) {
     // Transform repository fields to match frontend expectations
     const totalStories = Number((project as any).storyCount || 0)
     const completedStories = Number((project as any).completedStoryCount || 0)
+    const totalEpics = Number((project as any).epicCount || 0)
     const progressPercentage = totalStories > 0
       ? Math.round((completedStories / totalStories) * 100)
       : 0
@@ -116,10 +129,12 @@ async function createProject(req: NextRequest, context: any) {
       ...project,
       totalStories,
       completedStories,
+      totalEpics,
       progressPercentage,
       // Keep original fields for backward compatibility if needed
       storyCount: totalStories,
       completedStoryCount: completedStories,
+      epicCount: totalEpics,
     }
     
     return NextResponse.json(transformedProject, { status: 201 })

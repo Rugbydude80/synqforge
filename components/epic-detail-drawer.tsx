@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 
 interface EpicDetailDrawerProps {
   epic: Epic | null
@@ -85,6 +86,7 @@ export function EpicDetailDrawer({
     try {
       await api.epics.delete(epic.id)
       toast.success('Epic deleted')
+      emitProjectMetricsChanged(epic.projectId)
       onDelete?.(epic.id)
       onOpenChange(false)
       router.refresh()

@@ -22,6 +22,7 @@ import { Sparkles, X, AlertCircle } from 'lucide-react'
 import { ContextSelector } from '@/components/story-generation/ContextSelector'
 import { ContextLevel, UserTier } from '@/lib/types/context.types'
 import { PromptTemplateSelector } from '@/components/ai/prompt-template-selector'
+import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 
 interface StoryFormModalProps {
   open: boolean
@@ -158,6 +159,7 @@ export function StoryFormModal({
       })
       setShowEpicPrompt(false)
 
+      emitProjectMetricsChanged(story?.projectId ?? projectId)
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
