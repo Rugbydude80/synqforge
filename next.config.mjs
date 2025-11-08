@@ -57,7 +57,7 @@ const nextConfig = {
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
               "connect-src 'self' *.anthropic.com *.openai.com *.stripe.com *.vercel.app *.upstash.io *.ably.io *.resend.com *.sentry.io",
-              "frame-src 'self' *.stripe.com",
+              "frame-src 'self' *.stripe.com vercel.live *.vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
