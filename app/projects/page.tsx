@@ -333,7 +333,7 @@ export default function ProjectsPage() {
                         <span>Completed</span>
                       </div>
                       <div className="text-white font-semibold">
-                        {project.completedStories ?? project.completedStoryCount ?? 0}
+                        {project.completedStories ?? 0}
                       </div>
                     </div>
                     <div className="hidden md:block">
