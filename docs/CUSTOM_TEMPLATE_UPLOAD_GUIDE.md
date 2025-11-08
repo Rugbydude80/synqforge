@@ -7,9 +7,29 @@ Custom document templates allow you to define your own story format structure fo
 ## ✅ Supported File Types
 
 - **PDF** (.pdf) - Up to 10MB
-- **Word Document** (.docx) - Up to 10MB  
+- **Word Document** (.docx, .dotx, .dotm) - Up to 10MB  
 - **Text File** (.txt) - Up to 10MB
 - **Markdown** (.md) - Up to 10MB
+
+## 📄 Before Uploading Your Word Template
+
+**Before uploading your document template:**
+
+- Ensure your template is a Microsoft Word file in `.docx`, `.dotx`, or `.dotm` format. Other formats will not be accepted.
+
+- The template should use Word styles (such as Title, Heading 1, Heading 2, Body Text) for formatting text consistently, rather than direct formatting.
+
+- Include any standard organizational elements you need, such as headers, footers, cover pages, or boilerplate text.
+
+- Structure your template so it's easy to apply for story generation, with clearly defined sections, headings, and instructions if needed.
+
+- Avoid using macros unless you save your template as `.dotm` and understand the security implications.
+
+- Test your template by creating a new Word document from it to ensure everything appears correctly and functions as expected.
+
+- Document any special instructions or fields within the template for clarity, especially if other users will be working with it.
+
+Only well-structured, appropriately formatted Word templates will be accepted and used for story generation.
 
 ## 📝 Required Template Structure
 
