@@ -18,7 +18,8 @@ export class ProjectsRepository {
    */
   async getProjects() {
     try {
-      const query = db
+      // First, get all projects
+      const projectsList = await db
         .select({
           id: projects.id,
           organizationId: projects.organizationId,
@@ -30,78 +31,88 @@ export class ProjectsRepository {
           settings: projects.settings,
           createdAt: projects.createdAt,
           updatedAt: projects.updatedAt,
-          // Aggregate counts - use COALESCE to handle NULL and cast to integer
-          epicCount: sql<number>`COALESCE((
-            SELECT COUNT(*)::int FROM ${epics}
-            WHERE ${epics.projectId} = ${projects.id}
-            AND ${epics.organizationId} = ${projects.organizationId}
-          ), 0)`,
-          storyCount: sql<number>`COALESCE((
-            SELECT COUNT(*)::int FROM ${stories}
-            WHERE ${stories.projectId} = ${projects.id}
-            AND ${stories.organizationId} = ${projects.organizationId}
-          ), 0)`,
-          completedStoryCount: sql<number>`COALESCE((
-            SELECT COUNT(*)::int FROM ${stories}
-            WHERE ${stories.projectId} = ${projects.id}
-            AND ${stories.organizationId} = ${projects.organizationId}
-            AND ${stories.status} = 'done'
-          ), 0)`,
-          aiGeneratedStoryCount: sql<number>`COALESCE((
-            SELECT COUNT(*)::int FROM ${stories}
-            WHERE ${stories.projectId} = ${projects.id}
-            AND ${stories.organizationId} = ${projects.organizationId}
-            AND ${stories.aiGenerated} = true
-          ), 0)`,
-          activeSprintCount: sql<number>`COALESCE((
-            SELECT COUNT(*)::int FROM ${sprints}
-            WHERE ${sprints.projectId} = ${projects.id}
-            AND ${sprints.status} = 'active'
-          ), 0)`,
         })
         .from(projects)
         .where(eq(projects.organizationId, this.userContext.organizationId))
         .orderBy(desc(projects.createdAt))
 
-      const result = await query
-
-      // Log raw results for debugging
-      console.log(`[getProjects] Found ${result.length} projects for org ${this.userContext.organizationId}`)
-      if (result.length > 0) {
-        const sample = result[0]
-        console.log(`[getProjects] Sample project raw counts:`, {
-          id: sample.id,
-          name: sample.name,
-          epicCount: sample.epicCount,
-          storyCount: sample.storyCount,
-          completedStoryCount: sample.completedStoryCount,
-          epicCountType: typeof sample.epicCount,
-          storyCountType: typeof sample.storyCount,
-        })
+      if (projectsList.length === 0) {
+        return []
       }
 
-      // Ensure all count fields are properly converted to numbers
-      const mapped = result.map((project: any) => {
-        const epicCount = Number(project.epicCount) || 0
-        const storyCount = Number(project.storyCount) || 0
-        const completedStoryCount = Number(project.completedStoryCount) || 0
-        const aiGeneratedStoryCount = Number(project.aiGeneratedStoryCount) || 0
-        const activeSprintCount = Number(project.activeSprintCount) || 0
+      const projectIds = projectsList.map(p => p.id)
+
+      // Get counts for all projects using subqueries to avoid cartesian product issues
+      const countsResult = await db.execute(sql`
+        SELECT 
+          p.id as project_id,
+          COALESCE((
+            SELECT COUNT(*)::int FROM ${epics} e
+            WHERE e.project_id = p.id AND e.organization_id = p.organization_id
+          ), 0) as epic_count,
+          COALESCE((
+            SELECT COUNT(*)::int FROM ${stories} s
+            WHERE s.project_id = p.id AND s.organization_id = p.organization_id
+          ), 0) as story_count,
+          COALESCE((
+            SELECT COUNT(*)::int FROM ${stories} s
+            WHERE s.project_id = p.id AND s.organization_id = p.organization_id AND s.status = 'done'
+          ), 0) as completed_story_count,
+          COALESCE((
+            SELECT COUNT(*)::int FROM ${stories} s
+            WHERE s.project_id = p.id AND s.organization_id = p.organization_id AND s.ai_generated = true
+          ), 0) as ai_generated_story_count,
+          COALESCE((
+            SELECT COUNT(*)::int FROM ${sprints} sp
+            WHERE sp.project_id = p.id AND sp.status = 'active'
+          ), 0) as active_sprint_count
+        FROM ${projects} p
+        WHERE p.organization_id = ${this.userContext.organizationId}
+          AND p.id = ANY(${projectIds})
+      `)
+
+      // Create a map of project_id -> counts
+      const countsMap = new Map<string, {
+        epicCount: number
+        storyCount: number
+        completedStoryCount: number
+        aiGeneratedStoryCount: number
+        activeSprintCount: number
+      }>()
+
+      // db.execute returns an array directly
+      const countsArray = countsResult as any[]
+      countsArray.forEach((row: any) => {
+        countsMap.set(row.project_id, {
+          epicCount: Number(row.epic_count) || 0,
+          storyCount: Number(row.story_count) || 0,
+          completedStoryCount: Number(row.completed_story_count) || 0,
+          aiGeneratedStoryCount: Number(row.ai_generated_story_count) || 0,
+          activeSprintCount: Number(row.active_sprint_count) || 0,
+        })
+      })
+
+      // Merge projects with their counts
+      const result = projectsList.map((project) => {
+        const counts = countsMap.get(project.id) || {
+          epicCount: 0,
+          storyCount: 0,
+          completedStoryCount: 0,
+          aiGeneratedStoryCount: 0,
+          activeSprintCount: 0,
+        }
 
         return {
           ...project,
-          epicCount,
-          storyCount,
-          completedStoryCount,
-          aiGeneratedStoryCount,
-          activeSprintCount,
+          ...counts,
         }
       })
 
-      // Log mapped results
-      if (mapped.length > 0) {
-        const sample = mapped[0]
-        console.log(`[getProjects] Sample project mapped counts:`, {
+      // Log results for debugging
+      console.log(`[getProjects] Found ${result.length} projects for org ${this.userContext.organizationId}`)
+      if (result.length > 0) {
+        const sample = result[0]
+        console.log(`[getProjects] Sample project counts:`, {
           id: sample.id,
           name: sample.name,
           epicCount: sample.epicCount,
@@ -110,7 +121,7 @@ export class ProjectsRepository {
         })
       }
 
-      return mapped
+      return result
     } catch (error) {
       console.error('Error in getProjects:', error)
       throw error
