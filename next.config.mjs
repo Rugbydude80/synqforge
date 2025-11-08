@@ -21,8 +21,8 @@ const nextConfig = {
       ],
     },
   },
-  // Disable static page generation to avoid build errors
-  output: 'export' === 'export' ? undefined : 'standalone',
+  // Use standalone output for Vercel deployments
+  output: 'standalone',
   // Security headers for production
   async headers() {
     return [
