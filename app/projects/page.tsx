@@ -324,7 +324,7 @@ export default function ProjectsPage() {
                         <span>Total Stories</span>
                       </div>
                       <div className="text-white font-semibold">
-                        {project.totalStories ?? project.storyCount ?? 0}
+                        {project.totalStories ?? 0}
                       </div>
                     </div>
                     <div>
