@@ -181,7 +181,7 @@ export default function ProjectsPage() {
             <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">Something went wrong</h3>
             <p className="text-gray-400 mb-6">{error}</p>
-            <Button onClick={fetchProjects}>Try Again</Button>
+            <Button onClick={() => fetchProjects()}>Try Again</Button>
           </div>
         </main>
       </div>
