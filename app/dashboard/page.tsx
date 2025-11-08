@@ -149,7 +149,7 @@ export default function DashboardPage() {
     }
   }
 
-  const calculateMetrics = () => {
+  const calculateMetrics = useCallback(() => {
     if (!stats) {
       return [
         {
@@ -241,9 +241,9 @@ export default function DashboardPage() {
         onClick: () => router.push('/ai-generate'),
       },
     ]
-  }
+  }, [stats, router])
 
-  const metrics = useMemo(() => calculateMetrics(), [stats])
+  const metrics = useMemo(() => calculateMetrics(), [calculateMetrics])
 
   const formatActivity = useCallback((activity: any) => {
     const actionMap: Record<string, { title: string; type: string; status: string }> = {
