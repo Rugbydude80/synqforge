@@ -314,7 +314,7 @@ export function CustomTemplateManager({ onTemplateUploaded }: CustomTemplateMana
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'synqforge-starter-template.md'
+      a.download = 'synqforge-starter-template.docx'
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
