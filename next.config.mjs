@@ -22,6 +22,7 @@ const nextConfig = {
     },
   },
   // Security headers for production
+  // Note: Removed 'output: standalone' - Vercel handles Next.js builds natively
   async headers() {
     return [
       {
