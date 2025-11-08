@@ -29,30 +29,34 @@ export class ProjectsRepository {
           settings: projects.settings,
           createdAt: projects.createdAt,
           updatedAt: projects.updatedAt,
-          // Aggregate counts - cast to integer to ensure proper number conversion
-          epicCount: sql<number>`(
+          // Aggregate counts - use COALESCE to handle NULL and cast to integer
+          epicCount: sql<number>`COALESCE((
             SELECT COUNT(*)::int FROM ${epics}
             WHERE ${epics.projectId} = ${projects.id}
-          )`,
-          storyCount: sql<number>`(
+            AND ${epics.organizationId} = ${projects.organizationId}
+          ), 0)`,
+          storyCount: sql<number>`COALESCE((
             SELECT COUNT(*)::int FROM ${stories}
             WHERE ${stories.projectId} = ${projects.id}
-          )`,
-          completedStoryCount: sql<number>`(
+            AND ${stories.organizationId} = ${projects.organizationId}
+          ), 0)`,
+          completedStoryCount: sql<number>`COALESCE((
             SELECT COUNT(*)::int FROM ${stories}
             WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.organizationId} = ${projects.organizationId}
             AND ${stories.status} = 'done'
-          )`,
-          aiGeneratedStoryCount: sql<number>`(
+          ), 0)`,
+          aiGeneratedStoryCount: sql<number>`COALESCE((
             SELECT COUNT(*)::int FROM ${stories}
             WHERE ${stories.projectId} = ${projects.id}
+            AND ${stories.organizationId} = ${projects.organizationId}
             AND ${stories.aiGenerated} = true
-          )`,
-          activeSprintCount: sql<number>`(
+          ), 0)`,
+          activeSprintCount: sql<number>`COALESCE((
             SELECT COUNT(*)::int FROM ${sprints}
             WHERE ${sprints.projectId} = ${projects.id}
             AND ${sprints.status} = 'active'
-          )`,
+          ), 0)`,
         })
         .from(projects)
         .where(eq(projects.organizationId, this.userContext.organizationId))
@@ -60,15 +64,52 @@ export class ProjectsRepository {
 
       const result = await query
 
+      // Log raw results for debugging
+      console.log(`[getProjects] Found ${result.length} projects for org ${this.userContext.organizationId}`)
+      if (result.length > 0) {
+        const sample = result[0]
+        console.log(`[getProjects] Sample project raw counts:`, {
+          id: sample.id,
+          name: sample.name,
+          epicCount: sample.epicCount,
+          storyCount: sample.storyCount,
+          completedStoryCount: sample.completedStoryCount,
+          epicCountType: typeof sample.epicCount,
+          storyCountType: typeof sample.storyCount,
+        })
+      }
+
       // Ensure all count fields are properly converted to numbers
-      return result.map((project: any) => ({
-        ...project,
-        epicCount: Number(project.epicCount) || 0,
-        storyCount: Number(project.storyCount) || 0,
-        completedStoryCount: Number(project.completedStoryCount) || 0,
-        aiGeneratedStoryCount: Number(project.aiGeneratedStoryCount) || 0,
-        activeSprintCount: Number(project.activeSprintCount) || 0,
-      }))
+      const mapped = result.map((project: any) => {
+        const epicCount = Number(project.epicCount) || 0
+        const storyCount = Number(project.storyCount) || 0
+        const completedStoryCount = Number(project.completedStoryCount) || 0
+        const aiGeneratedStoryCount = Number(project.aiGeneratedStoryCount) || 0
+        const activeSprintCount = Number(project.activeSprintCount) || 0
+
+        return {
+          ...project,
+          epicCount,
+          storyCount,
+          completedStoryCount,
+          aiGeneratedStoryCount,
+          activeSprintCount,
+        }
+      })
+
+      // Log mapped results
+      if (mapped.length > 0) {
+        const sample = mapped[0]
+        console.log(`[getProjects] Sample project mapped counts:`, {
+          id: sample.id,
+          name: sample.name,
+          epicCount: sample.epicCount,
+          storyCount: sample.storyCount,
+          completedStoryCount: sample.completedStoryCount,
+        })
+      }
+
+      return mapped
     } catch (error) {
       console.error('Error in getProjects:', error)
       throw error

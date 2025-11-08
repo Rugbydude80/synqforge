@@ -51,18 +51,20 @@ export default function ProjectsPage() {
       const response = await api.projects.list()
       const nextProjects = Array.isArray(response?.data) ? response.data : []
       
-      // Log for debugging if projects have zero counts
-      if (process.env.NODE_ENV === 'development') {
-        nextProjects.forEach((project: Project) => {
-          if ((project.totalStories === 0 && project.totalEpics === 0) || 
-              project.totalStories === undefined || project.totalEpics === undefined) {
-            console.log(`[DEBUG] Project ${project.id} (${project.name}):`, {
-              totalStories: project.totalStories,
-              completedStories: project.completedStories,
-              totalEpics: project.totalEpics,
-              rawData: project
-            })
-          }
+      // Log API response for debugging
+      console.log(`[Frontend] Received ${nextProjects.length} projects from API`)
+      if (nextProjects.length > 0) {
+        const sample = nextProjects[0]
+        console.log(`[Frontend] Sample project from API:`, {
+          id: sample.id,
+          name: sample.name,
+          totalStories: sample.totalStories,
+          completedStories: sample.completedStories,
+          totalEpics: sample.totalEpics,
+          epicCount: sample.epicCount,
+          storyCount: sample.storyCount,
+          completedStoryCount: sample.completedStoryCount,
+          fullProject: sample,
         })
       }
       
