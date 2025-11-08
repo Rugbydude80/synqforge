@@ -21,6 +21,7 @@ export class ProjectsRepository {
       const query = db
         .select({
           id: projects.id,
+          organizationId: projects.organizationId,
           name: projects.name,
           description: projects.description,
           slug: projects.slug,
