@@ -21,8 +21,6 @@ const nextConfig = {
       ],
     },
   },
-  // Use standalone output for Vercel deployments
-  output: 'standalone',
   // Security headers for production
   async headers() {
     return [
