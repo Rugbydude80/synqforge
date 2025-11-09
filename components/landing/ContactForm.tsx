@@ -1,9 +1,25 @@
 'use client'
 
-import Script from 'next/script'
+import { useEffect } from 'react'
 import { Shield, Clock } from 'lucide-react'
 
 export function ContactForm() {
+  useEffect(() => {
+    // Load HubSpot form script
+    const script = document.createElement('script')
+    script.src = 'https://js-eu1.hsforms.net/forms/embed/147228857.js'
+    script.defer = true
+    script.async = true
+    document.body.appendChild(script)
+
+    return () => {
+      // Cleanup: remove script if component unmounts
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [])
+
   return (
     <section id="contact" className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
       <div className="max-w-7xl mx-auto px-6">
@@ -20,13 +36,6 @@ export function ContactForm() {
 
           {/* Form Container */}
           <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 max-w-3xl mx-auto">
-            {/* HubSpot Form Script */}
-            <Script
-              src="https://js-eu1.hsforms.net/forms/embed/147228857.js"
-              strategy="lazyOnload"
-              defer
-            />
-            
             {/* HubSpot Form Container */}
             <div 
               className="hs-form-frame" 
