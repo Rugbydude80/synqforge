@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import Script from 'next/script'
+import { useEffect, useRef, useState } from 'react'
 import { Shield, Clock } from 'lucide-react'
 
 declare global {
@@ -22,16 +21,28 @@ declare global {
 export function ContactForm() {
   const formRef = useRef<HTMLDivElement>(null)
   const formCreatedRef = useRef(false)
-  const scriptLoadedRef = useRef(false)
+  const [scriptReady, setScriptReady] = useState(false)
 
-  const createForm = () => {
-    if (formCreatedRef.current || !formRef.current) return
-    
-    if (window.hbspt?.forms && formRef.current) {
+  useEffect(() => {
+    // Function to create the form
+    const createForm = () => {
+      // Prevent multiple form creations
+      if (formCreatedRef.current) {
+        return
+      }
+
+      // Check if script is loaded and container exists
+      if (!window.hbspt?.forms || !formRef.current) {
+        return
+      }
+
+      // Check if form already exists in container
+      if (formRef.current.querySelector('form')) {
+        formCreatedRef.current = true
+        return
+      }
+
       try {
-        // Clear any existing content
-        formRef.current.innerHTML = ''
-        
         window.hbspt.forms.create({
           region: 'eu1',
           portalId: '147228857',
@@ -39,17 +50,41 @@ export function ContactForm() {
           target: formRef.current,
         })
         formCreatedRef.current = true
+        console.log('HubSpot form created successfully')
       } catch (error) {
         console.error('HubSpot form creation error:', error)
+        formCreatedRef.current = false // Reset on error to allow retry
       }
     }
-  }
 
-  useEffect(() => {
-    // If script already loaded, create form immediately
-    if (scriptLoadedRef.current && window.hbspt?.forms) {
-      createForm()
+    // If script is ready, try to create form
+    if (scriptReady && formRef.current) {
+      // Wait a bit for hbspt to be fully available
+      const timer = setTimeout(() => {
+        createForm()
+      }, 300)
+      
+      return () => clearTimeout(timer)
     }
+  }, [scriptReady])
+
+  // Also check periodically if script loads after component mounts
+  useEffect(() => {
+    let attempts = 0
+    const maxAttempts = 50 // Check for 5 seconds (50 * 100ms)
+    
+    const checkScript = setInterval(() => {
+      attempts++
+      if (window.hbspt?.forms && !formCreatedRef.current && formRef.current) {
+        setScriptReady(true)
+        clearInterval(checkScript)
+      } else if (attempts >= maxAttempts) {
+        console.warn('HubSpot script did not load within expected time')
+        clearInterval(checkScript)
+      }
+    }, 100)
+
+    return () => clearInterval(checkScript)
   }, [])
 
   return (
@@ -86,21 +121,6 @@ export function ContactForm() {
             </noscript>
           </div>
           
-          {/* HubSpot Script */}
-          <Script 
-            src="https://js-eu1.hsforms.net/forms/embed/147228857.js" 
-            strategy="afterInteractive"
-            onLoad={() => {
-              scriptLoadedRef.current = true
-              // Small delay to ensure hbspt is fully initialized
-              setTimeout(() => {
-                createForm()
-              }, 200)
-            }}
-            onError={(e) => {
-              console.error('Failed to load HubSpot script:', e)
-            }}
-          />
 
           {/* Trust Indicators */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm text-slate-600">
