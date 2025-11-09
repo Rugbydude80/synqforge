@@ -1,9 +1,56 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Script from 'next/script'
 import { Shield, Clock } from 'lucide-react'
 
+declare global {
+  interface Window {
+    hbspt?: {
+      forms: {
+        create: (options: {
+          region: string
+          portalId: string
+          formId: string
+          target: string | HTMLElement
+        }) => void
+      }
+    }
+  }
+}
+
 export function ContactForm() {
+  const formRef = useRef<HTMLDivElement>(null)
+  const formCreatedRef = useRef(false)
+  const scriptLoadedRef = useRef(false)
+
+  const createForm = () => {
+    if (formCreatedRef.current || !formRef.current) return
+    
+    if (window.hbspt?.forms && formRef.current) {
+      try {
+        // Clear any existing content
+        formRef.current.innerHTML = ''
+        
+        window.hbspt.forms.create({
+          region: 'eu1',
+          portalId: '147228857',
+          formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
+          target: formRef.current,
+        })
+        formCreatedRef.current = true
+      } catch (error) {
+        console.error('HubSpot form creation error:', error)
+      }
+    }
+  }
+
+  useEffect(() => {
+    // If script already loaded, create form immediately
+    if (scriptLoadedRef.current && window.hbspt?.forms) {
+      createForm()
+    }
+  }, [])
 
   return (
     <section id="contact" className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
@@ -22,12 +69,7 @@ export function ContactForm() {
           {/* Form Container */}
           <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 max-w-3xl mx-auto">
             {/* HubSpot Form Container */}
-            <div 
-              className="hs-form-frame" 
-              data-region="eu1" 
-              data-form-id="ed6253b9-b748-44b3-94bd-318af4be62ea" 
-              data-portal-id="147228857"
-            />
+            <div ref={formRef} id="hubspot-form-container" />
             
             {/* Fallback for no JavaScript */}
             <noscript>
@@ -47,8 +89,17 @@ export function ContactForm() {
           {/* HubSpot Script */}
           <Script 
             src="https://js-eu1.hsforms.net/forms/embed/147228857.js" 
-            strategy="lazyOnload"
-            defer
+            strategy="afterInteractive"
+            onLoad={() => {
+              scriptLoadedRef.current = true
+              // Small delay to ensure hbspt is fully initialized
+              setTimeout(() => {
+                createForm()
+              }, 200)
+            }}
+            onError={(e) => {
+              console.error('Failed to load HubSpot script:', e)
+            }}
           />
 
           {/* Trust Indicators */}
