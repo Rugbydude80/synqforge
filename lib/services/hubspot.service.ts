@@ -89,10 +89,13 @@ export async function createOrUpdateContact(
 
     if (existingContact) {
       // Update existing contact
-      // Filter out undefined values to avoid API errors
-      const cleanProperties = Object.fromEntries(
-        Object.entries(properties).filter(([_, value]) => value !== undefined && value !== null)
-      )
+      // Filter out undefined/null values and ensure all values are strings
+      const cleanProperties: Record<string, string> = {}
+      for (const [key, value] of Object.entries(properties)) {
+        if (value !== undefined && value !== null) {
+          cleanProperties[key] = String(value)
+        }
+      }
       
       await client.crm.contacts.basicApi.update(existingContact.id, {
         properties: cleanProperties,
@@ -106,10 +109,13 @@ export async function createOrUpdateContact(
       }
     } else {
       // Create new contact
-      // Filter out undefined values to avoid API errors
-      const cleanProperties = Object.fromEntries(
-        Object.entries(properties).filter(([_, value]) => value !== undefined && value !== null)
-      )
+      // Filter out undefined/null values and ensure all values are strings
+      const cleanProperties: Record<string, string> = {}
+      for (const [key, value] of Object.entries(properties)) {
+        if (value !== undefined && value !== null) {
+          cleanProperties[key] = String(value)
+        }
+      }
       
       const createResponse = await client.crm.contacts.basicApi.create({
         properties: cleanProperties,
@@ -160,12 +166,17 @@ export async function createDeal(
   }
 
   try {
+    const dealProperties: Record<string, string> = {
+      dealname: dealName,
+      dealstage: stage || 'appointmentscheduled',
+    }
+    
+    if (amount !== undefined) {
+      dealProperties.amount = amount.toString()
+    }
+    
     const dealResponse = await client.crm.deals.basicApi.create({
-      properties: {
-        dealname: dealName,
-        amount: amount?.toString(),
-        dealstage: stage || 'appointmentscheduled',
-      },
+      properties: dealProperties,
       associations: [
         {
           to: { id: contactId },
