@@ -7,7 +7,6 @@ import { CustomTemplatesFeature } from '@/components/landing/CustomTemplatesFeat
 import { WhoFor } from '@/components/landing/WhoFor'
 import { SmartContextFeature } from '@/components/landing/SmartContextFeature'
 import { ExampleOutput } from '@/components/landing/ExampleOutput'
-import { FeedbackSection } from '@/components/landing/FeedbackSection'
 import { ContactForm } from '@/components/landing/ContactForm'
 import { CtaFooter } from '@/components/landing/CtaFooter'
 
@@ -26,7 +25,6 @@ export default async function LandingPage() {
       <WhoFor />
       <SmartContextFeature />
       <ExampleOutput />
-      <FeedbackSection />
       <ContactForm />
       <CtaFooter />
     </div>
