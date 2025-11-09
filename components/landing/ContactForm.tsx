@@ -1,9 +1,57 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Script from 'next/script'
 import { Shield, Clock } from 'lucide-react'
 
+declare global {
+  interface Window {
+    hbspt?: {
+      forms: {
+        create: (options: {
+          region: string
+          portalId: string
+          formId: string
+          target: string
+        }) => void
+      }
+    }
+  }
+}
+
 export function ContactForm() {
+  const formRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Wait for HubSpot script to load and then create form
+    const loadForm = () => {
+      if (window.hbspt && formRef.current) {
+        window.hbspt.forms.create({
+          region: 'eu1',
+          portalId: '147228857',
+          formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
+          target: '#hubspot-form-container',
+        })
+      }
+    }
+
+    // Check if script already loaded
+    if (window.hbspt) {
+      loadForm()
+    } else {
+      // Wait for script to load
+      const checkInterval = setInterval(() => {
+        if (window.hbspt) {
+          clearInterval(checkInterval)
+          loadForm()
+        }
+      }, 100)
+
+      // Cleanup after 10 seconds
+      setTimeout(() => clearInterval(checkInterval), 10000)
+    }
+  }, [])
+
   return (
     <section id="contact" className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
       <div className="max-w-7xl mx-auto px-6">
@@ -25,15 +73,21 @@ export function ContactForm() {
               src="https://js-eu1.hsforms.net/forms/embed/147228857.js"
               strategy="afterInteractive"
               defer
+              onLoad={() => {
+                // Trigger form creation when script loads
+                if (window.hbspt && formRef.current) {
+                  window.hbspt.forms.create({
+                    region: 'eu1',
+                    portalId: '147228857',
+                    formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
+                    target: '#hubspot-form-container',
+                  })
+                }
+              }}
             />
             
             {/* HubSpot Form Container */}
-            <div 
-              className="hs-form-frame" 
-              data-region="eu1" 
-              data-form-id="ed6253b9-b748-44b3-94bd-318af4be62ea" 
-              data-portal-id="147228857"
-            />
+            <div id="hubspot-form-container" ref={formRef} />
             
             {/* Fallback for no JavaScript */}
             <noscript>
