@@ -16,6 +16,7 @@
 
 import { Client } from '@hubspot/api-client'
 import { FilterOperatorEnum } from '@hubspot/api-client/lib/codegen/crm/contacts/models/Filter'
+import { AssociationSpecAssociationCategoryEnum } from '@hubspot/api-client/lib/codegen/crm/deals/models/AssociationSpec'
 
 /**
  * Initialize HubSpot client with access token from environment
@@ -180,7 +181,7 @@ export async function createDeal(
       associations: [
         {
           to: { id: contactId },
-          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }], // Contact to Deal association
+          types: [{ associationCategory: AssociationSpecAssociationCategoryEnum.HubspotDefined, associationTypeId: 3 }], // Contact to Deal association
         },
       ],
     })
