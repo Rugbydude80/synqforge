@@ -13,8 +13,8 @@ declare global {
           portalId: string
           formId: string
           target: string | HTMLElement
-          onFormReady?: (form: HTMLElement) => void
-          onFormSubmit?: (form: HTMLElement) => void
+          onFormReady?: () => void
+          onFormSubmit?: () => void
         }) => void
       }
     }
@@ -26,52 +26,43 @@ export function ContactForm() {
   const formCreatedRef = useRef(false)
   const [scriptLoaded, setScriptLoaded] = useState(false)
 
-  useEffect(() => {
-    // Function to create the form
-    const createForm = () => {
-      // Prevent multiple form creations
-      if (formCreatedRef.current) {
-        return
-      }
-
-      // Check if script is loaded and container exists
-      if (!window.hbspt?.forms || !formRef.current) {
-        return
-      }
-
-      // Check if form already exists in container
-      if (formRef.current.querySelector('form')) {
-        formCreatedRef.current = true
-        return
-      }
-
-      try {
-        window.hbspt.forms.create({
-          region: 'eu1',
-          portalId: '147228857',
-          formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
-          target: formRef.current,
-          onFormReady: () => {
-            console.log('HubSpot form ready')
-            formCreatedRef.current = true
-          },
-          onFormSubmit: () => {
-            console.log('HubSpot form submitted')
-          },
-        })
-      } catch (error) {
-        console.error('HubSpot form creation error:', error)
-        formCreatedRef.current = false // Reset on error to allow retry
-      }
+  const createForm = () => {
+    // Prevent multiple form creations
+    if (formCreatedRef.current || !formRef.current || !window.hbspt?.forms) {
+      return
     }
 
-    // Create form when script is loaded
-    if (scriptLoaded && formRef.current) {
-      // Wait a bit for hbspt to be fully available
-      const timer = setTimeout(() => {
-        createForm()
-      }, 100)
-      
+    // Check if form already exists in container
+    if (formRef.current.querySelector('form')) {
+      formCreatedRef.current = true
+      return
+    }
+
+    try {
+      console.log('Creating HubSpot form...')
+      window.hbspt.forms.create({
+        region: 'eu1',
+        portalId: '147228857',
+        formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
+        target: formRef.current,
+        onFormReady: () => {
+          console.log('✅ HubSpot form ready and functional')
+          formCreatedRef.current = true
+        },
+        onFormSubmit: () => {
+          console.log('✅ HubSpot form submitted successfully')
+        },
+      })
+    } catch (error) {
+      console.error('❌ HubSpot form creation error:', error)
+      formCreatedRef.current = false
+    }
+  }
+
+  useEffect(() => {
+    if (scriptLoaded) {
+      // Small delay to ensure hbspt is fully initialized
+      const timer = setTimeout(createForm, 200)
       return () => clearTimeout(timer)
     }
   }, [scriptLoaded])
@@ -81,12 +72,13 @@ export function ContactForm() {
       {/* Load HubSpot Forms Script */}
       <Script
         src="https://js-eu1.hsforms.net/forms/embed/147228857.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onLoad={() => {
+          console.log('✅ HubSpot script loaded successfully')
           setScriptLoaded(true)
         }}
         onError={(e) => {
-          console.error('Failed to load HubSpot forms script:', e)
+          console.error('❌ Failed to load HubSpot forms script:', e)
         }}
       />
       
