@@ -198,8 +198,11 @@ export async function createDeal(
 /**
  * Add a timeline event to a contact
  * 
+ * Note: Timeline events require a custom event template to be created in HubSpot first.
+ * This function is a placeholder - implement based on your HubSpot timeline event template setup.
+ * 
  * @param contactId - HubSpot contact ID
- * @param eventType - Type of event
+ * @param eventType - Type of event (must match a template ID in HubSpot)
  * @param message - Event message
  * @param timestamp - Event timestamp (defaults to now)
  */
@@ -215,24 +218,14 @@ export async function addTimelineEvent(
     return false
   }
 
-  try {
-    await client.crm.timeline.eventsApi.create({
-      eventTemplateId: eventType,
-      objectId: contactId,
-      utk: contactId, // User token/contact ID
-      eventType: 'CUSTOM',
-      extraData: {
-        message,
-        timestamp: timestamp?.toISOString() || new Date().toISOString(),
-      },
-    })
-
-    console.log(`✅ Added timeline event to HubSpot contact: ${contactId}`)
-    return true
-  } catch (error) {
-    console.error('HubSpot timeline event creation failed:', error)
-    return false
-  }
+  // TODO: Implement timeline events once event templates are configured in HubSpot
+  // Timeline events require specific event templates to be created in HubSpot first
+  // See: https://developers.hubspot.com/docs/api/crm/timeline
+  
+  console.log(`⚠️ Timeline event skipped - requires HubSpot event template configuration`)
+  console.log(`   Contact ID: ${contactId}, Event: ${eventType}, Message: ${message}`)
+  
+  return false
 }
 
 /**
