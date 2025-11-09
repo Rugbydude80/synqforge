@@ -292,6 +292,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Sync user to HubSpot CRM (non-blocking - don't fail signup if this fails)
+    try {
+      const { createOrUpdateContact } = await import('@/lib/services/hubspot.service')
+      const { isHubSpotEnabled } = await import('@/lib/services/hubspot.service')
+      
+      if (isHubSpotEnabled()) {
+        // Split name into firstname and lastname
+        const nameParts = validatedData.name.trim().split(/\s+/)
+        const firstname = nameParts[0] || ''
+        const lastname = nameParts.slice(1).join(' ') || ''
+        
+        // Create/update contact in HubSpot
+        // Using standard HubSpot properties (custom properties can be added via HubSpot UI)
+        const hubspotResult = await createOrUpdateContact({
+          email: validatedData.email,
+          firstname,
+          lastname,
+          company: `${validatedData.name}'s Organization`,
+          lifecyclestage: validatedData.plan === 'free' ? 'subscriber' : 'lead',
+          // Note: Custom properties like synqforge_plan, synqforge_organization_id, etc.
+          // can be added if configured in HubSpot. For now, using standard properties only.
+        })
+        
+        if (hubspotResult) {
+          console.log(`✅ HubSpot contact synced: ${hubspotResult.contactId} (${validatedData.email})`)
+        }
+      }
+    } catch (hubspotError) {
+      // Log error but don't fail signup - HubSpot sync is non-critical
+      console.error('⚠️ HubSpot sync failed during signup (non-blocking):', hubspotError)
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Account created successfully',
