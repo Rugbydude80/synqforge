@@ -24,6 +24,7 @@ export function ContactForm() {
             <Script
               src="https://js-eu1.hsforms.net/forms/embed/147228857.js"
               strategy="lazyOnload"
+              defer
             />
             
             {/* HubSpot Form Container */}
