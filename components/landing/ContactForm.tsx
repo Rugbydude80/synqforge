@@ -1,84 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import Script from 'next/script'
 import { Shield, Clock } from 'lucide-react'
 
-declare global {
-  interface Window {
-    hbspt?: {
-      forms: {
-        create: (options: {
-          region: string
-          portalId: string
-          formId: string
-          target: string
-        }) => void
-      }
-    }
-  }
-}
-
 export function ContactForm() {
-  const formRef = useRef<HTMLDivElement>(null)
-  const scriptLoadedRef = useRef(false)
-
-  useEffect(() => {
-    // Load HubSpot script directly
-    if (!scriptLoadedRef.current) {
-      const script = document.createElement('script')
-      script.src = 'https://js-eu1.hsforms.net/forms/embed/147228857.js'
-      script.defer = true
-      script.async = true
-      script.charset = 'utf-8'
-      script.type = 'text/javascript'
-      
-      script.onload = () => {
-        scriptLoadedRef.current = true
-        // Small delay to ensure hbspt is fully initialized
-        setTimeout(() => {
-          if (window.hbspt && formRef.current) {
-            try {
-              window.hbspt.forms.create({
-                region: 'eu1',
-                portalId: '147228857',
-                formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
-                target: '#hubspot-form-container',
-              })
-            } catch (error) {
-              console.error('HubSpot form creation error:', error)
-            }
-          }
-        }, 100)
-      }
-
-      script.onerror = () => {
-        console.error('Failed to load HubSpot script')
-      }
-
-      document.head.appendChild(script)
-
-      return () => {
-        // Cleanup
-        if (document.head.contains(script)) {
-          document.head.removeChild(script)
-        }
-      }
-    } else {
-      // Script already loaded, just create the form
-      if (window.hbspt && formRef.current) {
-        try {
-          window.hbspt.forms.create({
-            region: 'eu1',
-            portalId: '147228857',
-            formId: 'ed6253b9-b748-44b3-94bd-318af4be62ea',
-            target: '#hubspot-form-container',
-          })
-        } catch (error) {
-          console.error('HubSpot form creation error:', error)
-        }
-      }
-    }
-  }, [])
 
   return (
     <section id="contact" className="py-16 sm:py-24 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
@@ -97,7 +22,12 @@ export function ContactForm() {
           {/* Form Container */}
           <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 max-w-3xl mx-auto">
             {/* HubSpot Form Container */}
-            <div id="hubspot-form-container" ref={formRef} />
+            <div 
+              className="hs-form-frame" 
+              data-region="eu1" 
+              data-form-id="ed6253b9-b748-44b3-94bd-318af4be62ea" 
+              data-portal-id="147228857"
+            />
             
             {/* Fallback for no JavaScript */}
             <noscript>
@@ -113,6 +43,13 @@ export function ContactForm() {
               </p>
             </noscript>
           </div>
+          
+          {/* HubSpot Script */}
+          <Script 
+            src="https://js-eu1.hsforms.net/forms/embed/147228857.js" 
+            strategy="lazyOnload"
+            defer
+          />
 
           {/* Trust Indicators */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm text-slate-600">
