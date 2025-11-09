@@ -13,12 +13,14 @@ import {
   Zap,
   CreditCard,
   FileText,
+  MessageSquare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
 import { CustomTemplateManager } from '@/components/ai/custom-template-manager'
+import { FeedbackForm } from '@/components/feedback/FeedbackForm'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -54,6 +56,7 @@ export default function SettingsPage() {
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'integrations', label: 'Integrations', icon: Database },
+    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   ]
 
   return (
@@ -116,6 +119,7 @@ export default function SettingsPage() {
             {activeTab === 'templates' && <TemplatesSettings />}
             {activeTab === 'billing' && <BillingSettings />}
             {activeTab === 'integrations' && <IntegrationSettings />}
+            {activeTab === 'feedback' && <FeedbackSettings />}
           </div>
         </div>
       </div>
@@ -571,6 +575,14 @@ function IntegrationSettings() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function FeedbackSettings() {
+  return (
+    <div className="space-y-6">
+      <FeedbackForm />
+    </div>
   )
 }
 
