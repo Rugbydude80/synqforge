@@ -21,10 +21,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
-          src="https://js-eu1.hsforms.net/forms/embed/147228857.js"
-          defer
-        />
-        <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
