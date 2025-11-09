@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     let payload
     try {
       payload = JSON.parse(rawBody)
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         {
           success: false,

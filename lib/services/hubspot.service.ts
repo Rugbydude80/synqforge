@@ -15,6 +15,7 @@
  */
 
 import { Client } from '@hubspot/api-client'
+import { FilterOperatorEnum } from '@hubspot/api-client/lib/codegen/crm/contacts/models/Filter'
 
 /**
  * Initialize HubSpot client with access token from environment
@@ -74,7 +75,7 @@ export async function createOrUpdateContact(
           filters: [
             {
               propertyName: 'email',
-              operator: 'EQ' as const,
+              operator: FilterOperatorEnum.Eq,
               value: properties.email,
             },
           ],
