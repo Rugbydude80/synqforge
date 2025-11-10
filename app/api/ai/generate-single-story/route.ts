@@ -14,6 +14,9 @@ import { piiDetectionService } from '@/lib/services/pii-detection.service';
 import { aiContextActionsService } from '@/lib/services/ai-context-actions.service';
 import { ContextLevel, UserTier } from '@/lib/types/context.types';
 import { buildAPIPrompt } from '@/lib/ai/journey-prompts';
+import { db } from '@/lib/db';
+import { organizations } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 const THINKING_MODEL = 'anthropic/claude-3-opus-20240229'; // Advanced model for thinking mode
 
@@ -196,7 +199,11 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     }
 
     // ✅ NEW: Get organization to determine user tier
-    const organization = await projectsRepo.getOrganizationById(context.user.organizationId);
+    const [organization] = await db
+      .select({ subscriptionTier: organizations.subscriptionTier })
+      .from(organizations)
+      .where(eq(organizations.id, context.user.organizationId))
+      .limit(1);
     const userTier = (organization?.subscriptionTier || 'starter') as UserTier;
 
     // ✅ NEW: Select model based on context level

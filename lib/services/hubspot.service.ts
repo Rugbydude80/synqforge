@@ -210,7 +210,7 @@ export async function addTimelineEvent(
   contactId: string,
   eventType: string,
   message: string,
-  timestamp?: Date
+  _timestamp?: Date
 ): Promise<boolean> {
   const client = getHubSpotClient()
   
