@@ -12,7 +12,8 @@ import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-t
 import { MODEL } from '@/lib/ai/client';
 import { piiDetectionService } from '@/lib/services/pii-detection.service';
 import { aiContextActionsService } from '@/lib/services/ai-context-actions.service';
-import { ContextLevel } from '@/lib/types/context.types';
+import { ContextLevel, UserTier } from '@/lib/types/context.types';
+import { buildAPIPrompt } from '@/lib/ai/journey-prompts';
 
 const THINKING_MODEL = 'anthropic/claude-3-opus-20240229'; // Advanced model for thinking mode
 
@@ -194,6 +195,10 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       );
     }
 
+    // ✅ NEW: Get organization to determine user tier
+    const organization = await projectsRepo.getOrganizationById(context.user.organizationId);
+    const userTier = (organization?.subscriptionTier || 'starter') as UserTier;
+
     // ✅ NEW: Select model based on context level
     const selectedModel = contextLevel === ContextLevel.COMPREHENSIVE_THINKING 
       ? THINKING_MODEL 
@@ -201,15 +206,31 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
 
     console.log(`🤖 Using ${selectedModel} for ${contextLevel} context level`);
 
+    // ✅ NEW: Build journey-aware prompt optimized for Qwen 3 Max
+    const { systemPrompt, userPrompt, journey } = buildAPIPrompt({
+      requirements: validatedData.requirement,
+      userTier,
+      contextLevel,
+      epicId: validatedData.epicId,
+      promptTemplate: templateKey,
+      storyCount: 1,
+      language: 'en-GB',
+      tone: 'formal',
+    });
+
+    console.log(`🎯 Using journey: ${journey}, tier: ${userTier}, context: ${contextLevel}`);
+
     // Generate a single story using AI
     let response;
     try {
       response = await aiService.generateStories(
-        validatedData.requirement,
-        validatedData.projectContext,
+        userPrompt,
+        '', // Context is now in userPrompt
         1, // Generate only 1 story
         selectedModel,
-        templateKey
+        templateKey,
+        undefined, // Custom format is now in systemPrompt
+        systemPrompt // Pass custom system prompt
       );
     } catch (aiError) {
       console.error('AI generation error:', aiError);

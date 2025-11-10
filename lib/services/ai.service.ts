@@ -152,8 +152,29 @@ export class AIService {
     count: number = 5,
     model: string = MODEL,
     promptTemplate?: string,
-    customTemplateFormat?: string // Custom template format enhancement
+    customTemplateFormat?: string, // Custom template format enhancement
+    customSystemPrompt?: string // ✅ NEW: Custom system prompt for journey-aware prompts
   ): Promise<StoryGenerationResponse> {
+    // If custom system prompt is provided, use it directly
+    if (customSystemPrompt) {
+      const response = await this.generateWithSystemPrompt({
+        model,
+        systemPrompt: customSystemPrompt,
+        userPrompt: requirements, // requirements is now the full user prompt
+        maxTokens: 4000,
+        temperature: 0.7,
+      });
+
+      const stories = this.parseStoryGenerationResponse(response.content);
+
+      return {
+        stories,
+        usage: response.usage,
+        model: response.model,
+      };
+    }
+
+    // Legacy path: build prompt using old method
     const prompt = this.buildStoryGenerationPrompt(requirements, context, count, promptTemplate, customTemplateFormat);
 
     const response = await this.generate({
@@ -295,7 +316,57 @@ export class AIService {
   }
 
   /**
-   * Core AI generation method
+   * ✅ NEW: Generate with system and user prompts (for journey-aware prompts)
+   */
+  private async generateWithSystemPrompt(request: {
+    model: string;
+    systemPrompt: string;
+    userPrompt: string;
+    maxTokens?: number;
+    temperature?: number;
+  }): Promise<AIGenerationResponse> {
+    this.ensureConfigured();
+    
+    try {
+      const completion = await openai.chat.completions.create({
+        model: request.model,
+        max_tokens: request.maxTokens || 2000,
+        temperature: request.temperature || 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: request.systemPrompt,
+          },
+          {
+            role: 'user',
+            content: request.userPrompt,
+          },
+        ],
+      });
+
+      // Extract text content from the response
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No text content in AI response');
+      }
+
+      return {
+        content,
+        usage: {
+          promptTokens: completion.usage?.prompt_tokens || 0,
+          completionTokens: completion.usage?.completion_tokens || 0,
+          totalTokens: completion.usage?.total_tokens || 0,
+        },
+        model: completion.model,
+      };
+    } catch (error: any) {
+      console.error('AI generation error:', error);
+      throw new Error(`AI generation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Core AI generation method (legacy - user prompt only)
    */
   private async generate(request: AIGenerationRequest): Promise<AIGenerationResponse> {
     this.ensureConfigured();

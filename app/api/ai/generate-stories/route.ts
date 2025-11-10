@@ -10,13 +10,14 @@ import { checkAIUsageLimit } from '@/lib/services/ai-usage.service';
 import { AI_TOKEN_COSTS } from '@/lib/constants';
 import { canUseAI, incrementTokenUsage, checkBulkLimit } from '@/lib/billing/fair-usage-guards';
 import { EmbeddingsService } from '@/lib/services/embeddings.service';
-import { ContextLevel } from '@/lib/types/context.types';
+import { ContextLevel, UserTier } from '@/lib/types/context.types';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 import { piiDetectionService } from '@/lib/services/pii-detection.service';
 import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-document-templates.repository';
 import { customTemplateParserService } from '@/lib/services/custom-template-parser.service';
 import { contentValidationService } from '@/lib/services/content-validation.service';
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard';
+import { buildAPIPrompt } from '@/lib/ai/journey-prompts';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -266,19 +267,37 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       }
     }
 
-    // Combine project context with semantic context
-    const enhancedContext = validatedData.projectContext 
-      ? `${validatedData.projectContext}\n${semanticContext}`
-      : semanticContext;
+    // ✅ NEW: Get organization to determine user tier
+    const organization = await projectsRepo.getOrganizationById(context.user.organizationId);
+    const userTier = (organization?.subscriptionTier || 'starter') as UserTier;
 
-    // Generate stories using AI with selected template and custom format
+    // ✅ NEW: Build journey-aware prompt optimized for Qwen 3 Max
+    const { systemPrompt, userPrompt, journey } = buildAPIPrompt({
+      requirements: validatedData.requirements,
+      userTier,
+      contextLevel: contextLevel || ContextLevel.STANDARD,
+      epicId: validatedData.epicId,
+      epicContext: semanticContext,
+      documentId: (validatedData as any).documentId,
+      customTemplateId: customTemplateId,
+      customTemplateFormat: customTemplateFormat,
+      promptTemplate: templateKey,
+      storyCount: 5,
+      language: 'en-GB',
+      tone: 'formal',
+    });
+
+    console.log(`🎯 Using journey: ${journey}, tier: ${userTier}, context: ${contextLevel}`);
+
+    // Generate stories using AI with journey-aware prompts
     const response = await aiService.generateStories(
-      validatedData.requirements,
-      enhancedContext,
+      userPrompt,
+      '', // Context is now in userPrompt
       5,
       undefined, // Use default model
       templateKey,
-      customTemplateFormat
+      undefined, // Custom format is now in systemPrompt
+      systemPrompt // Pass custom system prompt
     );
 
     // Track AI usage with real token data and template selection
@@ -294,7 +313,10 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
         promptTemplate: templateKey,
         customTemplateId: customTemplateId,
         storiesCount: response.stories.length,
-        semanticSearchUsed
+        semanticSearchUsed,
+        journey, // ✅ NEW: Track which journey was used
+        userTier, // ✅ NEW: Track user tier
+        contextLevel: contextLevel || ContextLevel.STANDARD // ✅ NEW: Track context level
       }
     );
 
