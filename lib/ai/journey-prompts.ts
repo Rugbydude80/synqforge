@@ -473,7 +473,7 @@ export function buildJourneyPrompt(
   }
   
   // Build user prompt based on journey
-  let userPrompt = buildUserPrompt(context, requirements);
+  const userPrompt = buildUserPrompt(context, requirements);
   
   return { systemPrompt, userPrompt };
 }

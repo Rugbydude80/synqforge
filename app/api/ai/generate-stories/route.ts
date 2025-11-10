@@ -18,6 +18,9 @@ import { customTemplateParserService } from '@/lib/services/custom-template-pars
 import { contentValidationService } from '@/lib/services/content-validation.service';
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard';
 import { buildAPIPrompt } from '@/lib/ai/journey-prompts';
+import { db } from '@/lib/db';
+import { organizations } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 async function generateStories(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user);
@@ -268,7 +271,11 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
     }
 
     // ✅ NEW: Get organization to determine user tier
-    const organization = await projectsRepo.getOrganizationById(context.user.organizationId);
+    const [organization] = await db
+      .select({ subscriptionTier: organizations.subscriptionTier })
+      .from(organizations)
+      .where(eq(organizations.id, context.user.organizationId))
+      .limit(1);
     const userTier = (organization?.subscriptionTier || 'starter') as UserTier;
 
     // ✅ NEW: Build journey-aware prompt optimized for Qwen 3 Max
@@ -426,7 +433,7 @@ ${idx + 1}. **${s.title}** (${Math.round(s.similarity * 100)}% similar)
       fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
       meta: {
         semanticSearchUsed,
-        contextLength: enhancedContext.length,
+        contextLength: semanticContext.length,
         originalCount: response.stories.length,
         filteredCount: response.stories.length - validatedStories.length,
         validationWarnings: validationErrors.length > 0 ? validationErrors : undefined,
