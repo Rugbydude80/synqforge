@@ -106,7 +106,6 @@ async function validateContextLevelAccess() {
     
     // Mock organization and user for testing
     const mockOrgId = 'test-org-' + tier;
-    const mockUserId = 'test-user-' + tier;
 
     try {
       const result = await aiContextActionsService.checkTierAccess(mockOrgId, level);
@@ -133,7 +132,7 @@ async function validateDatabaseSchema() {
 
   try {
     // Check if ai_action_usage table exists
-    const usageCheck = await db.select().from(aiActionUsage).limit(1);
+    await db.select().from(aiActionUsage).limit(1);
     log(
       'ai_action_usage table',
       true,
@@ -149,7 +148,7 @@ async function validateDatabaseSchema() {
 
   try {
     // Check organizations table has required fields
-    const orgCheck = await db.select({
+    await db.select({
       subscriptionTier: organizations.subscriptionTier,
       plan: organizations.plan,
       seatsIncluded: organizations.seatsIncluded,
@@ -190,7 +189,6 @@ async function validateAPIEndpoints() {
         // Check for key implementations
         const hasContextLevel = content.includes('contextLevel');
         const hasTierCheck = content.includes('checkTierAccess') || content.includes('canAccessContextLevel');
-        const hasActionDeduction = content.includes('deductActions');
         
         log(
           endpoint,
