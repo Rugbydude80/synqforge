@@ -3,11 +3,10 @@
  * Handles AI action tracking and deduction based on context levels
  */
 
-import { db } from '@/lib/db';
+import { db, generateId } from '@/lib/db';
 import { aiActionUsage, organizations, users } from '@/lib/db/schema';
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
-import { generateId } from '@/lib/utils';
-import { ContextLevel, UserTier, CONTEXT_CONFIGS, TIER_CONTEXT_ACCESS, TIER_MONTHLY_LIMITS } from '@/lib/types/context.types';
+import { and, eq, sql } from 'drizzle-orm';
+import { ContextLevel, UserTier } from '@/lib/types/context.types';
 import { ContextAccessService } from './context-access.service';
 
 interface ActionCheckResult {
@@ -210,7 +209,7 @@ export class AIContextActionsService {
     organizationId: string,
     userId: string,
     contextLevel: ContextLevel,
-    metadata?: Record<string, any>
+    _metadata?: Record<string, any>
   ): Promise<ActionDeductionResult> {
     try {
       const usage = await this.getOrCreateUsage(organizationId, userId);
