@@ -11,6 +11,10 @@ import { canUseAI, incrementTokenUsage } from '@/lib/billing/fair-usage-guards';
 import { validateTemplateAccess, getDefaultTemplateKey } from '@/lib/ai/prompt-templates';
 import { MODEL } from '@/lib/ai/client';
 import { piiDetectionService } from '@/lib/services/pii-detection.service';
+import { aiContextActionsService } from '@/lib/services/ai-context-actions.service';
+import { ContextLevel } from '@/lib/types/context.types';
+
+const THINKING_MODEL = 'anthropic/claude-3-opus-20240229'; // Advanced model for thinking mode
 
 const generateSingleStorySchema = z.object({
   requirement: z
@@ -22,6 +26,8 @@ const generateSingleStorySchema = z.object({
     .string()
     .max(2000, 'Project context must be under 2,000 characters')
     .optional(),
+  contextLevel: z.nativeEnum(ContextLevel).optional().default(ContextLevel.STANDARD),
+  epicId: z.string().optional(),
   promptTemplate: z.string().optional(), // Optional template selection
 });
 
@@ -73,6 +79,49 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     // Show 90% warning if approaching limit
     if (aiCheck.isWarning && aiCheck.reason) {
       console.warn(`Fair-usage warning for org ${context.user.organizationId}: ${aiCheck.reason}`)
+    }
+
+    // ✅ NEW: Check AI Context Level access and quota
+    const contextLevel = validatedData.contextLevel || ContextLevel.STANDARD;
+    
+    // Check tier access
+    const tierCheck = await aiContextActionsService.checkTierAccess(
+      context.user.organizationId,
+      contextLevel
+    );
+
+    if (!tierCheck.hasAccess) {
+      return NextResponse.json(
+        {
+          error: 'Access denied',
+          message: tierCheck.upgradeMessage,
+          currentTier: tierCheck.currentTier,
+          requiredTier: tierCheck.requiredTier,
+          upgradeUrl: '/pricing',
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check AI action quota
+    const actionCheck = await aiContextActionsService.canPerformAction(
+      context.user.organizationId,
+      context.user.id,
+      contextLevel
+    );
+
+    if (!actionCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Insufficient AI actions',
+          message: actionCheck.reason,
+          actionsRemaining: actionCheck.actionsRemaining,
+          monthlyLimit: actionCheck.monthlyLimit,
+          actionCost: actionCheck.actionCost,
+          upgradeUrl: '/pricing',
+        },
+        { status: 429 }
+      );
     }
 
     // ✅ CRITICAL: PII Detection - Block prompts with sensitive data
@@ -145,6 +194,13 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
       );
     }
 
+    // ✅ NEW: Select model based on context level
+    const selectedModel = contextLevel === ContextLevel.COMPREHENSIVE_THINKING 
+      ? THINKING_MODEL 
+      : MODEL;
+
+    console.log(`🤖 Using ${selectedModel} for ${contextLevel} context level`);
+
     // Generate a single story using AI
     let response;
     try {
@@ -152,7 +208,7 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
         validatedData.requirement,
         validatedData.projectContext,
         1, // Generate only 1 story
-        MODEL,
+        selectedModel,
         templateKey
       );
     } catch (aiError) {
@@ -198,10 +254,36 @@ async function generateSingleStory(req: NextRequest, context: AuthContext) {
     const actualTokensUsed = response.usage?.totalTokens || estimatedTokens
     await incrementTokenUsage(context.user.organizationId, actualTokensUsed)
 
+    // ✅ NEW: Deduct AI actions based on context level
+    try {
+      const deductionResult = await aiContextActionsService.deductActions(
+        context.user.organizationId,
+        context.user.id,
+        contextLevel,
+        {
+          promptTemplate: templateKey,
+          model: selectedModel,
+          tokensUsed: actualTokensUsed,
+        }
+      );
+
+      console.log(`✅ AI actions deducted: ${deductionResult.actionsUsed}/${actionCheck.monthlyLimit} (${deductionResult.actionsRemaining} remaining)`);
+    } catch (deductionError) {
+      console.error('Failed to deduct AI actions:', deductionError);
+      // Don't fail the request if deduction fails, but log it
+    }
+
     return NextResponse.json({
       success: true,
       story,
       fairUsageWarning: aiCheck.isWarning ? aiCheck.reason : undefined,
+      aiActions: {
+        used: actionCheck.actionsUsed + actionCheck.actionCost,
+        remaining: actionCheck.actionsRemaining - actionCheck.actionCost,
+        monthlyLimit: actionCheck.monthlyLimit,
+        contextLevel,
+        actionCost: actionCheck.actionCost,
+      },
     });
 
   } catch (error) {

@@ -58,6 +58,43 @@ export function StoryFormModal({
   })
   
   const [selectedContextLevel, setSelectedContextLevel] = React.useState<ContextLevel>(ContextLevel.STANDARD)
+  const [userContextData, setUserContextData] = React.useState<{
+    userTier: UserTier;
+    actionsUsed: number;
+    monthlyLimit: number;
+  } | null>(null)
+  const [loadingContextData, setLoadingContextData] = React.useState(true)
+
+  // Fetch user's context level data
+  React.useEffect(() => {
+    async function fetchContextData() {
+      try {
+        const response = await fetch('/api/ai/context-level/user-data')
+        if (response.ok) {
+          const data = await response.json()
+          setUserContextData({
+            userTier: data.data.userTier,
+            actionsUsed: data.data.actionsUsed,
+            monthlyLimit: data.data.monthlyLimit,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch context data:', error)
+        // Fallback to default values
+        setUserContextData({
+          userTier: UserTier.PRO,
+          actionsUsed: 0,
+          monthlyLimit: 800,
+        })
+      } finally {
+        setLoadingContextData(false)
+      }
+    }
+    
+    if (open && !story) {
+      fetchContextData()
+    }
+  }, [open, story])
 
   const fetchEpics = React.useCallback(async () => {
     try {
@@ -465,15 +502,21 @@ export function StoryFormModal({
             {!story && showAIInput && (
               <div className="grid gap-2">
                 <Label>AI Context Level</Label>
-                <ContextSelector
-                  selectedLevel={selectedContextLevel}
-                  onLevelChange={setSelectedContextLevel}
-                  userTier={UserTier.PRO} // TODO: Get from user's session/organization
-                  actionsUsed={0} // TODO: Get from user's actual usage
-                  monthlyLimit={800} // TODO: Get from user's tier config
-                  projectId={projectId}
-                  epicId={formData.epicId || undefined}
-                />
+                {loadingContextData ? (
+                  <div className="text-sm text-gray-500">Loading context data...</div>
+                ) : userContextData ? (
+                  <ContextSelector
+                    selectedLevel={selectedContextLevel}
+                    onLevelChange={setSelectedContextLevel}
+                    userTier={userContextData.userTier}
+                    actionsUsed={userContextData.actionsUsed}
+                    monthlyLimit={userContextData.monthlyLimit}
+                    projectId={projectId}
+                    epicId={formData.epicId || undefined}
+                  />
+                ) : (
+                  <div className="text-sm text-red-500">Failed to load context data</div>
+                )}
               </div>
             )}
 

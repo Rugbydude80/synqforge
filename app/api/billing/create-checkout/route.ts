@@ -81,6 +81,35 @@ export async function POST(req: NextRequest) {
       throw new NotFoundError('Organization', user.organizationId)
     }
 
+    // ✅ NEW: Validate Team plan requires minimum 5 seats
+    if (tier === 'team') {
+      const { sql } = await import('drizzle-orm');
+      
+      // Count current users in organization
+      const userCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.organizationId, organization.id));
+
+      const currentSeats = Number(userCount[0]?.count) || 0;
+
+      if (currentSeats < 5) {
+        return NextResponse.json(
+          { 
+            error: 'Team plan seat requirement not met',
+            message: 'Team plan requires a minimum of 5 users in your organization',
+            currentSeats,
+            requiredSeats: 5,
+            action: 'Please invite at least 5 team members before upgrading to Team plan',
+            upgradeUrl: '/settings/team'
+          },
+          { status: 400 }
+        );
+      }
+
+      console.log(`✅ Team plan validation passed: ${currentSeats} seats (min: 5)`);
+    }
+
     // Import Stripe dynamically
     const { default: Stripe } = await import('stripe')
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
