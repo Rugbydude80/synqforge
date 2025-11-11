@@ -6,8 +6,9 @@ import { openai, MODEL } from '@/lib/ai/client';
 import { buildQwenPrompt, getTokenBudget } from '@/lib/ai/prompts-qwen-optimized';
 import { SubscriptionTier } from '@/lib/utils/subscription';
 import { db } from '@/lib/db';
-import { organizations } from '@/lib/db/schema';
+import { organizations, storyRefinements } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import {
   NotFoundError,
   AuthorizationError,
@@ -103,14 +104,40 @@ Status: ${story.status || 'Not set'}`;
       throw new Error('No content in AI response');
     }
 
+    // Save refinement to database
+    const refinementId = nanoid();
+    const promptTokens = response.usage?.prompt_tokens || 0;
+    const completionTokens = response.usage?.completion_tokens || 0;
+    const totalTokens = response.usage?.total_tokens || 0;
+
+    await db.insert(storyRefinements).values({
+      id: refinementId,
+      storyId,
+      organizationId: context.user.organizationId,
+      userId: context.user.id,
+      refinement: content,
+      userRequest,
+      status: 'pending',
+      aiModelUsed: MODEL,
+      aiTokensUsed: totalTokens,
+      promptTokens,
+      completionTokens,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Return the refined story analysis
     return NextResponse.json({
       success: true,
-      refinement: content,
+      refinement: {
+        id: refinementId,
+        content,
+        status: 'pending',
+      },
       usage: {
-        promptTokens: response.usage?.prompt_tokens || 0,
-        completionTokens: response.usage?.completion_tokens || 0,
-        totalTokens: response.usage?.total_tokens || 0,
+        promptTokens,
+        completionTokens,
+        totalTokens,
       },
       model: MODEL,
     });

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
+import { db } from '@/lib/db';
+import { storyRefinements } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import {
   NotFoundError,
   formatErrorResponse,
@@ -36,7 +39,47 @@ async function acceptRefinement(
       throw new NotFoundError('Story', storyId);
     }
 
-    // Placeholder implementation - can be extended when refinements table is added
+    // Get the refinement
+    const [refinement] = await db
+      .select()
+      .from(storyRefinements)
+      .where(
+        and(
+          eq(storyRefinements.id, refinementId),
+          eq(storyRefinements.storyId, storyId),
+          eq(storyRefinements.organizationId, context.user.organizationId)
+        )
+      )
+      .limit(1);
+
+    if (!refinement) {
+      throw new NotFoundError('Refinement', refinementId);
+    }
+
+    if (refinement.status === 'accepted') {
+      return NextResponse.json(
+        { error: 'Bad request', message: 'Refinement is already accepted' },
+        { status: 400 }
+      );
+    }
+
+    if (refinement.status === 'rejected') {
+      return NextResponse.json(
+        { error: 'Bad request', message: 'Refinement has already been rejected' },
+        { status: 400 }
+      );
+    }
+
+    // Update refinement status to accepted
+    await db
+      .update(storyRefinements)
+      .set({
+        status: 'accepted',
+        acceptedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(storyRefinements.id, refinementId));
+
     return NextResponse.json({
       success: true,
       message: 'Refinement accepted successfully',

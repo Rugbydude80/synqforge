@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
+import { db } from '@/lib/db';
+import { storyRefinements } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import {
   NotFoundError,
   formatErrorResponse,
@@ -38,9 +41,50 @@ async function rejectRefinement(
 
     // Get optional rejection reason from body
     const body = await req.json().catch(() => ({}));
-    const reason = body.reason || 'No reason provided';
+    const reason = body.reason || null;
 
-    // Placeholder implementation - can be extended when refinements table is added
+    // Get the refinement
+    const [refinement] = await db
+      .select()
+      .from(storyRefinements)
+      .where(
+        and(
+          eq(storyRefinements.id, refinementId),
+          eq(storyRefinements.storyId, storyId),
+          eq(storyRefinements.organizationId, context.user.organizationId)
+        )
+      )
+      .limit(1);
+
+    if (!refinement) {
+      throw new NotFoundError('Refinement', refinementId);
+    }
+
+    if (refinement.status === 'rejected') {
+      return NextResponse.json(
+        { error: 'Bad request', message: 'Refinement is already rejected' },
+        { status: 400 }
+      );
+    }
+
+    if (refinement.status === 'accepted') {
+      return NextResponse.json(
+        { error: 'Bad request', message: 'Refinement has already been accepted' },
+        { status: 400 }
+      );
+    }
+
+    // Update refinement status to rejected
+    await db
+      .update(storyRefinements)
+      .set({
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectedReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(storyRefinements.id, refinementId));
+
     return NextResponse.json({
       success: true,
       message: 'Refinement rejected successfully',

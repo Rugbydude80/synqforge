@@ -2133,3 +2133,47 @@ export const budgetReallocationLog = pgTable(
     createdIdx: index('idx_realloc_created').on(table.createdAt),
   })
 )
+
+// ============================================
+// STORY REFINEMENTS
+// ============================================
+
+export const storyRefinements = pgTable(
+  'story_refinements',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    
+    // Refinement content
+    refinement: text('refinement').notNull(), // AI-generated refinement analysis
+    userRequest: text('user_request'), // Optional user request/context
+    
+    // Status tracking
+    status: varchar('status', { length: 50 }).default('pending').notNull(), // 'pending', 'accepted', 'rejected'
+    acceptedAt: timestamp('accepted_at'),
+    rejectedAt: timestamp('rejected_at'),
+    rejectedReason: text('rejected_reason'),
+    
+    // AI metadata
+    aiModelUsed: varchar('ai_model_used', { length: 100 }),
+    aiTokensUsed: integer('ai_tokens_used'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    
+    // Applied changes (if accepted)
+    appliedChanges: json('applied_changes').$type<Record<string, any>>(),
+    
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdx: index('idx_story_refinements_story').on(table.storyId),
+    orgIdx: index('idx_story_refinements_org').on(table.organizationId),
+    userIdx: index('idx_story_refinements_user').on(table.userId),
+    statusIdx: index('idx_story_refinements_status').on(table.status),
+    createdIdx: index('idx_story_refinements_created').on(table.createdAt),
+  })
+)
