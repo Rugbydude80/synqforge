@@ -15,6 +15,7 @@ import { TagsInput } from '@/components/tags-input'
 import { TaskList } from '@/components/tasks/task-list'
 import type { Task, TaskStats } from '@/components/tasks/task-list'
 import { SplitStoryButton } from '@/components/story-split/SplitStoryButton'
+import { RefineStoryButton } from '@/components/story-refinement/RefineStoryButton'
 import Link from 'next/link'
 import {
   Calendar,
@@ -214,6 +215,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
             <div className="flex items-start justify-between group">
               <h1 className="text-2xl font-bold">{story.title}</h1>
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <RefineStoryButton storyId={story.id} />
                 <SplitStoryButton storyId={story.id} />
                 <Button
                   size="sm"
