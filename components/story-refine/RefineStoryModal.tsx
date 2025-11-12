@@ -50,29 +50,17 @@ export function RefineStoryModal({ storyId, open, onClose }: RefineStoryModalPro
   }, [refinements, selectedRefinement]);
 
   const handleRefine = async () => {
-    try {
-      await refineMutation.mutateAsync(userRequest || undefined);
-      setUserRequest('');
-    } catch (_error) {
-      // Error handled by mutation
-    }
+    await refineMutation.mutateAsync(userRequest || undefined);
+    setUserRequest('');
   };
 
   const handleAccept = async (refinementId: string) => {
-    try {
-      await acceptMutation.mutateAsync(refinementId);
-      onClose();
-    } catch (_error) {
-      // Error handled by mutation
-    }
+    await acceptMutation.mutateAsync(refinementId);
+    onClose();
   };
 
   const handleReject = async (refinementId: string, reason?: string) => {
-    try {
-      await rejectMutation.mutateAsync({ refinementId, reason });
-    } catch (_error) {
-      // Error handled by mutation
-    }
+    await rejectMutation.mutateAsync({ refinementId, reason });
   };
 
   const pendingRefinements = refinements?.filter((r) => r.status === 'pending') || [];

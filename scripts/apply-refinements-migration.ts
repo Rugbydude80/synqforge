@@ -25,7 +25,7 @@ async function applyMigration() {
 
   try {
     console.log('🚀 Applying migration...');
-    await sql(migrationSQL);
+    await sql.unsafe(migrationSQL);
     console.log('✅ Migration applied successfully!');
     console.log('📊 Story refinements table created');
   } catch (error) {
