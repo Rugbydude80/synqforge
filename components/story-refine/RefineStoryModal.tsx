@@ -53,7 +53,7 @@ export function RefineStoryModal({ storyId, open, onClose }: RefineStoryModalPro
     try {
       await refineMutation.mutateAsync(userRequest || undefined);
       setUserRequest('');
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
     }
   };
@@ -62,7 +62,7 @@ export function RefineStoryModal({ storyId, open, onClose }: RefineStoryModalPro
     try {
       await acceptMutation.mutateAsync(refinementId);
       onClose();
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
     }
   };
@@ -70,7 +70,7 @@ export function RefineStoryModal({ storyId, open, onClose }: RefineStoryModalPro
   const handleReject = async (refinementId: string, reason?: string) => {
     try {
       await rejectMutation.mutateAsync({ refinementId, reason });
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
     }
   };

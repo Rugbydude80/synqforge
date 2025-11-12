@@ -11,7 +11,6 @@ import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
   NotFoundError,
-  AuthorizationError,
   DatabaseError,
   formatErrorResponse,
   isApplicationError
