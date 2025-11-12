@@ -38,10 +38,9 @@ export function useFeatureFlag(flagKey: string): boolean {
   
   if (flagKey === 'stories.refine_button.enabled') {
     // Use only NEXT_PUBLIC_ env var to avoid hydration mismatches
-    // Enabled by default, or explicitly set to 'true', or in development
-    const envValue = process.env.NEXT_PUBLIC_ENABLE_STORY_REFINE;
-    return envValue === 'true' || 
-           (envValue !== 'false' && process.env.NODE_ENV === 'development');
+    // Enabled if explicitly set to 'true' or in development mode
+    return process.env.NEXT_PUBLIC_ENABLE_STORY_REFINE === 'true' || 
+           process.env.NODE_ENV === 'development';
   }
   
   return false;
