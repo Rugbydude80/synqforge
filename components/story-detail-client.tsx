@@ -216,7 +216,17 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
               <h1 className="text-2xl font-bold">{story.title}</h1>
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <SplitStoryButton storyId={story.id} />
-                <RefineStoryButton storyId={story.id} />
+                <RefineStoryButton
+                  storyId={story.id}
+                  story={{
+                    id: story.id,
+                    title: story.title,
+                    description: story.description,
+                  }}
+                  onRefineComplete={() => {
+                    router.refresh();
+                  }}
+                />
                 <Button
                   size="sm"
                   variant="ghost"

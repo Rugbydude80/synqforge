@@ -42,15 +42,16 @@ export async function checkRateLimit(
   const now = new Date();
   const windowStart = new Date(now.getTime() - config.windowMs);
 
-  // Count refinements in current window using SQL
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
+  // Count refinements in current window
+  const allRefinements = await db
+    .select()
     .from(storyRefinements)
-    .where(
-      sql`${storyRefinements.userId} = ${userId} AND ${storyRefinements.createdAt} >= ${windowStart}`
-    );
+    .where(eq(storyRefinements.userId, userId));
 
-  const count = Number(result[0]?.count || 0);
+  // Filter to those in the current window (client-side filtering for simplicity)
+  const count = allRefinements.filter(
+    (r) => r.createdAt && new Date(r.createdAt) >= windowStart
+  ).length;
 
   const allowed = count < config.maxRequests;
   const remaining = Math.max(0, config.maxRequests - count);

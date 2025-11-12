@@ -16,19 +16,16 @@ export interface Refinement {
   updatedAt: Date;
 }
 
-export interface RefineStoryResponse {
-  success: boolean;
-  refinement: {
-    id: string;
-    content: string;
-    status: string;
-  };
-  usage: {
+import type { RefinementResponse } from '@/types/refinement';
+
+export interface RefineStoryResponse extends RefinementResponse {
+  success?: boolean;
+  usage?: {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
   };
-  model: string;
+  model?: string;
 }
 
 export function useRefinements(storyId: string) {
@@ -51,13 +48,13 @@ export function useRefineStoryMutation(storyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userRequest?: string): Promise<RefineStoryResponse> => {
+    mutationFn: async (instructions: string): Promise<RefineStoryResponse> => {
       const response = await fetch(`/api/stories/${storyId}/refine`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userRequest }),
+        body: JSON.stringify({ instructions, preserveOriginal: true }),
       });
 
       if (!response.ok) {
@@ -67,11 +64,11 @@ export function useRefineStoryMutation(storyId: string) {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['story-refinements', storyId] });
       queryClient.invalidateQueries({ queryKey: ['story', storyId] });
       toast.success('Story refinement generated', {
-        description: 'Review the suggestions and accept or reject them',
+        description: `Made ${data.changes.totalChanges} changes to your story.`,
       });
     },
     onError: (error: Error) => {
@@ -86,11 +83,21 @@ export function useAcceptRefinementMutation(storyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (refinementId: string) => {
+    mutationFn: async ({
+      refinementId,
+      saveToHistory = true,
+    }: {
+      refinementId: string;
+      saveToHistory?: boolean;
+    }) => {
       const response = await fetch(
         `/api/stories/${storyId}/refinements/${refinementId}/accept`,
         {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ saveToHistory }),
         }
       );
 
@@ -104,7 +111,7 @@ export function useAcceptRefinementMutation(storyId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['story-refinements', storyId] });
       queryClient.invalidateQueries({ queryKey: ['story', storyId] });
-      toast.success('Refinement accepted');
+      toast.success('Story successfully refined!');
     },
     onError: (error: Error) => {
       toast.error('Failed to accept refinement', {
