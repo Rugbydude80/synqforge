@@ -2146,15 +2146,26 @@ export const storyRefinements = pgTable(
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
     userId: varchar('user_id', { length: 36 }).notNull(),
     
-    // Refinement content
-    refinement: text('refinement').notNull(), // AI-generated refinement analysis
-    userRequest: text('user_request'), // Optional user request/context
+    // Refinement instructions and content
+    refinementInstructions: text('refinement_instructions').notNull(), // User's instructions (10-500 chars)
+    originalContent: text('original_content').notNull(), // Original story content
+    refinedContent: text('refined_content'), // AI-refined content
     
     // Status tracking
-    status: varchar('status', { length: 50 }).default('pending').notNull(), // 'pending', 'accepted', 'rejected'
-    acceptedAt: timestamp('accepted_at'),
-    rejectedAt: timestamp('rejected_at'),
-    rejectedReason: text('rejected_reason'),
+    status: varchar('status', { length: 20 }).default('pending').notNull(), // 'pending', 'processing', 'completed', 'accepted', 'rejected', 'failed'
+    
+    // Change tracking
+    changesSummary: json('changes_summary').$type<{
+      additions?: number;
+      deletions?: number;
+      modifications?: number;
+      totalChanges?: number;
+      wordCountDelta?: number;
+    }>(),
+    
+    // Processing metadata
+    processingTimeMs: integer('processing_time_ms'),
+    errorMessage: text('error_message'),
     
     // AI metadata
     aiModelUsed: varchar('ai_model_used', { length: 100 }),
@@ -2162,12 +2173,16 @@ export const storyRefinements = pgTable(
     promptTokens: integer('prompt_tokens'),
     completionTokens: integer('completion_tokens'),
     
-    // Applied changes (if accepted)
-    appliedChanges: json('applied_changes').$type<Record<string, any>>(),
+    // Legacy fields (for backward compatibility)
+    refinement: text('refinement'), // AI-generated refinement analysis (deprecated, use refinedContent)
+    userRequest: text('user_request'), // Optional user request/context (deprecated, use refinementInstructions)
     
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    rejectedAt: timestamp('rejected_at'),
+    rejectedReason: text('rejected_reason'),
   },
   (table) => ({
     storyIdx: index('idx_story_refinements_story').on(table.storyId),
@@ -2175,5 +2190,26 @@ export const storyRefinements = pgTable(
     userIdx: index('idx_story_refinements_user').on(table.userId),
     statusIdx: index('idx_story_refinements_status').on(table.status),
     createdIdx: index('idx_story_refinements_created').on(table.createdAt),
+  })
+)
+
+// Story revisions table for tracking story history
+export const storyRevisions = pgTable(
+  'story_revisions',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    content: text('content').notNull(), // Story content at this revision
+    revisionType: varchar('revision_type', { length: 50 }).notNull(), // 'manual_edit', 'refinement', 'auto_save', 'initial'
+    revisionNote: text('revision_note'), // Optional note about the revision
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdBy: varchar('created_by', { length: 36 }).notNull(),
+  },
+  (table) => ({
+    storyIdx: index('idx_story_revisions_story').on(table.storyId),
+    orgIdx: index('idx_story_revisions_org').on(table.organizationId),
+    createdIdx: index('idx_story_revisions_created').on(table.createdAt),
+    typeIdx: index('idx_story_revisions_type').on(table.revisionType),
   })
 )

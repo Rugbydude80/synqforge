@@ -3,12 +3,13 @@ import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
 import { db } from '@/lib/db';
-import { storyRefinements } from '@/lib/db/schema';
+import { storyRefinements, storyRevisions, stories } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import {
   NotFoundError,
   formatErrorResponse,
-  isApplicationError
+  isApplicationError,
 } from '@/lib/errors/custom-errors';
 
 /**
@@ -24,10 +25,17 @@ async function acceptRefinement(
   try {
     if (!storyId || !refinementId) {
       return NextResponse.json(
-        { error: 'Bad request', message: 'Story ID and Refinement ID are required' },
+        {
+          error: 'Bad request',
+          message: 'Story ID and Refinement ID are required',
+        },
         { status: 400 }
       );
     }
+
+    // Get optional saveToHistory from body
+    const body = await req.json().catch(() => ({}));
+    const saveToHistory = body.saveToHistory !== false; // Default to true
 
     // Verify story access
     await assertStoryAccessible(storyId, context.user.organizationId);
@@ -56,37 +64,66 @@ async function acceptRefinement(
       throw new NotFoundError('Refinement', refinementId);
     }
 
-    if (refinement.status === 'accepted') {
+    if (refinement.status !== 'completed') {
       return NextResponse.json(
-        { error: 'Bad request', message: 'Refinement is already accepted' },
+        {
+          error: 'Bad request',
+          message: 'Refinement is not ready to accept',
+        },
         { status: 400 }
       );
     }
 
-    if (refinement.status === 'rejected') {
+    if (!refinement.refinedContent) {
       return NextResponse.json(
-        { error: 'Bad request', message: 'Refinement has already been rejected' },
+        {
+          error: 'Bad request',
+          message: 'Refinement content is missing',
+        },
         { status: 400 }
       );
     }
 
-    // Update refinement status to accepted
-    await db
-      .update(storyRefinements)
-      .set({
-        status: 'accepted',
-        acceptedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(storyRefinements.id, refinementId));
+    // Use transaction to ensure data consistency
+    await db.transaction(async (tx) => {
+      // Save to revision history if requested
+      if (saveToHistory) {
+        await tx.insert(storyRevisions).values({
+          id: nanoid(),
+          storyId,
+          organizationId: context.user.organizationId,
+          content: refinement.originalContent || story.description || '',
+          revisionType: 'refinement',
+          revisionNote: `Pre-refinement backup: "${(refinement.refinementInstructions || '').substring(0, 50)}..."`,
+          createdBy: context.user.id,
+          createdAt: new Date(),
+        });
+      }
+
+      // Update story with refined content
+      await tx
+        .update(stories)
+        .set({
+          description: refinement.refinedContent,
+          updatedAt: new Date(),
+        })
+        .where(eq(stories.id, storyId));
+
+      // Mark refinement as accepted
+      await tx
+        .update(storyRefinements)
+        .set({
+          status: 'accepted',
+          acceptedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(storyRefinements.id, refinementId));
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Refinement accepted successfully',
-      refinementId,
-      storyId,
+      message: 'Story successfully refined!',
     });
-
   } catch (error: any) {
     console.error('Error accepting refinement:', error);
 
@@ -104,7 +141,10 @@ async function acceptRefinement(
     }
 
     return NextResponse.json(
-      { error: 'Internal server error', message: 'Failed to accept refinement' },
+      {
+        error: 'Internal server error',
+        message: 'Failed to accept refinement',
+      },
       { status: 500 }
     );
   }

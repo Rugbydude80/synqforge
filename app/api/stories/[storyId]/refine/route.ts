@@ -2,23 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
-import { openai, MODEL } from '@/lib/ai/client';
-import { buildQwenPrompt, getTokenBudget } from '@/lib/ai/prompts-qwen-optimized';
-import { SubscriptionTier } from '@/lib/utils/subscription';
 import { db } from '@/lib/db';
-import { organizations, storyRefinements } from '@/lib/db/schema';
+import { organizations, storyRefinements, storyRevisions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
   NotFoundError,
   DatabaseError,
   formatErrorResponse,
-  isApplicationError
+  isApplicationError,
 } from '@/lib/errors/custom-errors';
+import { canAccessFeature, Feature, getRequiredTierForFeature } from '@/lib/featureGates';
+import { refineStoryWithAI, validateStoryLength } from '@/lib/services/aiRefinementService';
+import { generateStoryDiff } from '@/lib/services/diffService';
+import { checkRateLimit } from '@/lib/middleware/rateLimiter';
 
 /**
  * POST /api/stories/[storyId]/refine
- * Refine a story using AI to improve its quality based on INVEST principles
+ * Refine a story using AI based on user instructions
  */
 async function refineStory(
   req: NextRequest,
@@ -27,6 +28,7 @@ async function refineStory(
   const storyId = context.params.storyId;
 
   try {
+    // 1. Authenticate user (handled by withAuth)
     if (!storyId) {
       return NextResponse.json(
         { error: 'Bad request', message: 'Story ID is required' },
@@ -34,116 +36,136 @@ async function refineStory(
       );
     }
 
-    // Verify story access
-    await assertStoryAccessible(storyId, context.user.organizationId);
-
-    // Get the story
-    const story = await storiesRepository.getById(storyId);
-
-    if (!story) {
-      throw new NotFoundError('Story', storyId);
-    }
-
-    // Get organization tier
+    // 2. Check feature access
     const [organization] = await db
       .select({ subscriptionTier: organizations.subscriptionTier })
       .from(organizations)
       .where(eq(organizations.id, context.user.organizationId))
       .limit(1);
 
-    const tier = (organization?.subscriptionTier || 'starter') as SubscriptionTier;
+    const userTier = organization?.subscriptionTier || 'starter';
 
-    // Format story for refinement prompt
-    const storyText = `Title: ${story.title || ''}
-Description: ${story.description || 'N/A'}
-Acceptance Criteria:
-${Array.isArray(story.acceptanceCriteria) 
-  ? story.acceptanceCriteria.map((ac: string, i: number) => `${i + 1}. ${ac}`).join('\n')
-  : 'N/A'}
-Story Points: ${story.storyPoints || 'Not estimated'}
-Priority: ${story.priority || 'Not set'}
-Status: ${story.status || 'Not set'}`;
-
-    // Get user request from body if provided
-    let userRequest = 'Please refine this story to improve its quality.';
-    try {
-      const body = await req.json();
-      if (body && typeof body === 'object' && 'userRequest' in body) {
-        userRequest = body.userRequest || userRequest;
-      }
-    } catch {
-      // Body is optional, use default message
-    }
-
-    // Build refinement prompt
-    const maxTokens = getTokenBudget(tier, 'medium');
-    const prompt = buildQwenPrompt('refinement', {
-      tier,
-      maxOutputTokens: maxTokens,
-      userRequest,
-    }, {
-      existingStory: storyText,
-    });
-
-    // Call AI to refine the story
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      messages: [
+    if (!canAccessFeature(userTier, Feature.REFINE_STORY)) {
+      return NextResponse.json(
         {
-          role: 'user',
-          content: prompt,
+          error: 'Feature not available',
+          message: 'Upgrade to Pro to access story refinement',
+          requiredTier: getRequiredTierForFeature(Feature.REFINE_STORY),
         },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content in AI response');
+        { status: 403 }
+      );
     }
 
-    // Save refinement to database
-    const refinementId = nanoid();
-    const promptTokens = response.usage?.prompt_tokens || 0;
-    const completionTokens = response.usage?.completion_tokens || 0;
-    const totalTokens = response.usage?.total_tokens || 0;
+    // 3. Check rate limit
+    const rateLimit = await checkRateLimit(context.user.id, userTier);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `You've reached your refinement limit. Try again after ${rateLimit.resetAt.toLocaleString()}`,
+          resetAt: rateLimit.resetAt,
+        },
+        { status: 429 }
+      );
+    }
 
+    // 4. Get story and verify ownership
+    await assertStoryAccessible(storyId, context.user.organizationId);
+    const story = await storiesRepository.getById(storyId);
+
+    if (!story) {
+      throw new NotFoundError('Story', storyId);
+    }
+
+    // 5. Validate request body
+    const body = await req.json();
+    const { instructions, preserveOriginal = true } = body;
+
+    if (!instructions || instructions.length < 10 || instructions.length > 500) {
+      return NextResponse.json(
+        { error: 'Instructions must be between 10 and 500 characters' },
+        { status: 400 }
+      );
+    }
+
+    // 6. Validate story length
+    const storyContent = story.description || '';
+    if (!validateStoryLength(storyContent)) {
+      return NextResponse.json(
+        { error: 'Story is too long to refine. Maximum 10,000 words.' },
+        { status: 400 }
+      );
+    }
+
+    // 7. Create refinement record
+    const refinementId = nanoid();
     await db.insert(storyRefinements).values({
       id: refinementId,
-      storyId,
-      organizationId: context.user.organizationId,
+      storyId: story.id,
       userId: context.user.id,
-      refinement: content,
-      userRequest,
-      status: 'pending',
-      aiModelUsed: MODEL,
-      aiTokensUsed: totalTokens,
-      promptTokens,
-      completionTokens,
+      organizationId: context.user.organizationId,
+      refinementInstructions: instructions,
+      originalContent: storyContent,
+      status: 'processing',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    // Return the refined story analysis
-    return NextResponse.json({
-      success: true,
-      refinement: {
-        id: refinementId,
-        content,
-        status: 'pending',
-      },
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens,
-      },
-      model: MODEL,
-    });
+    // 8. Start AI refinement (async)
+    const startTime = Date.now();
 
+    try {
+      const refinedContent = await refineStoryWithAI(storyContent, instructions, {
+        currentWordCount: storyContent.split(/\s+/).length,
+      });
+
+      const processingTime = Date.now() - startTime;
+
+      // 9. Generate diff
+      const diffResult = generateStoryDiff(storyContent, refinedContent);
+
+      // 10. Update refinement record
+      await db
+        .update(storyRefinements)
+        .set({
+          refinedContent,
+          status: 'completed',
+          processingTimeMs: processingTime,
+          changesSummary: {
+            additions: diffResult.additions,
+            deletions: diffResult.deletions,
+            modifications: diffResult.modifications,
+            totalChanges: diffResult.totalChanges,
+            wordCountDelta: diffResult.wordCountDelta,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(storyRefinements.id, refinementId));
+
+      // 11. Return result
+      return NextResponse.json({
+        refinementId,
+        originalContent: storyContent,
+        refinedContent,
+        changes: diffResult,
+        processingTimeMs: processingTime,
+        storyTitle: story.title,
+      });
+    } catch (aiError: any) {
+      // Handle AI processing errors
+      await db
+        .update(storyRefinements)
+        .set({
+          status: 'failed',
+          errorMessage: aiError.message,
+          updatedAt: new Date(),
+        })
+        .where(eq(storyRefinements.id, refinementId));
+
+      throw aiError;
+    }
   } catch (error: any) {
     console.error('Error refining story:', error);
-    console.error('Error stack:', error.stack);
 
     // Handle custom application errors
     if (isApplicationError(error)) {
@@ -152,28 +174,14 @@ Status: ${story.status || 'Not set'}`;
       return NextResponse.json(errorBody, { status: statusCode });
     }
 
-    // Handle "Story not found" from repository
-    if (error.message && error.message.includes('Story not found')) {
-      const notFoundError = new NotFoundError('Story', storyId);
-      const response = formatErrorResponse(notFoundError);
-      const { statusCode, ...errorBody } = response;
-      return NextResponse.json(errorBody, { status: statusCode });
-    }
-
-    // Handle database errors
-    if (error.message && (error.message.includes('database') || error.message.includes('query'))) {
-      const dbError = new DatabaseError('Failed to refine story', error instanceof Error ? error : undefined);
-      const response = formatErrorResponse(dbError);
-      const { statusCode, ...errorBody } = response;
-      return NextResponse.json(errorBody, { status: statusCode });
-    }
-
-    const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
+    const isDev =
+      process.env.NODE_ENV === 'development' ||
+      process.env.VERCEL_ENV === 'preview';
 
     return NextResponse.json(
       {
-        error: 'Internal server error',
-        message: isDev ? error.message : 'Failed to refine story',
+        error: 'Failed to refine story',
+        message: isDev ? error.message : 'Failed to refine story. Please try again.',
         ...(isDev && { stack: error.stack }),
       },
       { status: 500 }

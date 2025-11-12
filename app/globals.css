@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Diff highlighting styles */
+@layer components {
+  mark.deletion {
+    @apply bg-red-100 text-red-900 line-through dark:bg-red-900/20 dark:text-red-300;
+  }
+
+  mark.addition {
+    @apply bg-green-100 text-green-900 dark:bg-green-900/20 dark:text-green-300;
+  }
+
+  mark.modification {
+    @apply bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300;
+  }
+
+  /* Smooth transitions for change highlighting */
+  mark {
+    transition: all 0.2s ease-in-out;
+  }
+
+  mark.active {
+    @apply ring-2 ring-primary shadow-sm;
+  }
+
+  /* Prose styling for story content */
+  .prose pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
