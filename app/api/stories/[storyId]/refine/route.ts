@@ -3,7 +3,7 @@ import { withAuth, AuthContext } from '@/lib/middleware/auth';
 import { storiesRepository } from '@/lib/repositories/stories.repository';
 import { assertStoryAccessible } from '@/lib/permissions/story-access';
 import { db } from '@/lib/db';
-import { organizations, storyRefinements, storyRevisions } from '@/lib/db/schema';
+import { organizations, storyRefinements } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
