@@ -67,8 +67,16 @@ export function useRefineStoryMutation(storyId: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['story-refinements', storyId] });
       queryClient.invalidateQueries({ queryKey: ['story', storyId] });
+      
+      // Handle both structured (new) and legacy (old) formats
+      const changes = data.changes as any;
+      const totalChanges = 
+        changes?.summary?.totalChanges ?? 
+        changes?.totalChanges ?? 
+        0;
+      
       toast.success('Story refinement generated', {
-        description: `Made ${data.changes.totalChanges} changes to your story.`,
+        description: `Made ${totalChanges} ${totalChanges === 1 ? 'change' : 'changes'} to your story.`,
       });
     },
     onError: (error: Error) => {
