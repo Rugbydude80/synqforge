@@ -257,7 +257,6 @@ export function ReviewInterface({
                     type="original"
                     showChanges={showChanges}
                     currentChangeIndex={currentChangeIndex}
-                    onHoverChange={setHoveredChangeIndex}
                   />
                 </div>
               </div>
@@ -297,7 +296,6 @@ export function ReviewInterface({
                     type="refined"
                     showChanges={showChanges}
                     currentChangeIndex={currentChangeIndex}
-                    onHoverChange={setHoveredChangeIndex}
                   />
                 </div>
               </div>
@@ -311,7 +309,6 @@ export function ReviewInterface({
               type="unified"
               showChanges={showChanges}
               currentChangeIndex={currentChangeIndex}
-              onHoverChange={setHoveredChangeIndex}
             />
           </div>
         )}

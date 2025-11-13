@@ -244,7 +244,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
                         const error = await response.json();
                         toast.error(error.message || 'Failed to undo refinement');
                       }
-                    } catch (err) {
+                    } catch {
                       toast.error('Failed to undo refinement');
                     }
                   }}
@@ -491,11 +491,11 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
       {/* Revision History */}
       <RevisionHistory
         storyId={story.id}
-        onPreview={(revision) => {
+        onPreview={(_revision) => {
           // Could open a preview modal here
           toast.info('Preview feature coming soon');
         }}
-        onRestore={(revision) => {
+        onRestore={(_revision) => {
           router.refresh();
           toast.success('Story restored to revision');
         }}

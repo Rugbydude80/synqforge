@@ -41,7 +41,7 @@ export function RefineStoryModal({
 
   const refineMutation = useRefineStoryMutation(story.id);
 
-  const handleRefine = async (options?: RefinementOptions) => {
+  const handleRefine = async (_options?: RefinementOptions) => {
     if (instructions.length < 10) {
       toast.error('Instructions too short', {
         description: 'Please provide at least 10 characters of instructions.',
@@ -51,7 +51,6 @@ export function RefineStoryModal({
 
     setStage('processing');
     setError(null);
-    setRefinementOptions(options);
 
     try {
       // TODO: Pass options to API when backend supports it
