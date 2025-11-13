@@ -12,7 +12,7 @@ import {
   isApplicationError,
 } from '@/lib/errors/custom-errors';
 import { canAccessFeature, Feature, getRequiredTierForFeature } from '@/lib/featureGates';
-import { refineStoryWithAI, validateStoryLength } from '@/lib/services/aiRefinementService';
+import { refineCompleteUserStory, validateStoryLength } from '@/lib/services/aiRefinementService';
 import { generateStoryDiff } from '@/lib/services/diffService';
 import { checkRateLimit } from '@/lib/middleware/rateLimiter';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
@@ -98,45 +98,66 @@ async function refineStory(
 
     // 6. Validate story length
     const storyContent = story.description || '';
-    if (!validateStoryLength(storyContent)) {
+    const totalContent = [
+      story.title,
+      story.description || '',
+      ...(story.acceptanceCriteria || [])
+    ].join('\n');
+    
+    if (!validateStoryLength(totalContent)) {
       return NextResponse.json(
         { error: 'Story is too long to refine. Maximum 10,000 words.' },
         { status: 400 }
       );
     }
 
-    // 7. Create refinement record
+    // 7. Create refinement record with original content
     const refinementId = nanoid();
+    const originalContent = JSON.stringify({
+      title: story.title,
+      description: story.description || '',
+      acceptanceCriteria: story.acceptanceCriteria || [],
+    });
+    
     await db.insert(storyRefinements).values({
       id: refinementId,
       storyId: story.id,
       userId: context.user.id,
       organizationId: context.user.organizationId,
       refinementInstructions: instructions,
-      originalContent: storyContent,
+      originalContent: originalContent,
       status: 'processing',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    // 8. Start AI refinement (async)
+    // 8. Start AI refinement (async) - refine complete story
     const startTime = Date.now();
 
     try {
-      const refinementResult = await refineStoryWithAI(
-        storyContent,
-        instructions,
+      const refinedStory = await refineCompleteUserStory(
         {
-          currentWordCount: storyContent.split(/\s+/).length,
+          title: story.title,
+          description: story.description || '',
+          acceptanceCriteria: story.acceptanceCriteria || [],
         },
-        options // Pass refinement options
+        instructions,
+        options
       );
 
-      const refinedContent = refinementResult.refinedContent;
+      // Reconstruct refined content for storage
+      const refinedContent = JSON.stringify({
+        title: refinedStory.title,
+        description: refinedStory.description,
+        acceptanceCriteria: refinedStory.acceptanceCriteria,
+      });
+
       const processingTime = Date.now() - startTime;
 
-      // 9. Generate diff
-      const diffResult = generateStoryDiff(storyContent, refinedContent);
+      // 9. Generate diff for description (main content shown in UI)
+      const originalDescription = story.description || '';
+      const refinedDescription = refinedStory.description;
+      const diffResult = generateStoryDiff(originalDescription, refinedDescription);
 
       // 10. Update refinement record
       await db
@@ -156,11 +177,16 @@ async function refineStory(
         })
         .where(eq(storyRefinements.id, refinementId));
 
-      // 11. Return result
+      // 11. Return result with complete refined story
       return NextResponse.json({
         refinementId,
-        originalContent: storyContent,
-        refinedContent,
+        originalContent: originalDescription,
+        refinedContent: refinedDescription,
+        refinedStory: {
+          title: refinedStory.title,
+          description: refinedStory.description,
+          acceptanceCriteria: refinedStory.acceptanceCriteria,
+        },
         changes: diffResult,
         processingTimeMs: processingTime,
         storyTitle: story.title,

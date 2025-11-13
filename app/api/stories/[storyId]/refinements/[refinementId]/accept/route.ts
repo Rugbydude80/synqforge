@@ -112,27 +112,50 @@ async function acceptRefinement(
           });
         }
 
-        // Apply changes - if selectedChanges provided, only apply those
-        let finalContent = refinement.refinedContent;
+        // Parse refined content (now stored as JSON with title, description, acceptanceCriteria)
+        let refinedStoryData: {
+          title?: string;
+          description?: string;
+          acceptanceCriteria?: string[];
+        };
         
-        if (selectedChanges && Array.isArray(selectedChanges) && selectedChanges.length > 0) {
-          // Get the changes summary to reconstruct content with only selected changes
-          const changesSummary = refinement.changesSummary as any;
-          if (changesSummary && changesSummary.changes) {
-            // Note: For now, we use the full refined content when selected changes are provided
-            // A more sophisticated implementation would reconstruct from original + selected changes
-            // This would require proper diff application logic
-            finalContent = refinement.refinedContent;
-          }
+        try {
+          // Try to parse as JSON first (new format)
+          refinedStoryData = JSON.parse(refinement.refinedContent);
+        } catch {
+          // Fallback to old format (plain text description)
+          refinedStoryData = {
+            description: refinement.refinedContent,
+          };
         }
         
+        // Apply changes - if selectedChanges provided, only apply those
+        // For now, we use the full refined content when selected changes are provided
+        // A more sophisticated implementation would reconstruct from original + selected changes
+        
         // Update story with refined content
+        const updateData: {
+          title?: string;
+          description?: string;
+          acceptanceCriteria?: string[];
+          updatedAt: Date;
+        } = {
+          updatedAt: new Date(),
+        };
+        
+        if (refinedStoryData.title) {
+          updateData.title = refinedStoryData.title;
+        }
+        if (refinedStoryData.description !== undefined) {
+          updateData.description = refinedStoryData.description;
+        }
+        if (refinedStoryData.acceptanceCriteria) {
+          updateData.acceptanceCriteria = refinedStoryData.acceptanceCriteria;
+        }
+        
         await tx
           .update(stories)
-          .set({
-            description: finalContent,
-            updatedAt: new Date(),
-          })
+          .set(updateData)
           .where(eq(stories.id, storyId));
 
         // Mark refinement as accepted
