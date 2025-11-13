@@ -83,7 +83,7 @@ export function RefineStoryModal({
       });
 
       onComplete();
-    } catch (_err: any) {
+    } catch {
       toast.error('Error', {
         description: 'Failed to apply refinement. Please try again.',
       });

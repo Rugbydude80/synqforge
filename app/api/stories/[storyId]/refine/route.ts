@@ -8,7 +8,6 @@ import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
   NotFoundError,
-  DatabaseError,
   formatErrorResponse,
   isApplicationError,
 } from '@/lib/errors/custom-errors';
@@ -79,7 +78,7 @@ async function refineStory(
 
     // 5. Validate request body
     const body = await req.json();
-    const { instructions, preserveOriginal = true } = body;
+    const { instructions } = body;
 
     if (!instructions || instructions.length < 10 || instructions.length > 500) {
       return NextResponse.json(

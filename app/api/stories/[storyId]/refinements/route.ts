@@ -52,12 +52,13 @@ async function getRefinements(
       refinements: refinements.map((r) => ({
         id: r.id,
         storyId: r.storyId,
-        refinement: r.refinement,
-        userRequest: r.userRequest,
+        refinementInstructions: r.refinementInstructions,
+        originalContent: r.originalContent,
+        refinedContent: r.refinedContent,
         status: r.status,
-        acceptedAt: r.acceptedAt,
-        rejectedAt: r.rejectedAt,
-        rejectedReason: r.rejectedReason,
+        changesSummary: r.changesSummary,
+        processingTimeMs: r.processingTimeMs,
+        errorMessage: r.errorMessage,
         aiModelUsed: r.aiModelUsed,
         aiTokensUsed: r.aiTokensUsed,
         createdAt: r.createdAt,
@@ -119,9 +120,9 @@ async function createRefinement(
     const body = await req.json().catch(() => ({}));
 
     // Validate required fields
-    if (!body.refinement) {
+    if (!body.refinementInstructions || !body.originalContent) {
       return NextResponse.json(
-        { error: 'Bad request', message: 'Refinement content is required' },
+        { error: 'Bad request', message: 'Refinement instructions and original content are required' },
         { status: 400 }
       );
     }
@@ -133,9 +134,10 @@ async function createRefinement(
       storyId,
       organizationId: context.user.organizationId,
       userId: context.user.id,
-      refinement: body.refinement,
-      userRequest: body.userRequest || null,
-      status: 'pending',
+      refinementInstructions: body.refinementInstructions,
+      originalContent: body.originalContent,
+      refinedContent: body.refinedContent || null,
+      status: body.status || 'pending',
       aiModelUsed: body.aiModelUsed || null,
       aiTokensUsed: body.aiTokensUsed || null,
       promptTokens: body.promptTokens || null,
@@ -157,8 +159,9 @@ async function createRefinement(
       refinement: {
         id: refinement.id,
         storyId: refinement.storyId,
-        refinement: refinement.refinement,
-        userRequest: refinement.userRequest,
+        refinementInstructions: refinement.refinementInstructions,
+        originalContent: refinement.originalContent,
+        refinedContent: refinement.refinedContent,
         status: refinement.status,
         createdAt: refinement.createdAt,
       },
