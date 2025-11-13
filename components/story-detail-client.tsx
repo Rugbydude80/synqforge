@@ -89,10 +89,11 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
   React.useEffect(() => {
     if (initialStory && initialStory.id === story.id) {
       // Only update if story ID matches and content has changed
-      if (
+      const hasChanged = 
         initialStory.title !== story.title ||
-        initialStory.description !== story.description
-      ) {
+        initialStory.description !== story.description;
+      
+      if (hasChanged) {
         console.log('StoryDetailClient: Syncing story from server', {
           oldTitle: story.title,
           newTitle: initialStory.title,
@@ -100,6 +101,7 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
         setStory(initialStory);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialStory?.id, initialStory?.title, initialStory?.description]);
 
   // Load tasks for the story
