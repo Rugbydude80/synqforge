@@ -153,12 +153,36 @@ async function refineStory(
 
       const processingTime = Date.now() - startTime;
 
-      // 9. Generate diff for description (main content shown in UI)
-      const originalDescription = story.description || '';
-      const refinedDescription = refinedStory.description;
-      const diffResult = generateStoryDiff(originalDescription, refinedDescription);
+      // 9. Generate diffs for ALL fields (title, description, acceptance criteria)
+      console.log('🔍 Generating diffs for story refinement:', {
+        storyId: story.id,
+        originalTitle: story.title,
+        refinedTitle: refinedStory.title,
+        originalDescription: story.description?.substring(0, 50) + '...',
+        refinedDescription: refinedStory.description?.substring(0, 50) + '...',
+        originalACCount: story.acceptanceCriteria?.length || 0,
+        refinedACCount: refinedStory.acceptanceCriteria?.length || 0,
+      });
 
-      // 10. Update refinement record
+      const titleDiff = generateStoryDiff(story.title, refinedStory.title);
+      const descriptionDiff = generateStoryDiff(
+        story.description || '',
+        refinedStory.description
+      );
+      
+      // Generate diff for each acceptance criterion
+      const acDiffs = (story.acceptanceCriteria || []).map((original, index) => {
+        const refined = refinedStory.acceptanceCriteria[index] || original;
+        return generateStoryDiff(original, refined);
+      });
+
+      // Calculate total changes across all fields
+      const totalChanges = 
+        titleDiff.totalChanges + 
+        descriptionDiff.totalChanges + 
+        acDiffs.reduce((sum, diff) => sum + diff.totalChanges, 0);
+
+      // 10. Update refinement record with comprehensive summary
       await db
         .update(storyRefinements)
         .set({
@@ -166,27 +190,45 @@ async function refineStory(
           status: 'completed',
           processingTimeMs: processingTime,
           changesSummary: {
-            additions: diffResult.additions,
-            deletions: diffResult.deletions,
-            modifications: diffResult.modifications,
-            totalChanges: diffResult.totalChanges,
-            wordCountDelta: diffResult.wordCountDelta,
+            additions: descriptionDiff.additions,
+            deletions: descriptionDiff.deletions,
+            modifications: descriptionDiff.modifications,
+            totalChanges: totalChanges,
+            wordCountDelta: descriptionDiff.wordCountDelta,
           },
           updatedAt: new Date(),
         })
         .where(eq(storyRefinements.id, refinementId));
 
-      // 11. Return result with complete refined story
+      // 11. Return result with complete structured story and per-field diffs
       return NextResponse.json({
         refinementId,
-        originalContent: originalDescription,
-        refinedContent: refinedDescription,
+        // Keep legacy fields for backward compatibility (deprecated)
+        originalContent: story.description || '',
+        refinedContent: refinedStory.description,
+        // New structured fields
+        originalStory: {
+          title: story.title,
+          description: story.description || '',
+          acceptanceCriteria: story.acceptanceCriteria || [],
+        },
         refinedStory: {
           title: refinedStory.title,
           description: refinedStory.description,
           acceptanceCriteria: refinedStory.acceptanceCriteria,
         },
-        changes: diffResult,
+        changes: {
+          title: titleDiff,
+          description: descriptionDiff,
+          acceptanceCriteria: acDiffs,
+          summary: {
+            totalChanges,
+            titleChanged: titleDiff.totalChanges > 0,
+            descriptionChanged: descriptionDiff.totalChanges > 0,
+            acChangedCount: acDiffs.filter(d => d.totalChanges > 0).length,
+            totalACCount: acDiffs.length,
+          },
+        },
         processingTimeMs: processingTime,
         storyTitle: story.title,
       });

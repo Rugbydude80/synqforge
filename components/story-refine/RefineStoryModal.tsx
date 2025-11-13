@@ -11,6 +11,7 @@ import { InstructionInput, RefinementOptions } from './InstructionInput';
 import { ProcessingState } from './ProcessingState';
 import { ReviewInterface } from './ReviewInterface';
 import { SelectiveReviewInterface } from './SelectiveReviewInterface';
+import { StructuredReviewInterface } from './StructuredReviewInterface';
 import { RefinementStage, RefinementResponse, DiffChange } from '@/types/refinement';
 import { toast } from 'sonner';
 import { useRefineStoryMutation } from '@/lib/hooks/useStoryRefinement';
@@ -178,32 +179,47 @@ export function RefineStoryModal({
 
           {stage === 'review' && refinementResult && (
             <>
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => setUseSelectiveReview(!useSelectiveReview)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  {useSelectiveReview ? 'Switch to standard review' : 'Switch to selective review'}
-                </button>
-              </div>
-              {useSelectiveReview ? (
-                <SelectiveReviewInterface
-                  original={refinementResult.originalContent}
-                  refined={refinementResult.refinedContent}
-                  changes={refinementResult.changes}
-                  onAccept={(selectedChanges, saveToHistory) => handleAccept(saveToHistory, selectedChanges)}
-                  onReject={handleReject}
-                  onRefineAgain={handleRefineAgain}
-                />
-              ) : (
-                <ReviewInterface
-                  original={refinementResult.originalContent}
-                  refined={refinementResult.refinedContent}
+              {/* Check if structured data is available (new format) */}
+              {refinementResult.originalStory && refinementResult.refinedStory && refinementResult.changes?.summary ? (
+                <StructuredReviewInterface
+                  originalStory={refinementResult.originalStory}
+                  refinedStory={refinementResult.refinedStory}
                   changes={refinementResult.changes}
                   onAccept={handleAccept}
                   onReject={handleReject}
                   onRefineAgain={handleRefineAgain}
                 />
+              ) : (
+                <>
+                  {/* Fallback to legacy interface for backward compatibility */}
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={() => setUseSelectiveReview(!useSelectiveReview)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {useSelectiveReview ? 'Switch to standard review' : 'Switch to selective review'}
+                    </button>
+                  </div>
+                  {useSelectiveReview ? (
+                    <SelectiveReviewInterface
+                      original={refinementResult.originalContent}
+                      refined={refinementResult.refinedContent}
+                      changes={refinementResult.changes as any}
+                      onAccept={(selectedChanges, saveToHistory) => handleAccept(saveToHistory, selectedChanges)}
+                      onReject={handleReject}
+                      onRefineAgain={handleRefineAgain}
+                    />
+                  ) : (
+                    <ReviewInterface
+                      original={refinementResult.originalContent}
+                      refined={refinementResult.refinedContent}
+                      changes={refinementResult.changes as any}
+                      onAccept={handleAccept}
+                      onReject={handleReject}
+                      onRefineAgain={handleRefineAgain}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

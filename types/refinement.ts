@@ -24,11 +24,34 @@ export interface DiffResult {
   wordCountDelta: number;
 }
 
+export interface StructuredStory {
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+}
+
+export interface StructuredDiffChanges {
+  title: DiffResult;
+  description: DiffResult;
+  acceptanceCriteria: DiffResult[];
+  summary: {
+    totalChanges: number;
+    titleChanged: boolean;
+    descriptionChanged: boolean;
+    acChangedCount: number;
+    totalACCount: number;
+  };
+}
+
 export interface RefinementResponse {
   refinementId: string;
+  // Legacy fields (deprecated, kept for backward compatibility)
   originalContent: string;
   refinedContent: string;
-  changes: DiffResult;
+  // New structured fields
+  originalStory: StructuredStory;
+  refinedStory: StructuredStory;
+  changes: StructuredDiffChanges;
   processingTimeMs: number;
   storyTitle: string;
 }
