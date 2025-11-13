@@ -22,10 +22,10 @@ async function verifySetup() {
     // Check if tables exist
     console.log('1. Checking database tables...');
     try {
-      const refinementsCheck = await db.execute(
+      await db.execute(
         sql`SELECT COUNT(*) FROM ${storyRefinements} LIMIT 1`
       );
-      const revisionsCheck = await db.execute(
+      await db.execute(
         sql`SELECT COUNT(*) FROM ${storyRevisions} LIMIT 1`
       );
       checks.tablesExist = true;
