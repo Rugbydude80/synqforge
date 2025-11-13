@@ -42,41 +42,6 @@ export function RefineStoryButton({
   const isSuperAdminUser = userEmail ? isSuperAdmin(userEmail) : false;
   const canRefine = isSuperAdminUser || canAccessFeature(userTier, Feature.REFINE_STORY);
 
-  if (!refineEnabled) return null;
-
-  if (!canRefine) {
-    const requiredTier = getRequiredTierForFeature(Feature.REFINE_STORY);
-
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="secondary"
-              disabled
-              className="gap-2"
-              onClick={() => {
-                // Open upgrade modal or redirect to pricing
-                window.location.href = '/settings/billing';
-              }}
-            >
-              <Sparkles className="h-4 w-4" />
-              Refine Story
-              <Lock className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>
-              Upgrade to{' '}
-              {requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1)} to
-              refine stories with AI
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
   // Fetch fresh story data before opening modal
   const handleOpenModal = useCallback(async () => {
     try {
@@ -133,6 +98,42 @@ export function RefineStoryButton({
       setCurrentStory(initialStory);
     }
   }, [initialStory]);
+
+  // Early returns AFTER all hooks
+  if (!refineEnabled) return null;
+
+  if (!canRefine) {
+    const requiredTier = getRequiredTierForFeature(Feature.REFINE_STORY);
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="secondary"
+              disabled
+              className="gap-2"
+              onClick={() => {
+                // Open upgrade modal or redirect to pricing
+                window.location.href = '/settings/billing';
+              }}
+            >
+              <Sparkles className="h-4 w-4" />
+              Refine Story
+              <Lock className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>
+              Upgrade to{' '}
+              {requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1)} to
+              refine stories with AI
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <>

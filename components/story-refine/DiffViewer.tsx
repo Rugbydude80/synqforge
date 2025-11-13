@@ -145,7 +145,7 @@ export function DiffViewer({
     }
 
     return segments;
-  }, [content, changes, type, showChanges, currentChangeIndex, onHoverChange]);
+  }, [content, changes, type, showChanges]);
 
   // Render plain text if changes are hidden
   if (!showChanges) {
