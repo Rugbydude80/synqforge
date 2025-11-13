@@ -34,7 +34,6 @@ export function RefineStoryModal({
 }: RefineStoryModalProps) {
   const [stage, setStage] = useState<RefinementStage>('input');
   const [instructions, setInstructions] = useState('');
-  const [refinementOptions, setRefinementOptions] = useState<RefinementOptions | undefined>();
   const [refinementResult, setRefinementResult] =
     useState<RefinementResponse | null>(null);
   const [error, setError] = useState<string | null>(null);

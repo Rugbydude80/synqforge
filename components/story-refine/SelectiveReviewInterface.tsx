@@ -99,7 +99,6 @@ export function SelectiveReviewInterface({
     if (!previewMode) return refined;
 
     let result = original;
-    let offset = 0;
 
     // Apply changes in reverse order to maintain positions
     const sortedChanges = [...changes.changes]

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,11 +34,7 @@ export function RevisionHistory({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadRevisions();
-  }, [storyId]);
-
-  const loadRevisions = async () => {
+  const loadRevisions = React.useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/stories/${storyId}/revisions`);
@@ -54,7 +50,11 @@ export function RevisionHistory({
     } finally {
       setLoading(false);
     }
-  };
+  }, [storyId]);
+
+  useEffect(() => {
+    loadRevisions();
+  }, [loadRevisions]);
 
   const handlePreview = (revision: Revision) => {
     onPreview?.(revision);

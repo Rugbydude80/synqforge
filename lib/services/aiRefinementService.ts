@@ -127,9 +127,9 @@ Please refine the story according to the instructions above. Return ONLY the ref
  * Generate explanations for changes (can be called separately or integrated)
  */
 export async function generateChangeExplanations(
-  original: string,
-  refined: string,
-  changes: Array<{ originalText?: string; refinedText?: string; type: string }>
+  _original: string,
+  _refined: string,
+  _changes: Array<{ originalText?: string; refinedText?: string; type: string }>
 ): Promise<ChangeExplanation[]> {
   // For significant changes, we could make an AI call to explain them
   // For now, return empty array - can be enhanced later

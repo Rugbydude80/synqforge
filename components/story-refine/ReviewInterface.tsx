@@ -35,7 +35,6 @@ export function ReviewInterface({
   const [showChanges, setShowChanges] = useState(true);
   const [saveToHistory, setSaveToHistory] = useState(true);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
-  const [hoveredChangeIndex, setHoveredChangeIndex] = useState<number | null>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
   const [isResizing, setIsResizing] = useState(false);
 
