@@ -33,10 +33,10 @@ async function acceptRefinement(
       );
     }
 
-    // Get optional saveToHistory and selectedChanges from body
+    // Get optional saveToHistory from body
     const body = await req.json().catch(() => ({}));
     const saveToHistory = body.saveToHistory !== false; // Default to true
-    const selectedChanges = body.selectedChanges; // Array of change IDs or positions
+    // Note: selectedChanges support for selective acceptance is planned for future implementation
 
     // Verify story access
     await assertStoryAccessible(storyId, context.user.organizationId);
