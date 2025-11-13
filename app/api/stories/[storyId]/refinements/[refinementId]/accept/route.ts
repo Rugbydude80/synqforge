@@ -119,20 +119,9 @@ async function acceptRefinement(
           // Get the changes summary to reconstruct content with only selected changes
           const changesSummary = refinement.changesSummary as any;
           if (changesSummary && changesSummary.changes) {
-            // Reconstruct content applying only selected changes
-            const originalContent = refinement.originalContent || story.description || '';
-            const allChanges = changesSummary.changes || [];
-            const selectedChangeIds = new Set(selectedChanges);
-            
-            // Filter to only selected changes
-            const filteredChanges = allChanges.filter((change: any) => {
-              const changeId = change.changeId || change.position?.toString();
-              return selectedChangeIds.has(changeId);
-            });
-            
-            // Apply only selected changes (simplified - in production, use proper diff application)
-            // For now, if selected changes are provided, we'll use the full refined content
+            // Note: For now, we use the full refined content when selected changes are provided
             // A more sophisticated implementation would reconstruct from original + selected changes
+            // This would require proper diff application logic
             finalContent = refinement.refinedContent;
           }
         }

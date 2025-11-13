@@ -8,14 +8,6 @@ import { Check, X, RotateCcw, CheckSquare, Square } from 'lucide-react';
 import { DiffResult, DiffChange } from '@/types/refinement';
 import { DiffViewer } from './DiffViewer';
 
-interface ChangeSelection {
-  changeId: string;
-  selected: boolean;
-  changeType: 'add' | 'delete' | 'modify';
-  originalText?: string;
-  refinedText?: string;
-}
-
 interface SelectiveReviewInterfaceProps {
   original: string;
   refined: string;
