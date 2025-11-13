@@ -1,15 +1,7 @@
 'use client';
 
 import { DiffChange } from '@/types/refinement';
-import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
-import { PlusCircle, MinusCircle, RefreshCw } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface DiffViewerProps {
   content: string;
@@ -20,37 +12,6 @@ interface DiffViewerProps {
   onHoverChange?: (index: number | null) => void;
 }
 
-// Group consecutive changes together
-function groupConsecutiveChanges(changes: DiffChange[]): DiffChange[][] {
-  const groups: DiffChange[][] = [];
-  let currentGroup: DiffChange[] = [];
-
-  changes.forEach((change, idx) => {
-    if (idx === 0) {
-      currentGroup = [change];
-    } else {
-      const prevChange = changes[idx - 1];
-      const gap = change.position - (prevChange.position + (prevChange.length || 0));
-      
-      // Group if gap is small (less than 50 characters)
-      if (gap < 50 && change.type !== 'unchanged') {
-        currentGroup.push(change);
-      } else {
-        if (currentGroup.length > 0) {
-          groups.push(currentGroup);
-        }
-        currentGroup = change.type !== 'unchanged' ? [change] : [];
-      }
-    }
-  });
-
-  if (currentGroup.length > 0) {
-    groups.push(currentGroup);
-  }
-
-  return groups;
-}
-
 export function DiffViewer({
   content,
   changes,
@@ -59,265 +20,113 @@ export function DiffViewer({
   currentChangeIndex,
   onHoverChange,
 }: DiffViewerProps) {
-  // Build highlighted content based on type
+  // Build highlighted content with inline highlighting (not fragmented)
   const highlightedContent = useMemo(() => {
+    if (!showChanges || changes.length === 0) {
+      return <span className="whitespace-pre-wrap">{content}</span>;
+    }
+
     const segments: React.ReactNode[] = [];
     let currentPos = 0;
 
-    // Group consecutive changes
-    const changeGroups = groupConsecutiveChanges(changes);
+    // Sort changes by position
+    const sortedChanges = [...changes].sort((a, b) => a.position - b.position);
 
-    changeGroups.forEach((group, groupIdx) => {
-      const firstChange = group[0];
-      const lastChange = group[group.length - 1];
-      const groupStart = firstChange.position;
-      const groupEnd = lastChange.position + (lastChange.length || 0);
-
-      // Add text before this group
-      if (groupStart > currentPos) {
+    sortedChanges.forEach((change, idx) => {
+      // Add text before this change
+      if (change.position > currentPos) {
         segments.push(
-          <span key={`text-${currentPos}`}>
-            {content.substring(currentPos, groupStart)}
+          <span key={`text-${currentPos}`} className="whitespace-pre-wrap">
+            {content.substring(currentPos, change.position)}
           </span>
         );
       }
 
-      // Determine group type (most common type in group)
-      const groupType = firstChange.type;
-      const isActive = group.some((_, idx) => {
-        const globalIdx = changes.indexOf(firstChange) + idx;
-        return globalIdx === currentChangeIndex;
-      });
+      // Get the text for this change based on type
+      let changeText = '';
+      let changeType = change.type;
 
-      // Get change type icon
-      const getChangeIcon = () => {
-        if (groupType === 'add') return PlusCircle;
-        if (groupType === 'delete') return MinusCircle;
-        if (groupType === 'modify') return RefreshCw;
-        return null;
-      };
-
-      const Icon = getChangeIcon();
-
-      // Get styling based on change type
-      const getChangeStyles = (changeType: string) => {
-        if (changeType === 'add') {
-          return {
-            bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-            border: 'border-l-4 border-emerald-500',
-            text: 'text-emerald-900 dark:text-emerald-100',
-            iconColor: 'text-emerald-500',
-          };
+      if (type === 'refined') {
+        // Show refined text for additions and modifications
+        if (change.type === 'add' || change.type === 'modify') {
+          changeText = change.refinedText || '';
+          changeType = change.type;
+        } else if (change.type === 'unchanged') {
+          changeText = change.refinedText || change.originalText || '';
+          changeType = 'unchanged';
         }
-        if (changeType === 'delete') {
-          return {
-            bg: 'bg-rose-100 dark:bg-rose-900/30',
-            border: 'border-l-4 border-rose-500',
-            text: 'text-rose-900 dark:text-rose-100',
-            iconColor: 'text-rose-500',
-          };
+      } else if (type === 'original') {
+        // Show original text for deletions and modifications
+        if (change.type === 'delete' || change.type === 'modify') {
+          changeText = change.originalText || '';
+          changeType = change.type;
+        } else if (change.type === 'unchanged') {
+          changeText = change.originalText || change.refinedText || '';
+          changeType = 'unchanged';
         }
-        if (changeType === 'modify') {
-          return {
-            bg: 'bg-amber-100 dark:bg-amber-900/30',
-            border: 'border-l-4 border-amber-500',
-            text: 'text-amber-900 dark:text-amber-100',
-            iconColor: 'text-amber-500',
-          };
-        }
-        return {
-          bg: 'bg-gray-100 dark:bg-gray-900/30',
-          border: '',
-          text: '',
-          iconColor: '',
-        };
-      };
+      } else {
+        // Unified view
+        changeText = change.refinedText || change.originalText || '';
+        changeType = change.type;
+      }
 
-      const styles = getChangeStyles(groupType);
-
-      // Count words in group
-      const wordCount = group.reduce((sum, change) => {
-        const text = change.refinedText || change.originalText || '';
-        return sum + text.split(/\s+/).length;
-      }, 0);
-
-      // Render group based on type and view mode
-      if (type === 'original' && (groupType === 'delete' || groupType === 'modify')) {
-        const changeText = group.map(c => c.originalText).join('');
-        const globalIdx = changes.indexOf(firstChange);
-        
+      // Apply inline highlighting based on change type
+      if (changeType === 'add' && type === 'refined') {
         segments.push(
-          <TooltipProvider key={`group-${groupIdx}`}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    'change-group my-1 px-2 py-1 rounded',
-                    styles.bg,
-                    styles.border,
-                    styles.text,
-                    isActive && 'ring-2 ring-offset-2 ring-offset-background',
-                    isActive && groupType === 'delete' && 'ring-rose-500',
-                    isActive && groupType === 'modify' && 'ring-amber-500',
-                    'cursor-pointer transition-all hover:opacity-80'
-                  )}
-                  onMouseEnter={() => onHoverChange?.(globalIdx)}
-                  onMouseLeave={() => onHoverChange?.(null)}
-                >
-                  {Icon && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className={cn('h-3 w-3', styles.iconColor)} />
-                      <span className="text-xs font-medium">
-                        {groupType === 'delete' ? 'Deletion' : 'Modification'} ({wordCount} words)
-                      </span>
-                    </div>
-                  )}
-                  <span className={cn(groupType === 'delete' && 'line-through')}>
-                    {changeText}
-                  </span>
-                  {firstChange.reason && (
-                    <div className="text-xs mt-1 opacity-75 italic">
-                      {firstChange.reason}
-                    </div>
-                  )}
-                </div>
-              </TooltipTrigger>
-              {firstChange.reason && (
-                <TooltipContent>
-                  <p className="max-w-xs">{firstChange.reason}</p>
-                  {firstChange.category && (
-                    <p className="text-xs mt-1 opacity-75">
-                      Category: {firstChange.category}
-                    </p>
-                  )}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <mark
+            key={`change-${idx}`}
+            className="bg-emerald-200 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-100 px-0.5 rounded"
+            title={change.reason || 'Added'}
+          >
+            {changeText}
+          </mark>
         );
-      } else if (
-        type === 'refined' &&
-        (groupType === 'add' || groupType === 'modify')
-      ) {
-        const changeText = group.map(c => c.refinedText).join('');
-        const globalIdx = changes.indexOf(firstChange);
-        
+      } else if (changeType === 'delete' && type === 'original') {
         segments.push(
-          <TooltipProvider key={`group-${groupIdx}`}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    'change-group my-1 px-2 py-1 rounded',
-                    styles.bg,
-                    styles.border,
-                    styles.text,
-                    isActive && 'ring-2 ring-offset-2 ring-offset-background',
-                    isActive && groupType === 'add' && 'ring-emerald-500',
-                    isActive && groupType === 'modify' && 'ring-amber-500',
-                    'cursor-pointer transition-all hover:opacity-80'
-                  )}
-                  onMouseEnter={() => onHoverChange?.(globalIdx)}
-                  onMouseLeave={() => onHoverChange?.(null)}
-                >
-                  {Icon && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className={cn('h-3 w-3', styles.iconColor)} />
-                      <span className="text-xs font-medium">
-                        {groupType === 'add' ? 'Addition' : 'Modification'} ({wordCount} words)
-                      </span>
-                    </div>
-                  )}
-                  <span>{changeText}</span>
-                  {firstChange.reason && (
-                    <div className="text-xs mt-1 opacity-75 italic">
-                      {firstChange.reason}
-                    </div>
-                  )}
-                </div>
-              </TooltipTrigger>
-              {firstChange.reason && (
-                <TooltipContent>
-                  <p className="max-w-xs">{firstChange.reason}</p>
-                  {firstChange.category && (
-                    <p className="text-xs mt-1 opacity-75">
-                      Category: {firstChange.category}
-                    </p>
-                  )}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <mark
+            key={`change-${idx}`}
+            className="bg-rose-200 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100 px-0.5 rounded line-through"
+            title={change.reason || 'Deleted'}
+          >
+            {changeText}
+          </mark>
         );
-      } else if (type === 'unified' && groupType === 'modify') {
-        const originalText = group.map(c => c.originalText).join('');
-        const refinedText = group.map(c => c.refinedText).join('');
-        const globalIdx = changes.indexOf(firstChange);
-        
+      } else if (changeType === 'modify') {
+        const bgColor = type === 'refined' 
+          ? 'bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100'
+          : 'bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100';
         segments.push(
-          <TooltipProvider key={`group-${groupIdx}`}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    'change-group my-1 px-2 py-1 rounded',
-                    styles.bg,
-                    styles.border,
-                    'cursor-pointer transition-all hover:opacity-80'
-                  )}
-                  onMouseEnter={() => onHoverChange?.(globalIdx)}
-                  onMouseLeave={() => onHoverChange?.(null)}
-                >
-                  {Icon && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className={cn('h-3 w-3', styles.iconColor)} />
-                      <span className="text-xs font-medium">
-                        Modification ({wordCount} words)
-                      </span>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    <div className="line-through text-rose-600 dark:text-rose-400">
-                      {originalText}
-                    </div>
-                    <div className="text-emerald-600 dark:text-emerald-400">
-                      → {refinedText}
-                    </div>
-                  </div>
-                  {firstChange.reason && (
-                    <div className="text-xs mt-1 opacity-75 italic">
-                      {firstChange.reason}
-                    </div>
-                  )}
-                </div>
-              </TooltipTrigger>
-              {firstChange.reason && (
-                <TooltipContent>
-                  <p className="max-w-xs">{firstChange.reason}</p>
-                  {firstChange.category && (
-                    <p className="text-xs mt-1 opacity-75">
-                      Category: {firstChange.category}
-                    </p>
-                  )}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <mark
+            key={`change-${idx}`}
+            className={`${bgColor} px-0.5 rounded`}
+            title={change.reason || 'Modified'}
+          >
+            {changeText}
+          </mark>
+        );
+      } else {
+        // Unchanged - just add the text
+        segments.push(
+          <span key={`change-${idx}`} className="whitespace-pre-wrap">
+            {changeText}
+          </span>
         );
       }
 
-      currentPos = groupEnd;
+      currentPos = change.position + (change.length || changeText.length);
     });
 
     // Add remaining content
     if (currentPos < content.length) {
       segments.push(
-        <span key={`text-${currentPos}`}>{content.substring(currentPos)}</span>
+        <span key={`text-${currentPos}`} className="whitespace-pre-wrap">
+          {content.substring(currentPos)}
+        </span>
       );
     }
 
     return segments;
-  }, [content, changes, type, currentChangeIndex, onHoverChange]);
+  }, [content, changes, type, showChanges, currentChangeIndex, onHoverChange]);
 
   // Render plain text if changes are hidden
   if (!showChanges) {
@@ -329,7 +138,7 @@ export function DiffViewer({
   }
 
   return (
-    <div className="prose prose-sm max-w-none text-sm leading-relaxed">
+    <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap">
       {highlightedContent}
     </div>
   );

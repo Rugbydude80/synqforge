@@ -203,19 +203,35 @@ export function StructuredReviewInterface({
       {hasAnyChanges && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold mb-1">Refinement Summary</h3>
-                <p className="text-sm text-muted-foreground">
-                  {summary.totalChanges} total {summary.totalChanges === 1 ? 'change' : 'changes'} across{' '}
-                  {[
-                    summary.titleChanged && 'title',
-                    summary.descriptionChanged && 'description',
-                    summary.acChangedCount > 0 && `${summary.acChangedCount} acceptance ${summary.acChangedCount === 1 ? 'criterion' : 'criteria'}`,
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}
-                </p>
+            <div>
+              <h3 className="font-semibold mb-3">Refinement Summary</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Changes:</span>
+                  <span className="font-medium">{summary.totalChanges} {summary.totalChanges === 1 ? 'change' : 'changes'}</span>
+                </div>
+                {summary.titleChanged && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Title:</span>
+                    <span className="font-medium">{changes.title.totalChanges} {changes.title.totalChanges === 1 ? 'change' : 'changes'}</span>
+                  </div>
+                )}
+                {summary.descriptionChanged && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Description:</span>
+                    <span className="font-medium">{changes.description.totalChanges} {changes.description.totalChanges === 1 ? 'change' : 'changes'}</span>
+                  </div>
+                )}
+                {summary.acChangedCount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Acceptance Criteria:</span>
+                    <span className="font-medium">
+                      {changes.acceptanceCriteria
+                        .filter(ac => ac.totalChanges > 0)
+                        .reduce((sum, ac) => sum + ac.totalChanges, 0)} changes across {summary.acChangedCount} {summary.acChangedCount === 1 ? 'criterion' : 'criteria'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
