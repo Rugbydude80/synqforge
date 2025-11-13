@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { InstructionInput, RefinementOptions } from './InstructionInput';
 import { ProcessingState } from './ProcessingState';
@@ -39,8 +40,21 @@ export function RefineStoryModal({
     useState<RefinementResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useSelectiveReview, setUseSelectiveReview] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const refineMutation = useRefineStoryMutation(story.id);
+
+  // BUG FIX: Clean up state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStage('input');
+      setInstructions('');
+      setRefinementResult(null);
+      setError(null);
+      setIsSubmitting(false);
+      setUseSelectiveReview(false);
+    }
+  }, [isOpen]);
 
   const handleRefine = async (_options?: RefinementOptions) => {
     if (instructions.length < 10) {
@@ -68,8 +82,9 @@ export function RefineStoryModal({
   };
 
   const handleAccept = async (saveToHistory: boolean, selectedChanges?: DiffChange[]) => {
-    if (!refinementResult) return;
+    if (!refinementResult || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       const response = await fetch(
         `/api/stories/${story.id}/refinements/${refinementResult.refinementId}/accept`,
@@ -91,16 +106,27 @@ export function RefineStoryModal({
       }
 
       const result = await response.json();
-      toast.success('Success!', {
-        description: result.message || 'Your story has been updated with the refinement.',
-      });
+      
+      // Handle already-applied case gracefully
+      if (result.alreadyApplied) {
+        toast.success('Already Applied', {
+          description: result.message || 'This refinement was already applied to your story.',
+        });
+      } else {
+        toast.success('Success!', {
+          description: result.message || 'Your story has been updated with the refinement.',
+        });
+      }
 
+      // Close modal immediately after successful accept
       onComplete();
     } catch (err: any) {
       console.error('Error accepting refinement:', err);
       toast.error('Error', {
         description: err.message || 'Failed to apply refinement. Please try again.',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -154,13 +180,21 @@ export function RefineStoryModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleCloseModal}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent 
+        className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+        aria-describedby="refinement-dialog-description"
+      >
         <DialogHeader>
           <DialogTitle>
             {stage === 'input' && 'Refine Your Story with AI'}
             {stage === 'processing' && 'Refining Your Story...'}
             {stage === 'review' && 'Review Refinement'}
           </DialogTitle>
+          <DialogDescription id="refinement-dialog-description">
+            {stage === 'input' && 'Provide instructions for AI refinement'}
+            {stage === 'processing' && 'Refining your story'}
+            {stage === 'review' && 'Review changes before accepting'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -188,6 +222,7 @@ export function RefineStoryModal({
                   onAccept={handleAccept}
                   onReject={handleReject}
                   onRefineAgain={handleRefineAgain}
+                  isSubmitting={isSubmitting}
                 />
               ) : (
                 <>

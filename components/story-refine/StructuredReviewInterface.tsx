@@ -27,6 +27,7 @@ interface StructuredReviewInterfaceProps {
   onAccept: (saveToHistory: boolean) => void;
   onReject: () => void;
   onRefineAgain: () => void;
+  isSubmitting?: boolean;
 }
 
 function FieldDiffSection({
@@ -84,11 +85,11 @@ function FieldDiffSection({
               <div className="text-sm font-medium text-muted-foreground mb-2">
                 Original
               </div>
-              <div className="p-3 bg-muted/30 rounded border min-h-[80px] max-h-[400px] overflow-y-auto">
+              <div className="p-4 bg-muted/30 rounded border min-h-[80px] max-h-[400px] overflow-y-auto">
                 {original ? (
-                  <p className="whitespace-pre-wrap text-sm">{original}</p>
+                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{original}</p>
                 ) : (
-                  <p className="text-muted-foreground text-sm italic">No content</p>
+                  <p className="text-muted-foreground text-base italic">No content</p>
                 )}
               </div>
             </div>
@@ -98,7 +99,7 @@ function FieldDiffSection({
               <div className="text-sm font-medium text-muted-foreground mb-2">
                 Refined
               </div>
-              <div className="p-3 bg-muted/30 rounded border min-h-[80px] max-h-[400px] overflow-y-auto">
+              <div className="p-4 bg-muted/30 rounded border min-h-[80px] max-h-[400px] overflow-y-auto">
                 {refined ? (
                   <DiffViewer
                     content={refined}
@@ -107,7 +108,7 @@ function FieldDiffSection({
                     showChanges={hasChanges}
                   />
                 ) : (
-                  <p className="text-muted-foreground text-sm italic">No content</p>
+                  <p className="text-muted-foreground text-base italic">No content</p>
                 )}
               </div>
             </div>
@@ -153,20 +154,20 @@ function AcceptanceCriterionDiff({
       <div className="grid grid-cols-2 gap-4">
         {/* Original */}
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Original</div>
-          <div className="p-2 bg-muted/20 rounded text-sm min-h-[60px]">
+          <div className="text-sm text-muted-foreground mb-2">Original</div>
+          <div className="p-4 bg-muted/20 rounded border min-h-[60px]">
             {original ? (
-              <p className="whitespace-pre-wrap">{original}</p>
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{original}</p>
             ) : (
-              <p className="text-muted-foreground italic">No content</p>
+              <p className="text-muted-foreground text-base italic">No content</p>
             )}
           </div>
         </div>
 
         {/* Refined */}
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Refined</div>
-          <div className="p-2 bg-muted/20 rounded text-sm min-h-[60px]">
+          <div className="text-sm text-muted-foreground mb-2">Refined</div>
+          <div className="p-4 bg-muted/20 rounded border min-h-[60px]">
             {refined ? (
               <DiffViewer
                 content={refined}
@@ -175,7 +176,7 @@ function AcceptanceCriterionDiff({
                 showChanges={hasChanges}
               />
             ) : (
-              <p className="text-muted-foreground italic">No content</p>
+              <p className="text-muted-foreground text-base italic">No content</p>
             )}
           </div>
         </div>
@@ -191,6 +192,7 @@ export function StructuredReviewInterface({
   onAccept,
   onReject,
   onRefineAgain,
+  isSubmitting = false,
 }: StructuredReviewInterfaceProps) {
   const [saveToHistory, setSaveToHistory] = useState(true);
 
@@ -205,31 +207,53 @@ export function StructuredReviewInterface({
           <CardContent className="pt-6">
             <div>
               <h3 className="font-semibold mb-3">Refinement Summary</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Changes:</span>
-                  <span className="font-medium">{summary.totalChanges} {summary.totalChanges === 1 ? 'change' : 'changes'}</span>
-                </div>
+              <div className="space-y-3">
                 {summary.titleChanged && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Title:</span>
-                    <span className="font-medium">{changes.title.totalChanges} {changes.title.totalChanges === 1 ? 'change' : 'changes'}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Title:</span>
+                    <Badge variant="default" className="text-xs">
+                      Improved ✓
+                    </Badge>
+                  </div>
+                )}
+                {!summary.titleChanged && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Title:</span>
+                    <Badge variant="secondary" className="text-xs">
+                      No changes
+                    </Badge>
                   </div>
                 )}
                 {summary.descriptionChanged && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Description:</span>
-                    <span className="font-medium">{changes.description.totalChanges} {changes.description.totalChanges === 1 ? 'change' : 'changes'}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Description:</span>
+                    <Badge variant="default" className="text-xs">
+                      {changes.description.totalChanges} {changes.description.totalChanges === 1 ? 'improvement' : 'improvements'}
+                    </Badge>
+                  </div>
+                )}
+                {!summary.descriptionChanged && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Description:</span>
+                    <Badge variant="secondary" className="text-xs">
+                      No changes
+                    </Badge>
                   </div>
                 )}
                 {summary.acChangedCount > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Acceptance Criteria:</span>
-                    <span className="font-medium">
-                      {changes.acceptanceCriteria
-                        .filter(ac => ac.totalChanges > 0)
-                        .reduce((sum, ac) => sum + ac.totalChanges, 0)} changes across {summary.acChangedCount} {summary.acChangedCount === 1 ? 'criterion' : 'criteria'}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Acceptance Criteria:</span>
+                    <Badge variant="default" className="text-xs">
+                      {summary.acChangedCount} of {summary.totalACCount} updated
+                    </Badge>
+                  </div>
+                )}
+                {summary.acChangedCount === 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Acceptance Criteria:</span>
+                    <Badge variant="secondary" className="text-xs">
+                      No changes
+                    </Badge>
                   </div>
                 )}
               </div>
@@ -305,17 +329,17 @@ export function StructuredReviewInterface({
           </label>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onReject}>
+          <Button variant="outline" onClick={onReject} disabled={isSubmitting}>
             <X className="h-4 w-4 mr-2" />
             Reject
           </Button>
-          <Button variant="outline" onClick={onRefineAgain}>
+          <Button variant="outline" onClick={onRefineAgain} disabled={isSubmitting}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Refine Again
           </Button>
-          <Button onClick={() => onAccept(saveToHistory)}>
+          <Button onClick={() => onAccept(saveToHistory)} disabled={isSubmitting}>
             <Check className="h-4 w-4 mr-2" />
-            Accept Refinement
+            {isSubmitting ? 'Applying...' : 'Accept Refinement'}
           </Button>
         </div>
       </div>

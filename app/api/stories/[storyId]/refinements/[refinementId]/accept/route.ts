@@ -73,6 +73,15 @@ async function acceptRefinement(
       refinedContentLength: refinement.refinedContent?.length 
     });
 
+    // BUG FIX: Handle already-accepted refinements gracefully
+    if (refinement.status === 'accepted') {
+      return NextResponse.json({
+        success: true,
+        message: 'Refinement was already applied to this story.',
+        alreadyApplied: true,
+      }, { status: 200 });
+    }
+
     if (refinement.status !== 'completed') {
       return NextResponse.json(
         {

@@ -70,42 +70,61 @@ export function DiffViewer({
         changeType = change.type;
       }
 
-      // Apply inline highlighting based on change type
-      if (changeType === 'add' && type === 'refined') {
-        segments.push(
-          <mark
-            key={`change-${idx}`}
-            className="bg-emerald-200 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-100 px-0.5 rounded"
-            title={change.reason || 'Added'}
-          >
-            {changeText}
-          </mark>
-        );
-      } else if (changeType === 'delete' && type === 'original') {
-        segments.push(
-          <mark
-            key={`change-${idx}`}
-            className="bg-rose-200 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100 px-0.5 rounded line-through"
-            title={change.reason || 'Deleted'}
-          >
-            {changeText}
-          </mark>
-        );
-      } else if (changeType === 'modify') {
-        const bgColor = type === 'refined' 
-          ? 'bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100'
-          : 'bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100';
-        segments.push(
-          <mark
-            key={`change-${idx}`}
-            className={`${bgColor} px-0.5 rounded`}
-            title={change.reason || 'Modified'}
-          >
-            {changeText}
-          </mark>
-        );
+      // Apply subtle inline highlighting based on change type
+      // Only highlight in refined panel, keep original plain
+      if (type === 'refined') {
+        if (changeType === 'add') {
+          // Subtle green for additions
+          segments.push(
+            <mark
+              key={`change-${idx}`}
+              className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-900 dark:text-emerald-100 px-0.5 rounded"
+              title={change.reason || 'Added'}
+            >
+              {changeText}
+            </mark>
+          );
+        } else if (changeType === 'modify') {
+          // Subtle blue for modifications
+          segments.push(
+            <mark
+              key={`change-${idx}`}
+              className="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 px-0.5 rounded"
+              title={change.reason || 'Modified'}
+            >
+              {changeText}
+            </mark>
+          );
+        } else {
+          // Unchanged - plain text
+          segments.push(
+            <span key={`change-${idx}`} className="whitespace-pre-wrap">
+              {changeText}
+            </span>
+          );
+        }
+      } else if (type === 'original') {
+        // Original panel: show deletions as strikethrough, rest as plain text
+        if (changeType === 'delete') {
+          segments.push(
+            <span
+              key={`change-${idx}`}
+              className="line-through text-muted-foreground whitespace-pre-wrap"
+              title={change.reason || 'Deleted'}
+            >
+              {changeText}
+            </span>
+          );
+        } else {
+          // Plain text for original
+          segments.push(
+            <span key={`change-${idx}`} className="whitespace-pre-wrap">
+              {changeText}
+            </span>
+          );
+        }
       } else {
-        // Unchanged - just add the text
+        // Unified view - plain text
         segments.push(
           <span key={`change-${idx}`} className="whitespace-pre-wrap">
             {changeText}
@@ -138,7 +157,7 @@ export function DiffViewer({
   }
 
   return (
-    <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+    <div className="prose prose-sm max-w-none text-base leading-relaxed whitespace-pre-wrap">
       {highlightedContent}
     </div>
   );
