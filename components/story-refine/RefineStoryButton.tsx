@@ -45,41 +45,56 @@ export function RefineStoryButton({
   // Fetch fresh story data before opening modal
   const handleOpenModal = useCallback(async () => {
     try {
-      // Fetch fresh story data to ensure we have latest title/description
-      const response = await fetch(`/api/stories/${storyId}`);
+      // Always fetch fresh story data to ensure we have latest title/description
+      const response = await fetch(`/api/stories/${storyId}`, {
+        cache: 'no-store', // Ensure fresh data from database
+      });
       if (response.ok) {
         const freshStory = await response.json();
+        console.log('RefineStoryButton: Fetched fresh story before opening modal', {
+          id: freshStory.id,
+          title: freshStory.title,
+          description: freshStory.description?.substring(0, 50),
+        });
         setCurrentStory({
           id: freshStory.id,
           title: freshStory.title,
           description: freshStory.description || null,
         });
       } else {
-        // Fallback to initial story if fetch fails
-        setCurrentStory(initialStory);
+        console.warn('Failed to fetch fresh story, using current:', response.status);
+        // Fallback to current story if fetch fails
+        setCurrentStory(currentStory || initialStory);
       }
     } catch (error) {
       console.error('Failed to fetch fresh story:', error);
-      // Fallback to initial story
-      setCurrentStory(initialStory);
+      // Fallback to current story
+      setCurrentStory(currentStory || initialStory);
     }
     setOpen(true);
-  }, [storyId, initialStory]);
+  }, [storyId, initialStory, currentStory]);
 
   const handleClose = useCallback(() => {
     setOpen(false);
   }, []);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     setOpen(false);
     // Trigger parent refresh to get updated story
-    onRefineComplete?.();
-    // Update local story state after a brief delay to allow parent refresh
+    await onRefineComplete?.();
+    // Update local story state after parent refresh completes
     setTimeout(async () => {
       try {
-        const response = await fetch(`/api/stories/${storyId}`);
+        const response = await fetch(`/api/stories/${storyId}`, {
+          cache: 'no-store', // Ensure fresh data
+        });
         if (response.ok) {
           const freshStory = await response.json();
+          console.log('RefineStoryButton: Refreshed story after refinement', {
+            id: freshStory.id,
+            title: freshStory.title,
+            description: freshStory.description?.substring(0, 50),
+          });
           setCurrentStory({
             id: freshStory.id,
             title: freshStory.title,
@@ -89,15 +104,20 @@ export function RefineStoryButton({
       } catch (error) {
         console.error('Failed to refresh story after refinement:', error);
       }
-    }, 500);
+    }, 300);
   }, [storyId, onRefineComplete]);
 
   // Update currentStory when initialStory prop changes (from parent refresh)
   useEffect(() => {
     if (initialStory) {
+      console.log('RefineStoryButton: Story prop updated', {
+        id: initialStory.id,
+        title: initialStory.title,
+        description: initialStory.description?.substring(0, 50),
+      });
       setCurrentStory(initialStory);
     }
-  }, [initialStory]);
+  }, [initialStory?.id, initialStory?.title, initialStory?.description]);
 
   // Early returns AFTER all hooks
   if (!refineEnabled) return null;

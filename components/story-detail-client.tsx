@@ -85,6 +85,23 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [story.projectId])
 
+  // Sync story state when initialStory prop changes (from server refresh)
+  React.useEffect(() => {
+    if (initialStory && initialStory.id === story.id) {
+      // Only update if story ID matches and content has changed
+      if (
+        initialStory.title !== story.title ||
+        initialStory.description !== story.description
+      ) {
+        console.log('StoryDetailClient: Syncing story from server', {
+          oldTitle: story.title,
+          newTitle: initialStory.title,
+        });
+        setStory(initialStory);
+      }
+    }
+  }, [initialStory?.id, initialStory?.title, initialStory?.description]);
+
   // Load tasks for the story
   const fetchTasks = React.useCallback(async () => {
     try {
@@ -226,15 +243,29 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
                     description: story.description,
                   }}
                   onRefineComplete={async () => {
-                    // Refresh story data
+                    // Refresh story data immediately after refinement
                     try {
-                      const response = await fetch(`/api/stories/${story.id}`);
+                      const response = await fetch(`/api/stories/${story.id}`, {
+                        cache: 'no-store', // Ensure fresh data
+                      });
                       if (response.ok) {
                         const updatedStory = await response.json();
+                        console.log('Refreshing story after refinement:', {
+                          oldTitle: story.title,
+                          newTitle: updatedStory.title,
+                          oldDesc: story.description?.substring(0, 50),
+                          newDesc: updatedStory.description?.substring(0, 50),
+                        });
                         setStory(updatedStory);
+                        toast.success('Story updated', {
+                          description: 'Refinement applied successfully. You can refine again with the updated content.',
+                        });
+                      } else {
+                        console.error('Failed to refresh story:', response.status);
                       }
                     } catch (error) {
                       console.error('Failed to refresh story:', error);
+                      toast.error('Failed to refresh story data');
                     }
                     // Also trigger router refresh for server-side updates
                     router.refresh();
