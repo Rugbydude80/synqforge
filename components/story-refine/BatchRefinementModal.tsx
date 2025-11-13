@@ -45,7 +45,6 @@ export function BatchRefinementModal({
   const [instructions, setInstructions] = useState('');
   const [options, setOptions] = useState<RefinementOptions | undefined>();
   const [jobs, setJobs] = useState<RefinementJob[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'input' | 'processing' | 'review'>('input');
 
   const handleStartBatch = async () => {
@@ -54,7 +53,6 @@ export function BatchRefinementModal({
       return;
     }
 
-    setIsProcessing(true);
     setCurrentStep('processing');
 
     // Initialize jobs
@@ -119,7 +117,6 @@ export function BatchRefinementModal({
       }
     }
 
-    setIsProcessing(false);
     setCurrentStep('review');
   };
 
@@ -189,7 +186,7 @@ export function BatchRefinementModal({
               </div>
 
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {jobs.map((job, idx) => (
+                {jobs.map((job) => (
                   <div
                     key={job.storyId}
                     className="flex items-center justify-between p-3 rounded-lg border"

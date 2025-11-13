@@ -5,7 +5,6 @@ import { db } from '@/lib/db';
 import { storyRevisions } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import {
-  NotFoundError,
   formatErrorResponse,
   isApplicationError,
 } from '@/lib/errors/custom-errors';
