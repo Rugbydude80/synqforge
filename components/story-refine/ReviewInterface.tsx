@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Check, X, RotateCcw, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { DiffResult } from '@/types/refinement';
 import { DiffViewer } from './DiffViewer';
-import { toast } from 'sonner';
 
 interface ReviewInterfaceProps {
   original: string;

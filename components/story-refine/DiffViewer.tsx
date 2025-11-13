@@ -19,15 +19,6 @@ export function DiffViewer({
   showChanges,
   currentChangeIndex,
 }: DiffViewerProps) {
-  // Render plain text if changes are hidden
-  if (!showChanges) {
-    return (
-      <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-        {content}
-      </div>
-    );
-  }
-
   // Build highlighted content based on type
   const highlightedContent = useMemo(() => {
     const segments: React.ReactNode[] = [];
@@ -103,7 +94,16 @@ export function DiffViewer({
     }
 
     return segments;
-  }, [content, changes, type, showChanges, currentChangeIndex]);
+  }, [content, changes, type, currentChangeIndex]);
+
+  // Render plain text if changes are hidden
+  if (!showChanges) {
+    return (
+      <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+        {content}
+      </div>
+    );
+  }
 
   return (
     <div className="prose prose-sm max-w-none text-sm leading-relaxed">

@@ -5,8 +5,7 @@
 
 import { db } from '@/lib/db';
 import { storyRefinements } from '@/lib/db/schema';
-import { eq, gte, sql } from 'drizzle-orm';
-import { SubscriptionTier } from '@/lib/featureGates';
+import { eq } from 'drizzle-orm';
 
 interface RateLimitConfig {
   maxRequests: number;

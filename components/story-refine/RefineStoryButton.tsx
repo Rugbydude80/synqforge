@@ -25,7 +25,7 @@ interface RefineStoryButtonProps {
 }
 
 export function RefineStoryButton({
-  storyId,
+  storyId: _storyId,
   story,
   onRefineComplete,
 }: RefineStoryButtonProps) {
