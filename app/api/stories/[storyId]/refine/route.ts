@@ -97,7 +97,6 @@ async function refineStory(
     }
 
     // 6. Validate story length
-    const storyContent = story.description || '';
     const totalContent = [
       story.title,
       story.description || '',

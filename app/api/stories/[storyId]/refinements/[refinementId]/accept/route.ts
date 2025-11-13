@@ -121,11 +121,15 @@ async function acceptRefinement(
         
         try {
           // Try to parse as JSON first (new format)
-          refinedStoryData = JSON.parse(refinement.refinedContent);
+          if (refinement.refinedContent) {
+            refinedStoryData = JSON.parse(refinement.refinedContent);
+          } else {
+            refinedStoryData = {};
+          }
         } catch {
           // Fallback to old format (plain text description)
           refinedStoryData = {
-            description: refinement.refinedContent,
+            description: refinement.refinedContent || undefined,
           };
         }
         
