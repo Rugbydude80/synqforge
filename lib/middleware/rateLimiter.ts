@@ -4,8 +4,9 @@
  */
 
 import { db } from '@/lib/db';
-import { storyRefinements } from '@/lib/db/schema';
+import { storyRefinements, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 interface RateLimitConfig {
   maxRequests: number;
@@ -36,6 +37,22 @@ export async function checkRateLimit(
   userId: string,
   tier: string
 ): Promise<RateLimitResult> {
+  // 🔓 SUPER ADMIN BYPASS
+  const [user] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (user && isSuperAdmin(user.email)) {
+    console.log(`🔓 Super Admin detected (${user.email}) - bypassing rate limits`);
+    return {
+      allowed: true,
+      remaining: Infinity,
+      resetAt: new Date(Date.now() + 3600000), // 1 hour from now
+    };
+  }
+
   const config = RATE_LIMITS[tier.toLowerCase()] || RATE_LIMITS.free;
 
   const now = new Date();

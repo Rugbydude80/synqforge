@@ -15,6 +15,7 @@ import { canAccessFeature, Feature, getRequiredTierForFeature } from '@/lib/feat
 import { refineStoryWithAI, validateStoryLength } from '@/lib/services/aiRefinementService';
 import { generateStoryDiff } from '@/lib/services/diffService';
 import { checkRateLimit } from '@/lib/middleware/rateLimiter';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 /**
  * POST /api/stories/[storyId]/refine
@@ -35,7 +36,13 @@ async function refineStory(
       );
     }
 
-    // 2. Check feature access
+    // 🔓 SUPER ADMIN BYPASS - Check before any subscription checks
+    const isSuperAdminUser = isSuperAdmin(context.user.email);
+    if (isSuperAdminUser) {
+      console.log(`🔓 Super Admin detected (${context.user.email}) - bypassing all refinement limits`);
+    }
+
+    // 2. Check feature access (unless super admin)
     const [organization] = await db
       .select({ subscriptionTier: organizations.subscriptionTier })
       .from(organizations)
@@ -44,7 +51,7 @@ async function refineStory(
 
     const userTier = organization?.subscriptionTier || 'starter';
 
-    if (!canAccessFeature(userTier, Feature.REFINE_STORY)) {
+    if (!isSuperAdminUser && !canAccessFeature(userTier, Feature.REFINE_STORY)) {
       return NextResponse.json(
         {
           error: 'Feature not available',
@@ -55,17 +62,19 @@ async function refineStory(
       );
     }
 
-    // 3. Check rate limit
-    const rateLimit = await checkRateLimit(context.user.id, userTier);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          message: `You've reached your refinement limit. Try again after ${rateLimit.resetAt.toLocaleString()}`,
-          resetAt: rateLimit.resetAt,
-        },
-        { status: 429 }
-      );
+    // 3. Check rate limit (unless super admin)
+    if (!isSuperAdminUser) {
+      const rateLimit = await checkRateLimit(context.user.id, userTier);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
+            message: `You've reached your refinement limit. Try again after ${rateLimit.resetAt.toLocaleString()}`,
+            resetAt: rateLimit.resetAt,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     // 4. Get story and verify ownership

@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { canAccessFeature, Feature, getRequiredTierForFeature } from '@/lib/featureGates';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 interface RefineStoryButtonProps {
   storyId: string;
@@ -36,7 +37,9 @@ export function RefineStoryButton({
   // Get user tier from session
   const userTier =
     (session?.user as any)?.organizationTier || 'starter';
-  const canRefine = canAccessFeature(userTier, Feature.REFINE_STORY);
+  const userEmail = session?.user?.email;
+  const isSuperAdminUser = userEmail ? isSuperAdmin(userEmail) : false;
+  const canRefine = isSuperAdminUser || canAccessFeature(userTier, Feature.REFINE_STORY);
 
   if (!refineEnabled) return null;
 
