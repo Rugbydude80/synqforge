@@ -225,7 +225,18 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
                     title: story.title,
                     description: story.description,
                   }}
-                  onRefineComplete={() => {
+                  onRefineComplete={async () => {
+                    // Refresh story data
+                    try {
+                      const response = await fetch(`/api/stories/${story.id}`);
+                      if (response.ok) {
+                        const updatedStory = await response.json();
+                        setStory(updatedStory);
+                      }
+                    } catch (error) {
+                      console.error('Failed to refresh story:', error);
+                    }
+                    // Also trigger router refresh for server-side updates
                     router.refresh();
                   }}
                 />

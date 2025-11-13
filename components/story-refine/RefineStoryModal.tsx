@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,16 +45,20 @@ export function RefineStoryModal({
   const refineMutation = useRefineStoryMutation(story.id);
 
   // BUG FIX: Clean up state when modal closes
+  const resetModal = useCallback(() => {
+    setStage('input');
+    setInstructions('');
+    setRefinementResult(null);
+    setError(null);
+    setIsSubmitting(false);
+    setUseSelectiveReview(false);
+  }, []);
+
   useEffect(() => {
     if (!isOpen) {
-      setStage('input');
-      setInstructions('');
-      setRefinementResult(null);
-      setError(null);
-      setIsSubmitting(false);
-      setUseSelectiveReview(false);
+      resetModal();
     }
-  }, [isOpen]);
+  }, [isOpen, resetModal]);
 
   const handleRefine = async (_options?: RefinementOptions) => {
     if (instructions.length < 10) {
@@ -155,7 +159,7 @@ export function RefineStoryModal({
     // Keep existing instructions for editing
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     if (stage === 'processing') {
       // Warn user before closing during processing
       if (
@@ -163,20 +167,14 @@ export function RefineStoryModal({
           'Refinement is in progress. Are you sure you want to cancel?'
         )
       ) {
+        resetModal();
         onClose();
-        // Reset state
-        setStage('input');
-        setInstructions('');
-        setRefinementResult(null);
       }
     } else {
+      resetModal();
       onClose();
-      // Reset state
-      setStage('input');
-      setInstructions('');
-      setRefinementResult(null);
     }
-  };
+  }, [stage, resetModal, onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleCloseModal}>

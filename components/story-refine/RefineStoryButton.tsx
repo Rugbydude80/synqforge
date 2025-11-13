@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Lock } from 'lucide-react';
@@ -26,11 +26,12 @@ interface RefineStoryButtonProps {
 }
 
 export function RefineStoryButton({
-  storyId: _storyId,
-  story,
+  storyId,
+  story: initialStory,
   onRefineComplete,
 }: RefineStoryButtonProps) {
   const [open, setOpen] = useState(false);
+  const [currentStory, setCurrentStory] = useState(initialStory);
   const { data: session } = useSession();
   const refineEnabled = useFeatureFlag('stories.refine_button.enabled');
 
@@ -76,28 +77,82 @@ export function RefineStoryButton({
     );
   }
 
+  // Fetch fresh story data before opening modal
+  const handleOpenModal = useCallback(async () => {
+    try {
+      // Fetch fresh story data to ensure we have latest title/description
+      const response = await fetch(`/api/stories/${storyId}`);
+      if (response.ok) {
+        const freshStory = await response.json();
+        setCurrentStory({
+          id: freshStory.id,
+          title: freshStory.title,
+          description: freshStory.description || null,
+        });
+      } else {
+        // Fallback to initial story if fetch fails
+        setCurrentStory(initialStory);
+      }
+    } catch (error) {
+      console.error('Failed to fetch fresh story:', error);
+      // Fallback to initial story
+      setCurrentStory(initialStory);
+    }
+    setOpen(true);
+  }, [storyId, initialStory]);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const handleComplete = useCallback(() => {
+    setOpen(false);
+    // Trigger parent refresh to get updated story
+    onRefineComplete?.();
+    // Update local story state after a brief delay to allow parent refresh
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/stories/${storyId}`);
+        if (response.ok) {
+          const freshStory = await response.json();
+          setCurrentStory({
+            id: freshStory.id,
+            title: freshStory.title,
+            description: freshStory.description || null,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to refresh story after refinement:', error);
+      }
+    }, 500);
+  }, [storyId, onRefineComplete]);
+
+  // Update currentStory when initialStory prop changes (from parent refresh)
+  useEffect(() => {
+    if (initialStory) {
+      setCurrentStory(initialStory);
+    }
+  }, [initialStory]);
+
   return (
     <>
       <Button
         variant="secondary"
         size="sm"
         className="gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20 hover:border-purple-500/40"
-        onClick={() => setOpen(true)}
+        onClick={handleOpenModal}
         aria-label="Refine story with AI"
       >
         <Sparkles className="h-4 w-4" />
         Refine Story
       </Button>
 
-      {open && story && (
+      {open && currentStory && (
         <RefineStoryModal
-          story={story}
+          story={currentStory}
           isOpen={open}
-          onClose={() => setOpen(false)}
-          onComplete={() => {
-            setOpen(false);
-            onRefineComplete?.();
-          }}
+          onClose={handleClose}
+          onComplete={handleComplete}
         />
       )}
     </>
