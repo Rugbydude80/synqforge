@@ -8,6 +8,9 @@ export interface DiffChange {
   refinedText?: string;
   position: number;
   length: number;
+  reason?: string; // AI explanation for the change
+  category?: 'clarity' | 'grammar' | 'readability' | 'conciseness' | 'specificity'; // Category of change
+  changeId?: string; // Unique ID for granular control
 }
 
 export interface DiffResult {

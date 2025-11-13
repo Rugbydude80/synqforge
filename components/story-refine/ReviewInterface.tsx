@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, X, RotateCcw, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Check, X, RotateCcw, ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical } from 'lucide-react';
 import { DiffResult } from '@/types/refinement';
 import { DiffViewer } from './DiffViewer';
 
@@ -15,6 +15,12 @@ interface ReviewInterfaceProps {
   onAccept: (saveToHistory: boolean) => void;
   onReject: () => void;
   onRefineAgain: () => void;
+}
+
+// Generate line numbers for content
+function generateLineNumbers(content: string): number[] {
+  const lines = content.split('\n');
+  return lines.map((_, idx) => idx + 1);
 }
 
 export function ReviewInterface({
@@ -29,6 +35,79 @@ export function ReviewInterface({
   const [showChanges, setShowChanges] = useState(true);
   const [saveToHistory, setSaveToHistory] = useState(true);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
+  const [hoveredChangeIndex, setHoveredChangeIndex] = useState<number | null>(null);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Refs for synchronized scrolling
+  const originalScrollRef = useRef<HTMLDivElement>(null);
+  const refinedScrollRef = useRef<HTMLDivElement>(null);
+  const originalContentRef = useRef<HTMLDivElement>(null);
+  const refinedContentRef = useRef<HTMLDivElement>(null);
+
+  // Synchronized scrolling
+  useEffect(() => {
+    const originalEl = originalScrollRef.current;
+    const refinedEl = refinedScrollRef.current;
+
+    if (!originalEl || !refinedEl || viewMode !== 'split') return;
+
+    let isScrolling = false;
+
+    const handleOriginalScroll = () => {
+      if (isScrolling) return;
+      isScrolling = true;
+      const scrollPercent = originalEl.scrollTop / (originalEl.scrollHeight - originalEl.clientHeight);
+      refinedEl.scrollTop = scrollPercent * (refinedEl.scrollHeight - refinedEl.clientHeight);
+      setTimeout(() => {
+        isScrolling = false;
+      }, 10);
+    };
+
+    const handleRefinedScroll = () => {
+      if (isScrolling) return;
+      isScrolling = true;
+      const scrollPercent = refinedEl.scrollTop / (refinedEl.scrollHeight - refinedEl.clientHeight);
+      originalEl.scrollTop = scrollPercent * (originalEl.scrollHeight - originalEl.clientHeight);
+      setTimeout(() => {
+        isScrolling = false;
+      }, 10);
+    };
+
+    originalEl.addEventListener('scroll', handleOriginalScroll);
+    refinedEl.addEventListener('scroll', handleRefinedScroll);
+
+    return () => {
+      originalEl.removeEventListener('scroll', handleOriginalScroll);
+      refinedEl.removeEventListener('scroll', handleRefinedScroll);
+    };
+  }, [viewMode]);
+
+  // Handle panel resizing
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = originalScrollRef.current?.parentElement?.parentElement;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      setLeftPanelWidth(Math.max(20, Math.min(80, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const handleAcceptClick = () => {
     onAccept(saveToHistory);
@@ -47,6 +126,9 @@ export function ReviewInterface({
     setCurrentChangeIndex(prevIndex);
   };
 
+  const originalLines = generateLineNumbers(original);
+  const refinedLines = generateLineNumbers(refined);
+
   return (
     <div className="space-y-4 py-4">
       {/* Stats Header */}
@@ -55,19 +137,19 @@ export function ReviewInterface({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className="bg-green-50 text-green-700 border-green-200"
+              className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300"
             >
               +{changes.additions} additions
             </Badge>
             <Badge
               variant="outline"
-              className="bg-red-50 text-red-700 border-red-200"
+              className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300"
             >
               -{changes.deletions} deletions
             </Badge>
             <Badge
               variant="outline"
-              className="bg-amber-50 text-amber-700 border-amber-200"
+              className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
             >
               {changes.modifications} modifications
             </Badge>
@@ -76,7 +158,7 @@ export function ReviewInterface({
             Words: {changes.originalWordCount} → {changes.refinedWordCount}
             <span
               className={
-                changes.wordCountDelta > 0 ? 'text-green-600' : 'text-red-600'
+                changes.wordCountDelta > 0 ? 'text-emerald-600' : 'text-rose-600'
               }
             >
               {' '}
@@ -149,40 +231,88 @@ export function ReviewInterface({
       {/* Content Display */}
       <div className="rounded-lg border overflow-hidden">
         {viewMode === 'split' ? (
-          <div className="grid grid-cols-2 divide-x">
-            <div className="p-4 bg-muted/20">
-              <h3 className="text-sm font-semibold mb-3 sticky top-0 bg-muted/20 pb-2">
-                Original
-              </h3>
-              <DiffViewer
-                content={original}
-                changes={changes.changes}
-                type="original"
-                showChanges={showChanges}
-                currentChangeIndex={currentChangeIndex}
-              />
+          <div className="relative flex" style={{ height: '600px' }}>
+            {/* Original Panel */}
+            <div
+              className="flex border-r overflow-hidden"
+              style={{ width: `${leftPanelWidth}%` }}
+            >
+              <div className="bg-muted/30 px-2 py-4 text-xs text-muted-foreground font-mono border-r select-none">
+                {originalLines.map((line) => (
+                  <div key={line} className="leading-relaxed">
+                    {line}
+                  </div>
+                ))}
+              </div>
+              <div
+                ref={originalScrollRef}
+                className="flex-1 overflow-y-auto p-4 bg-muted/20"
+              >
+                <h3 className="text-sm font-semibold mb-3 sticky top-0 bg-muted/20 pb-2 z-10">
+                  Original
+                </h3>
+                <div ref={originalContentRef}>
+                  <DiffViewer
+                    content={original}
+                    changes={changes.changes}
+                    type="original"
+                    showChanges={showChanges}
+                    currentChangeIndex={currentChangeIndex}
+                    onHoverChange={setHoveredChangeIndex}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="p-4">
-              <h3 className="text-sm font-semibold mb-3 sticky top-0 bg-background pb-2">
-                Refined
-              </h3>
-              <DiffViewer
-                content={refined}
-                changes={changes.changes}
-                type="refined"
-                showChanges={showChanges}
-                currentChangeIndex={currentChangeIndex}
-              />
+
+            {/* Resize Handle */}
+            <div
+              className="w-1 bg-border cursor-col-resize hover:bg-primary/50 transition-colors flex items-center justify-center group"
+              onMouseDown={() => setIsResizing(true)}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+            </div>
+
+            {/* Refined Panel */}
+            <div
+              className="flex overflow-hidden"
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
+              <div className="bg-muted/30 px-2 py-4 text-xs text-muted-foreground font-mono border-r select-none">
+                {refinedLines.map((line) => (
+                  <div key={line} className="leading-relaxed">
+                    {line}
+                  </div>
+                ))}
+              </div>
+              <div
+                ref={refinedScrollRef}
+                className="flex-1 overflow-y-auto p-4"
+              >
+                <h3 className="text-sm font-semibold mb-3 sticky top-0 bg-background pb-2 z-10">
+                  Refined
+                </h3>
+                <div ref={refinedContentRef}>
+                  <DiffViewer
+                    content={refined}
+                    changes={changes.changes}
+                    type="refined"
+                    showChanges={showChanges}
+                    currentChangeIndex={currentChangeIndex}
+                    onHoverChange={setHoveredChangeIndex}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="p-4">
+          <div className="p-4 max-h-[600px] overflow-y-auto">
             <DiffViewer
               content={refined}
               changes={changes.changes}
               type="unified"
               showChanges={showChanges}
               currentChangeIndex={currentChangeIndex}
+              onHoverChange={setHoveredChangeIndex}
             />
           </div>
         )}
@@ -224,4 +354,3 @@ export function ReviewInterface({
     </div>
   );
 }
-

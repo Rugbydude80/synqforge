@@ -3,13 +3,7 @@
  * Generates diffs between original and refined story content
  */
 
-export interface DiffChange {
-  type: 'add' | 'delete' | 'modify' | 'unchanged';
-  originalText?: string;
-  refinedText?: string;
-  position: number;
-  length: number;
-}
+import { DiffChange } from '@/types/refinement';
 
 export interface DiffResult {
   additions: number;
@@ -20,6 +14,81 @@ export interface DiffResult {
   originalWordCount: number;
   refinedWordCount: number;
   wordCountDelta: number;
+}
+
+/**
+ * Infer change category and reason based on the type of change
+ */
+function inferChangeCategory(
+  originalText: string,
+  refinedText: string,
+  type: 'add' | 'delete' | 'modify'
+): { category: 'clarity' | 'grammar' | 'readability' | 'conciseness' | 'specificity'; reason: string } {
+  const orig = originalText?.toLowerCase() || '';
+  const refined = refinedText?.toLowerCase() || '';
+  
+  // Simple heuristics for categorizing changes
+  if (type === 'delete') {
+    return {
+      category: 'conciseness',
+      reason: 'Removed redundant or unnecessary text',
+    };
+  }
+  
+  if (type === 'add') {
+    if (refined.length > orig.length * 1.5) {
+      return {
+        category: 'specificity',
+        reason: 'Added descriptive details',
+      };
+    }
+    return {
+      category: 'clarity',
+      reason: 'Added clarifying information',
+    };
+  }
+  
+  // Modification
+  const origWords = orig.split(/\s+/).length;
+  const refinedWords = refined.split(/\s+/).length;
+  
+  // Check for grammar fixes (common patterns)
+  const grammarPatterns = [
+    /(was|were)\s+(.*?)\s+(was|were)/i,
+    /(is|are)\s+(.*?)\s+(is|are)/i,
+    /\b(their|there|they're)\b/i,
+    /\b(its|it's)\b/i,
+  ];
+  
+  for (const pattern of grammarPatterns) {
+    if (pattern.test(orig) && !pattern.test(refined)) {
+      return {
+        category: 'grammar',
+        reason: 'Fixed grammatical error',
+      };
+    }
+  }
+  
+  // Check for readability improvements
+  if (refinedWords < origWords * 0.8) {
+    return {
+      category: 'conciseness',
+      reason: 'Simplified for better readability',
+    };
+  }
+  
+  if (refinedWords > origWords * 1.2) {
+    return {
+      category: 'specificity',
+      reason: 'Added more descriptive detail',
+    };
+  }
+  
+  // Default to clarity
+  return {
+    category: 'clarity',
+    reason: 'Improved clarity and readability',
+  };
 }
 
 /**
@@ -50,6 +119,7 @@ export function generateStoryDiff(
   let originalPos = 0;
   let refinedPos = 0;
   let position = 0;
+  let changeIdCounter = 0;
 
   while (originalPos < originalWords.length || refinedPos < refinedWords.length) {
     const origWord = originalWords[originalPos];
@@ -58,22 +128,30 @@ export function generateStoryDiff(
     if (originalPos >= originalWords.length) {
       // Addition
       result.additions++;
+      const categoryInfo = inferChangeCategory('', refWord, 'add');
       changes.push({
         type: 'add',
         refinedText: refWord,
         position,
         length: refWord.length,
+        changeId: `change-${changeIdCounter++}`,
+        reason: categoryInfo.reason,
+        category: categoryInfo.category,
       });
       position += refWord.length;
       refinedPos++;
     } else if (refinedPos >= refinedWords.length) {
       // Deletion
       result.deletions++;
+      const categoryInfo = inferChangeCategory(origWord, '', 'delete');
       changes.push({
         type: 'delete',
         originalText: origWord,
         position,
         length: 0,
+        changeId: `change-${changeIdCounter++}`,
+        reason: categoryInfo.reason,
+        category: categoryInfo.category,
       });
       originalPos++;
     } else if (origWord === refWord) {
@@ -84,6 +162,7 @@ export function generateStoryDiff(
         refinedText: refWord,
         position,
         length: origWord.length,
+        changeId: `change-${changeIdCounter++}`,
       });
       position += origWord.length;
       originalPos++;
@@ -101,33 +180,45 @@ export function generateStoryDiff(
       if (nextOrigMatch) {
         // This is an addition
         result.additions++;
+        const categoryInfo = inferChangeCategory('', refWord, 'add');
         changes.push({
           type: 'add',
           refinedText: refWord,
           position,
           length: refWord.length,
+          changeId: `change-${changeIdCounter++}`,
+          reason: categoryInfo.reason,
+          category: categoryInfo.category,
         });
         position += refWord.length;
         refinedPos++;
       } else if (nextRefMatch) {
         // This is a deletion
         result.deletions++;
+        const categoryInfo = inferChangeCategory(origWord, '', 'delete');
         changes.push({
           type: 'delete',
           originalText: origWord,
           position,
           length: 0,
+          changeId: `change-${changeIdCounter++}`,
+          reason: categoryInfo.reason,
+          category: categoryInfo.category,
         });
         originalPos++;
       } else {
         // Modification
         result.modifications++;
+        const categoryInfo = inferChangeCategory(origWord, refWord, 'modify');
         changes.push({
           type: 'modify',
           originalText: origWord,
           refinedText: refWord,
           position,
           length: refWord.length,
+          changeId: `change-${changeIdCounter++}`,
+          reason: categoryInfo.reason,
+          category: categoryInfo.category,
         });
         position += refWord.length;
         originalPos++;
@@ -173,4 +264,3 @@ export function highlightChanges(
 
   return highlightedText;
 }
-

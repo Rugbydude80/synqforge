@@ -16,6 +16,7 @@ import { TaskList } from '@/components/tasks/task-list'
 import type { Task, TaskStats } from '@/components/tasks/task-list'
 import { SplitStoryButton } from '@/components/story-split/SplitStoryButton'
 import { RefineStoryButton } from '@/components/story-refine/RefineStoryButton'
+import { RevisionHistory } from '@/components/story-refine/RevisionHistory'
 import Link from 'next/link'
 import {
   Calendar,
@@ -26,6 +27,7 @@ import {
   X,
   Copy,
   Check,
+  Undo,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { projectUrl } from '@/lib/urls'
@@ -227,6 +229,30 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
                     router.refresh();
                   }}
                 />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/stories/${story.id}/refinements/undo`, {
+                        method: 'POST',
+                      });
+                      if (response.ok) {
+                        toast.success('Last refinement undone');
+                        router.refresh();
+                      } else {
+                        const error = await response.json();
+                        toast.error(error.message || 'Failed to undo refinement');
+                      }
+                    } catch (err) {
+                      toast.error('Failed to undo refinement');
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Undo className="h-4 w-4" />
+                  Undo Last
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -461,6 +487,19 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
           <CommentThread storyId={story.id} currentUserId={currentUserId} />
         </CardContent>
       </Card>
+
+      {/* Revision History */}
+      <RevisionHistory
+        storyId={story.id}
+        onPreview={(revision) => {
+          // Could open a preview modal here
+          toast.info('Preview feature coming soon');
+        }}
+        onRestore={(revision) => {
+          router.refresh();
+          toast.success('Story restored to revision');
+        }}
+      />
     </div>
   )
 }

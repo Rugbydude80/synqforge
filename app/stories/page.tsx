@@ -4,15 +4,17 @@ import * as React from 'react'
 import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2 } from 'lucide-react'
+import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AppSidebar } from '@/components/app-sidebar'
 import { StoryFormModal } from '@/components/story-form-modal'
+import { BatchRefinementModal } from '@/components/story-refine/BatchRefinementModal'
 import { cn } from '@/lib/utils'
 import { api, type Story } from '@/lib/api-client'
 import { emitProjectMetricsChanged } from '@/lib/events/project-events'
@@ -47,6 +49,11 @@ function StoriesPageContent() {
   const [showEditModal, setShowEditModal] = React.useState(false)
   const [selectedStory, setSelectedStory] = React.useState<Story | undefined>()
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>('')
+  const [showBatchRefinement, setShowBatchRefinement] = React.useState(false)
+  
+  // Batch selection
+  const [selectedStoryIds, setSelectedStoryIds] = React.useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = React.useState(false)
 
   // Filters
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
@@ -374,22 +381,57 @@ function StoriesPageContent() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchData}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleCreateStory}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Story
-                </Button>
+                {isSelectMode && selectedStoryIds.size > 0 && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setShowBatchRefinement(true)}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Refine Selected ({selectedStoryIds.size})
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedStoryIds(new Set());
+                        setIsSelectMode(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+                {!isSelectMode && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsSelectMode(true)}
+                    >
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Select Stories
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchData}
+                      disabled={loading}
+                    >
+                      Refresh
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleCreateStory}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Story
+                    </Button>
+                  </>
+                )}
                 <Badge variant="secondary" className="text-sm">
                   {filteredStories.length} {filteredStories.length === 1 ? 'story' : 'stories'}
                 </Badge>
@@ -522,20 +564,84 @@ function StoriesPageContent() {
             </Card>
           ) : (
             <>
+              {isSelectMode && (
+                <div className="mb-4 flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedStoryIds.size === paginatedStories.length) {
+                        setSelectedStoryIds(new Set());
+                      } else {
+                        setSelectedStoryIds(new Set(paginatedStories.map(s => s.id)));
+                      }
+                    }}
+                  >
+                    {selectedStoryIds.size === paginatedStories.length ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Deselect All
+                      </>
+                    ) : (
+                      <>
+                        <CheckSquare className="h-4 w-4 mr-2" />
+                        Select All ({paginatedStories.length})
+                      </>
+                    )}
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedStoryIds.size} selected
+                  </span>
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedStories.map(story => (
                 <Card
                   key={story.id}
                   id={`story-${story.id}`}
                   className={cn(
-                    "bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer group",
-                    highlightId === story.id && "ring-2 ring-purple-500 border-purple-500 animate-pulse"
+                    "bg-gray-800/50 border-gray-700 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all group",
+                    highlightId === story.id && "ring-2 ring-purple-500 border-purple-500 animate-pulse",
+                    isSelectMode ? "cursor-default" : "cursor-pointer",
+                    selectedStoryIds.has(story.id) && "ring-2 ring-purple-500 border-purple-500"
                   )}
-                  onClick={() => router.push(`/stories/${story.id}`)}
+                  onClick={() => {
+                    if (isSelectMode) {
+                      setSelectedStoryIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(story.id)) {
+                          next.delete(story.id);
+                        } else {
+                          next.add(story.id);
+                        }
+                        return next;
+                      });
+                    } else {
+                      router.push(`/stories/${story.id}`);
+                    }
+                  }}
                 >
                   <CardContent className="p-5">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
+                      {isSelectMode && (
+                        <Checkbox
+                          checked={selectedStoryIds.has(story.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedStoryIds(prev => {
+                              const next = new Set(prev);
+                              if (checked) {
+                                next.add(story.id);
+                              } else {
+                                next.delete(story.id);
+                              }
+                              return next;
+                            });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mr-2"
+                        />
+                      )}
                       <div className="flex items-center gap-2 flex-wrap">
                         {story.priority && (
                           <Badge className={cn('text-xs border', getPriorityColor(story.priority))}>
@@ -647,6 +753,23 @@ function StoriesPageContent() {
           projectId={selectedProjectId}
           story={selectedStory}
           onSuccess={handleModalSuccess}
+        />
+      )}
+      {showBatchRefinement && (
+        <BatchRefinementModal
+          stories={stories.filter(s => selectedStoryIds.has(s.id))}
+          isOpen={showBatchRefinement}
+          onClose={() => {
+            setShowBatchRefinement(false);
+            setSelectedStoryIds(new Set());
+            setIsSelectMode(false);
+          }}
+          onComplete={() => {
+            fetchData();
+            setShowBatchRefinement(false);
+            setSelectedStoryIds(new Set());
+            setIsSelectMode(false);
+          }}
         />
       )}
     </div>

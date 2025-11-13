@@ -1,15 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 import { Lightbulb } from 'lucide-react';
+
+export interface RefinementOptions {
+  focus: string[]; // ['grammar', 'clarity', etc.]
+  intensity: 'light' | 'moderate' | 'heavy';
+  preserve: string[]; // ['character_names', 'plot_points', etc.]
+}
 
 interface InstructionInputProps {
   instructions: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (options?: RefinementOptions) => void;
   storyTitle: string;
   storyExcerpt: string;
   error?: string | null;
@@ -36,6 +47,36 @@ export function InstructionInput({
 }: InstructionInputProps) {
   const charCount = instructions.length;
   const isValid = charCount >= 10 && charCount <= 500;
+
+  // Refinement options state
+  const [focusOptions, setFocusOptions] = useState<string[]>(['grammar', 'clarity']);
+  const [intensity, setIntensity] = useState<'light' | 'moderate' | 'heavy'>('moderate');
+  const [preserveOptions, setPreserveOptions] = useState<string[]>(['character_names', 'plot_points']);
+
+  const toggleFocusOption = (option: string) => {
+    setFocusOptions((prev) =>
+      prev.includes(option)
+        ? prev.filter((o) => o !== option)
+        : [...prev, option]
+    );
+  };
+
+  const togglePreserveOption = (option: string) => {
+    setPreserveOptions((prev) =>
+      prev.includes(option)
+        ? prev.filter((o) => o !== option)
+        : [...prev, option]
+    );
+  };
+
+  const handleSubmit = () => {
+    const options: RefinementOptions = {
+      focus: focusOptions,
+      intensity,
+      preserve: preserveOptions,
+    };
+    onSubmit(options);
+  };
 
   return (
     <div className="space-y-6 py-4">
@@ -79,6 +120,103 @@ export function InstructionInput({
         </div>
       </div>
 
+      {/* Refinement Options Panel */}
+      <div className="refinement-options border rounded-lg p-4 space-y-3 bg-muted/20">
+        <h4 className="font-semibold text-sm">Refinement Focus</h4>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { id: 'grammar', label: 'Grammar & Spelling' },
+            { id: 'clarity', label: 'Clarity & Readability' },
+            { id: 'conciseness', label: 'Conciseness' },
+            { id: 'descriptiveness', label: 'Descriptive Details' },
+            { id: 'dialogue', label: 'Dialogue Quality' },
+            { id: 'pacing', label: 'Pacing & Flow' },
+          ].map((option) => (
+            <div key={option.id} className="flex items-center space-x-2">
+              <Checkbox
+                id={option.id}
+                checked={focusOptions.includes(option.id)}
+                onCheckedChange={() => toggleFocusOption(option.id)}
+              />
+              <label
+                htmlFor={option.id}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                {option.label}
+              </label>
+            </div>
+          ))}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label>Refinement Intensity</Label>
+          <RadioGroup
+            value={intensity}
+            onValueChange={(value) =>
+              setIntensity(value as 'light' | 'moderate' | 'heavy')
+            }
+            className="space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="light" id="light" />
+              <label
+                htmlFor="light"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Light - Minimal changes
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="moderate" id="moderate" />
+              <label
+                htmlFor="moderate"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Moderate - Balanced improvements
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="heavy" id="heavy" />
+              <label
+                htmlFor="heavy"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Heavy - Comprehensive rewrite
+              </label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label>Preserve</Label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'character_names', label: 'Character names' },
+              { id: 'plot_points', label: 'Plot points' },
+              { id: 'dialogue', label: 'Dialogue' },
+              { id: 'setting', label: 'Setting' },
+            ].map((option) => (
+              <Badge
+                key={option.id}
+                variant={preserveOptions.includes(option.id) ? 'default' : 'outline'}
+                className="cursor-pointer hover:bg-accent"
+                onClick={() => togglePreserveOption(option.id)}
+              >
+                {option.label}
+              </Badge>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            These elements will remain unchanged
+          </p>
+        </div>
+      </div>
+
       {/* Example Prompts */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -108,7 +246,7 @@ export function InstructionInput({
 
       {/* Submit Button */}
       <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button onClick={onSubmit} disabled={!isValid} size="lg" className="gap-2">
+        <Button onClick={handleSubmit} disabled={!isValid} size="lg" className="gap-2">
           Generate Refinement
         </Button>
       </div>
@@ -124,4 +262,3 @@ export function InstructionInput({
     </div>
   );
 }
-

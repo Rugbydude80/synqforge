@@ -7,10 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { InstructionInput } from './InstructionInput';
+import { InstructionInput, RefinementOptions } from './InstructionInput';
 import { ProcessingState } from './ProcessingState';
 import { ReviewInterface } from './ReviewInterface';
-import { RefinementStage, RefinementResponse } from '@/types/refinement';
+import { SelectiveReviewInterface } from './SelectiveReviewInterface';
+import { RefinementStage, RefinementResponse, DiffChange } from '@/types/refinement';
 import { toast } from 'sonner';
 import { useRefineStoryMutation } from '@/lib/hooks/useStoryRefinement';
 
@@ -33,13 +34,15 @@ export function RefineStoryModal({
 }: RefineStoryModalProps) {
   const [stage, setStage] = useState<RefinementStage>('input');
   const [instructions, setInstructions] = useState('');
+  const [refinementOptions, setRefinementOptions] = useState<RefinementOptions | undefined>();
   const [refinementResult, setRefinementResult] =
     useState<RefinementResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [useSelectiveReview, setUseSelectiveReview] = useState(false);
 
   const refineMutation = useRefineStoryMutation(story.id);
 
-  const handleRefine = async () => {
+  const handleRefine = async (options?: RefinementOptions) => {
     if (instructions.length < 10) {
       toast.error('Instructions too short', {
         description: 'Please provide at least 10 characters of instructions.',
@@ -49,8 +52,10 @@ export function RefineStoryModal({
 
     setStage('processing');
     setError(null);
+    setRefinementOptions(options);
 
     try {
+      // TODO: Pass options to API when backend supports it
       const data = await refineMutation.mutateAsync(instructions);
       setRefinementResult(data);
       setStage('review');
@@ -63,7 +68,7 @@ export function RefineStoryModal({
     }
   };
 
-  const handleAccept = async (saveToHistory: boolean) => {
+  const handleAccept = async (saveToHistory: boolean, selectedChanges?: DiffChange[]) => {
     if (!refinementResult) return;
 
     try {
@@ -72,20 +77,30 @@ export function RefineStoryModal({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ saveToHistory }),
+          body: JSON.stringify({ 
+            saveToHistory,
+            selectedChanges: selectedChanges?.map(c => c.changeId || c.position),
+          }),
         }
       );
 
-      if (!response.ok) throw new Error('Failed to accept refinement');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || `Failed to accept refinement (${response.status})`;
+        console.error('Accept refinement error:', errorData);
+        throw new Error(errorMessage);
+      }
 
+      const result = await response.json();
       toast.success('Success!', {
-        description: 'Your story has been updated with the refinement.',
+        description: result.message || 'Your story has been updated with the refinement.',
       });
 
       onComplete();
-    } catch {
+    } catch (err: any) {
+      console.error('Error accepting refinement:', err);
       toast.error('Error', {
-        description: 'Failed to apply refinement. Please try again.',
+        description: err.message || 'Failed to apply refinement. Please try again.',
       });
     }
   };
@@ -164,14 +179,35 @@ export function RefineStoryModal({
           {stage === 'processing' && <ProcessingState />}
 
           {stage === 'review' && refinementResult && (
-            <ReviewInterface
-              original={refinementResult.originalContent}
-              refined={refinementResult.refinedContent}
-              changes={refinementResult.changes}
-              onAccept={handleAccept}
-              onReject={handleReject}
-              onRefineAgain={handleRefineAgain}
-            />
+            <>
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => setUseSelectiveReview(!useSelectiveReview)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {useSelectiveReview ? 'Switch to standard review' : 'Switch to selective review'}
+                </button>
+              </div>
+              {useSelectiveReview ? (
+                <SelectiveReviewInterface
+                  original={refinementResult.originalContent}
+                  refined={refinementResult.refinedContent}
+                  changes={refinementResult.changes}
+                  onAccept={(selectedChanges, saveToHistory) => handleAccept(saveToHistory, selectedChanges)}
+                  onReject={handleReject}
+                  onRefineAgain={handleRefineAgain}
+                />
+              ) : (
+                <ReviewInterface
+                  original={refinementResult.originalContent}
+                  refined={refinementResult.refinedContent}
+                  changes={refinementResult.changes}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                  onRefineAgain={handleRefineAgain}
+                />
+              )}
+            </>
           )}
         </div>
       </DialogContent>

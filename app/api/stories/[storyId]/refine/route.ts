@@ -87,7 +87,7 @@ async function refineStory(
 
     // 5. Validate request body
     const body = await req.json();
-    const { instructions } = body;
+    const { instructions, options } = body;
 
     if (!instructions || instructions.length < 10 || instructions.length > 500) {
       return NextResponse.json(
@@ -123,10 +123,16 @@ async function refineStory(
     const startTime = Date.now();
 
     try {
-      const refinedContent = await refineStoryWithAI(storyContent, instructions, {
-        currentWordCount: storyContent.split(/\s+/).length,
-      });
+      const refinementResult = await refineStoryWithAI(
+        storyContent,
+        instructions,
+        {
+          currentWordCount: storyContent.split(/\s+/).length,
+        },
+        options // Pass refinement options
+      );
 
+      const refinedContent = refinementResult.refinedContent;
       const processingTime = Date.now() - startTime;
 
       // 9. Generate diff
