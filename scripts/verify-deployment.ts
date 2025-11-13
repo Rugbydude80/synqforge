@@ -56,7 +56,7 @@ async function checkGitStatus() {
   } catch (error: any) {
     // Git might not be in PATH, try alternative
     try {
-      const status = execSync('where git', { encoding: 'utf-8', stdio: 'pipe' });
+      execSync('where git', { encoding: 'utf-8', stdio: 'pipe' });
       // If git is found, try again with full path or show manual check needed
       console.log('⚠️  Git command not accessible in PATH');
       console.log('   Please check git status manually: git status\n');
