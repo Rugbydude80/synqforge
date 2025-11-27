@@ -15,11 +15,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { token } = authSchema.parse(body)
 
-    // Get organization from token validation
-    const portalService = new ClientPortalService('') // Will be set after validation
-    const validation = await portalService.validatePortalToken(token)
+    // Validate token directly without needing organizationId first
+    const { db } = await import('@/lib/db')
+    const { clientPortalAccess, clients } = await import('@/lib/db/schema')
+    const { eq } = await import('drizzle-orm')
 
-    if (!validation.valid || !validation.clientId) {
+    // Check token validity
+    const [access] = await db
+      .select()
+      .from(clientPortalAccess)
+      .where(eq(clientPortalAccess.token, token))
+      .limit(1)
+
+    if (!access) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
+        { status: 401 }
+      )
+    }
+
+    // Check expiration
+    if (new Date() > access.expiresAt) {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -27,14 +43,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get client to find organization
-    const { db } = await import('@/lib/db')
-    const { clients } = await import('@/lib/db/schema')
-    const { eq } = await import('drizzle-orm')
-
     const [client] = await db
       .select({ organizationId: clients.organizationId })
       .from(clients)
-      .where(eq(clients.id, validation.clientId))
+      .where(eq(clients.id, access.clientId))
       .limit(1)
 
     if (!client) {
@@ -44,13 +56,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create portal service with correct org
-    const service = new ClientPortalService(client.organizationId)
+    // Update last accessed
+    await db
+      .update(clientPortalAccess)
+      .set({ lastAccessedAt: new Date() })
+      .where(eq(clientPortalAccess.id, access.id))
 
     return NextResponse.json({
       valid: true,
-      clientId: validation.clientId,
-      email: validation.email,
+      clientId: access.clientId,
+      email: access.email,
     })
   } catch (error: any) {
     console.error('Error authenticating portal token:', error)
