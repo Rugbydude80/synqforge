@@ -4,7 +4,7 @@
  */
 
 import { db, generateId } from '@/lib/db'
-import { apiKeys, organizations, users } from '@/lib/db/schema'
+import { apiKeys, organizations } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { nanoid } from 'nanoid'

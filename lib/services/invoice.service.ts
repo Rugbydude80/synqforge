@@ -2,10 +2,9 @@ import { InvoicesRepository } from '@/lib/repositories/invoices'
 import { TimeEntriesRepository } from '@/lib/repositories/time-entries'
 import { ClientsRepository } from '@/lib/repositories/clients'
 import { db } from '@/lib/db'
-import { organizations, timeEntries, stories, epics } from '@/lib/db/schema'
-import { eq, and, sql, inArray } from 'drizzle-orm'
+import { organizations, stories } from '@/lib/db/schema'
+import { eq, inArray } from 'drizzle-orm'
 import { UserContext } from '@/lib/middleware/auth'
-import type { CreateInvoiceInput, UpdateInvoiceInput } from '@/lib/repositories/invoices'
 
 export interface InvoiceLineItem {
   description: string
@@ -124,7 +123,7 @@ export class InvoiceService {
 
     // Convert to line items
     const lineItems: InvoiceLineItem[] = []
-    for (const [key, group] of grouped.entries()) {
+    for (const [, group] of grouped.entries()) {
       const hours = group.totalMinutes / 60
       const rate = parseFloat(group.entries[0].billingRate || '0')
       const amount = hours * rate

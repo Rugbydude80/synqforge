@@ -9,7 +9,6 @@ import { eq, and, desc } from 'drizzle-orm'
 import { UserContext } from '@/lib/middleware/auth'
 import {
   NotFoundError,
-  ForbiddenError,
 } from '@/lib/types'
 
 export interface CreateWebhookData {

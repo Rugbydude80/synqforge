@@ -3,7 +3,7 @@
  * Data access layer for API keys
  */
 
-import { db, generateId } from '@/lib/db'
+import { db } from '@/lib/db'
 import { apiKeys } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { UserContext } from '@/lib/middleware/auth'

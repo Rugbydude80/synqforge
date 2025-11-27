@@ -1,6 +1,6 @@
 import { db, generateId } from '@/lib/db'
-import { clientPortalAccess, clients, projects, stories, epics, sprints } from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { clientPortalAccess, projects, stories, epics, sprints } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { ClientsRepository } from '@/lib/repositories/clients'
 import { Resend } from 'resend'
 

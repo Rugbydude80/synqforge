@@ -17,7 +17,7 @@ import { eq } from 'drizzle-orm'
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { keyId: string } }
+  { params }: { params: Promise<{ keyId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -43,7 +43,7 @@ export async function DELETE(
       )
     }
 
-    const { keyId } = params
+    const { keyId } = await params
 
     await revokeApiKey(keyId, user.organizationId)
 
