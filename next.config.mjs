@@ -81,9 +81,31 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.NODE_ENV === 'production' 
+            value: process.env.API_CORS_ORIGINS || (process.env.NODE_ENV === 'production' 
               ? 'https://synqforge.com' 
-              : 'http://localhost:3000',
+              : '*'),
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET,POST,PATCH,DELETE,OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-SynqForge-Event, X-SynqForge-Signature',
+          },
+        ],
+      },
+      // Public API v1 CORS (more permissive for external integrations)
+      {
+        source: '/api/v1/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.API_CORS_ORIGINS || '*',
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -92,6 +114,20 @@ const nextConfig = {
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization',
+          },
+        ],
+      },
+      // Public API docs
+      {
+        source: '/api/docs',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET,OPTIONS',
           },
         ],
       },

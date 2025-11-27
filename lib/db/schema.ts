@@ -88,6 +88,9 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
 ])
 export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'rejected', 'expired'])
 export const addOnStatusEnum = pgEnum('addon_status', ['active', 'expired', 'cancelled', 'consumed'])
+export const webhookDeliveryStatusEnum = pgEnum('webhook_delivery_status', ['pending', 'success', 'failed', 'retrying'])
+export const clientStatusEnum = pgEnum('client_status', ['active', 'archived'])
+export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue'])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -138,6 +141,7 @@ export const organizations = pgTable(
     lastStripeSync: timestamp('last_stripe_sync'),
     gracePeriodRemindersSent: integer('grace_period_reminders_sent').default(0),
     billingAnniversary: date('billing_anniversary'),
+    lastInvoiceNumber: integer('last_invoice_number').default(0),
   },
   (table) => ({
     slugIdx: uniqueIndex('idx_org_slug').on(table.slug),
@@ -220,12 +224,14 @@ export const projects = pgTable(
   {
     id: varchar('id', { length: 36 }).primaryKey(),
     organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    clientId: varchar('client_id', { length: 36 }),
     name: varchar('name', { length: 255 }).notNull(),
     key: varchar('key', { length: 10 }).notNull(),
     description: text('description'),
     slug: varchar('slug', { length: 100 }).notNull(),
     status: projectStatusEnum('status').default('planning'),
     ownerId: varchar('owner_id', { length: 36 }).notNull(),
+    billingRate: decimal('billing_rate', { precision: 10, scale: 2 }),
     settings: json('settings').$type<Record<string, any>>(),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -233,6 +239,7 @@ export const projects = pgTable(
   (table) => ({
     orgIdx: index('idx_projects_org').on(table.organizationId),
     statusIdx: index('idx_projects_status').on(table.organizationId, table.status),
+    clientIdx: index('idx_projects_client').on(table.clientId),
     uniqueSlug: uniqueIndex('unique_project_slug').on(table.organizationId, table.slug),
   })
 )
@@ -256,6 +263,123 @@ export const projectMembers = pgTable(
     userIdx: index('idx_project_members_user').on(table.userId),
     orgIdx: index('idx_project_members_org').on(table.organizationId),
     uniqueProjectUser: uniqueIndex('unique_project_user').on(table.projectId, table.userId),
+  })
+)
+
+// ============================================
+// CLIENTS - Consultant client management
+// ============================================
+
+export const clients = pgTable(
+  'clients',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    logoUrl: text('logo_url'),
+    primaryContactName: text('primary_contact_name'),
+    primaryContactEmail: text('primary_contact_email'),
+    contractStartDate: date('contract_start_date'),
+    contractEndDate: date('contract_end_date'),
+    defaultBillingRate: decimal('default_billing_rate', { precision: 10, scale: 2 }),
+    currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+    status: text('status', { enum: ['active', 'archived'] }).notNull().default('active'),
+    settings: json('settings').$type<Record<string, any>>().default({}),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    orgIdx: index('idx_clients_org').on(table.organizationId),
+    statusIdx: index('idx_clients_status').on(table.status),
+    contactIdx: index('idx_clients_contact').on(table.primaryContactEmail),
+    uniqueClientPerOrg: uniqueIndex('unique_client_per_org').on(table.organizationId, table.name),
+  })
+)
+
+// ============================================
+// TIME ENTRIES - Time tracking for billing
+// ============================================
+
+export const timeEntries = pgTable(
+  'time_entries',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    clientId: varchar('client_id', { length: 36 }),
+    projectId: varchar('project_id', { length: 36 }),
+    storyId: varchar('story_id', { length: 36 }),
+    userId: varchar('user_id', { length: 36 }).notNull(),
+    startedAt: timestamp('started_at').notNull(),
+    endedAt: timestamp('ended_at'),
+    durationMinutes: integer('duration_minutes'),
+    description: text('description'),
+    billable: boolean('billable').notNull().default(true),
+    billingRate: decimal('billing_rate', { precision: 10, scale: 2 }),
+    invoiceId: varchar('invoice_id', { length: 36 }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    storyIdx: index('idx_time_entries_story').on(table.storyId),
+    userIdx: index('idx_time_entries_user').on(table.userId, table.startedAt),
+    clientIdx: index('idx_time_entries_client').on(table.clientId, table.startedAt),
+    projectIdx: index('idx_time_entries_project').on(table.projectId),
+    invoiceIdx: index('idx_time_entries_invoice').on(table.invoiceId),
+    unbilledIdx: index('idx_time_entries_unbilled').on(table.billable, table.invoiceId),
+  })
+)
+
+// ============================================
+// INVOICES - Generated from time entries
+// ============================================
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    clientId: varchar('client_id', { length: 36 }).notNull(),
+    invoiceNumber: varchar('invoice_number', { length: 50 }).notNull(),
+    status: text('status', { enum: ['draft', 'sent', 'paid', 'overdue'] }).notNull().default('draft'),
+    issueDate: date('issue_date').notNull(),
+    dueDate: date('due_date').notNull(),
+    paidDate: date('paid_date'),
+    totalHours: decimal('total_hours', { precision: 10, scale: 2 }).notNull(),
+    totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+    lineItems: json('line_items').$type<Array<{ description: string; hours: number; rate: number; amount: number; storyId?: string; epicId?: string }>>().notNull(),
+    notes: text('notes'),
+    pdfUrl: text('pdf_url'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    clientIdx: index('idx_invoices_client').on(table.clientId, table.issueDate),
+    statusIdx: index('idx_invoices_status').on(table.status),
+    numberIdx: index('idx_invoices_number').on(table.invoiceNumber),
+    uniqueInvoiceNumber: uniqueIndex('unique_invoice_number').on(table.organizationId, table.invoiceNumber),
+  })
+)
+
+// ============================================
+// CLIENT PORTAL ACCESS - Token-based read-only access
+// ============================================
+
+export const clientPortalAccess = pgTable(
+  'client_portal_access',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    clientId: varchar('client_id', { length: 36 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    token: varchar('token', { length: 255 }).notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    lastAccessedAt: timestamp('last_accessed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    clientIdx: index('idx_portal_client').on(table.clientId),
+    tokenIdx: index('idx_portal_token').on(table.token),
+    emailIdx: index('idx_portal_email').on(table.email),
   })
 )
 
@@ -947,6 +1071,8 @@ export const customDocumentTemplates = pgTable(
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   projects: many(projects),
+  clients: many(clients),
+  invoices: many(invoices),
 }))
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -955,6 +1081,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     references: [organizations.id],
   }),
   passwordResetTokens: many(passwordResetTokens),
+  timeEntries: many(timeEntries),
 }))
 
 export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
@@ -980,12 +1107,17 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.organizationId],
     references: [organizations.id],
   }),
+  client: one(clients, {
+    fields: [projects.clientId],
+    references: [clients.id],
+  }),
   owner: one(users, {
     fields: [projects.ownerId],
     references: [users.id],
   }),
   epics: many(epics),
   sprints: many(sprints),
+  timeEntries: many(timeEntries),
 }))
 
 export const epicsRelations = relations(epics, ({ one, many }) => ({
@@ -1016,6 +1148,7 @@ export const storiesRelations = relations(stories, ({ one, many }) => ({
     relationName: 'storyAssignee'
   }),
   tasks: many(tasks),
+  timeEntries: many(timeEntries),
 }))
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
@@ -1120,6 +1253,68 @@ export const sprintAnalyticsRelations = relations(sprintAnalytics, ({ one }) => 
     references: [sprints.id],
   }),
 }))
+
+// ============================================
+// CONSULTANT FEATURES RELATIONS
+// ============================================
+
+export const clientsRelations = relations(clients, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [clients.organizationId],
+    references: [organizations.id],
+  }),
+  projects: many(projects),
+  timeEntries: many(timeEntries),
+  invoices: many(invoices),
+  portalAccess: many(clientPortalAccess),
+}))
+
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [timeEntries.organizationId],
+    references: [organizations.id],
+  }),
+  client: one(clients, {
+    fields: [timeEntries.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [timeEntries.projectId],
+    references: [projects.id],
+  }),
+  story: one(stories, {
+    fields: [timeEntries.storyId],
+    references: [stories.id],
+  }),
+  user: one(users, {
+    fields: [timeEntries.userId],
+    references: [users.id],
+  }),
+  invoice: one(invoices, {
+    fields: [timeEntries.invoiceId],
+    references: [invoices.id],
+  }),
+}))
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [invoices.organizationId],
+    references: [organizations.id],
+  }),
+  client: one(clients, {
+    fields: [invoices.clientId],
+    references: [clients.id],
+  }),
+  timeEntries: many(timeEntries),
+}))
+
+export const clientPortalAccessRelations = relations(clientPortalAccess, ({ one }) => ({
+  client: one(clients, {
+    fields: [clientPortalAccess.clientId],
+    references: [clients.id],
+  }),
+}))
+
 
 // ============================================
 // STRIPE SUBSCRIPTIONS
@@ -2211,5 +2406,95 @@ export const storyRevisions = pgTable(
     orgIdx: index('idx_story_revisions_org').on(table.organizationId),
     createdIdx: index('idx_story_revisions_created').on(table.createdAt),
     typeIdx: index('idx_story_revisions_type').on(table.revisionType),
+  })
+)
+
+// ============================================
+// API KEYS
+// ============================================
+
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }), // Nullable for service keys (Enterprise only)
+    keyHash: text('key_hash').notNull(), // bcrypt hashed API key
+    keyPrefix: varchar('key_prefix', { length: 8 }).notNull(), // First 8 chars for display
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    lastUsedAt: timestamp('last_used_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at'), // Optional expiration
+    isActive: boolean('is_active').default(true).notNull(),
+    isServiceKey: boolean('is_service_key').default(false).notNull(), // Enterprise only
+    scopes: json('scopes').$type<string[]>().default(['read', 'write']).notNull(), // ['read', 'write'] or ['read']
+    rateLimitPerHour: integer('rate_limit_per_hour'), // Tier-based default, can override for Enterprise
+  },
+  (table) => ({
+    orgIdx: index('idx_api_keys_org').on(table.organizationId),
+    userIdx: index('idx_api_keys_user').on(table.userId),
+    prefixIdx: index('idx_api_keys_prefix').on(table.keyPrefix),
+    activeIdx: index('idx_api_keys_active').on(table.isActive),
+    createdAtIdx: index('idx_api_keys_created').on(table.createdAt),
+  })
+)
+
+// ============================================
+// WEBHOOKS
+// ============================================
+
+export const webhooks = pgTable(
+  'webhooks',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+    userId: varchar('user_id', { length: 36 }).notNull(), // Creator
+    url: text('url').notNull(),
+    secret: text('secret').notNull(), // Hashed webhook secret for signature verification
+    events: json('events').$type<string[]>().notNull(), // Array of event types to subscribe to
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastTriggeredAt: timestamp('last_triggered_at'),
+    successCount: integer('success_count').default(0).notNull(),
+    failureCount: integer('failure_count').default(0).notNull(),
+    headers: json('headers').$type<Record<string, string>>(), // Custom headers to include in webhook requests
+  },
+  (table) => ({
+    orgIdx: index('idx_webhooks_org').on(table.organizationId),
+    userIdx: index('idx_webhooks_user').on(table.userId),
+    activeIdx: index('idx_webhooks_active').on(table.isActive),
+    createdAtIdx: index('idx_webhooks_created').on(table.createdAt),
+  })
+)
+
+// ============================================
+// WEBHOOK DELIVERIES
+// ============================================
+
+export const webhookDeliveries = pgTable(
+  'webhook_deliveries',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    webhookId: varchar('webhook_id', { length: 36 }).notNull(),
+    eventId: varchar('event_id', { length: 36 }).notNull(), // Unique ID for the event
+    eventType: varchar('event_type', { length: 100 }).notNull(), // e.g., 'story.created', 'epic.updated'
+    payload: json('payload').notNull(), // Full event payload
+    responseStatus: integer('response_status'), // HTTP status code from webhook endpoint
+    responseBody: text('response_body'), // Response body from webhook endpoint
+    attemptNumber: integer('attempt_number').default(1).notNull(),
+    deliveredAt: timestamp('delivered_at'),
+    nextRetryAt: timestamp('next_retry_at'), // When to retry if failed
+    status: webhookDeliveryStatusEnum('status').default('pending').notNull(), // 'pending', 'success', 'failed', 'retrying'
+    errorMessage: text('error_message'), // Error message if delivery failed
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookIdx: index('idx_webhook_deliveries_webhook').on(table.webhookId),
+    eventIdx: index('idx_webhook_deliveries_event').on(table.eventId),
+    statusIdx: index('idx_webhook_deliveries_status').on(table.status),
+    nextRetryIdx: index('idx_webhook_deliveries_next_retry').on(table.nextRetryAt),
+    createdAtIdx: index('idx_webhook_deliveries_created').on(table.createdAt),
   })
 )

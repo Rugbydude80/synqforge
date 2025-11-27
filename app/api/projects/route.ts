@@ -145,6 +145,7 @@ async function createProject(req: NextRequest, context: any) {
       description: body.description,
       slug: body.slug,
       ownerId: body.ownerId || context.user.id,
+      clientId: body.clientId || undefined,
     }
 
     const project = await projectsRepo.createProject(projectData)

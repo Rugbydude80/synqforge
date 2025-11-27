@@ -19,7 +19,8 @@ const publicRoutes = [
 // API routes that don't require authentication
 const publicApiRoutes = [
   '/api/auth',
-  '/api/webhooks', // Stripe webhooks need to be public
+  '/api/webhooks/stripe', // Stripe webhooks need to be public
+  '/api/docs', // Public API documentation
 ]
 
 // Routes that don't require subscription check (authenticated but no payment needed)
@@ -52,8 +53,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   )
 
+  // Allow API v1 routes (they use API key auth, not NextAuth)
+  const isApiV1Route = pathname.startsWith('/api/v1/')
+
   // Allow public routes without authentication
-  if (isPublicRoute || isPublicApiRoute) {
+  if (isPublicRoute || isPublicApiRoute || isApiV1Route) {
     return NextResponse.next()
   }
 

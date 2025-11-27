@@ -84,6 +84,10 @@ function createChildStoryData(
     status: 'backlog',
     priority: parentStory.priority || 'medium',
     storyType: 'feature',
+    // P1 FIX: Explicitly set non-copied fields to null (per spec: tags, labels, assignee not copied)
+    tags: null,
+    labels: null,
+    assigneeId: null,
     aiGenerated: false,
     createdBy: userId,
     createdAt: new Date(),
@@ -241,6 +245,15 @@ export class StorySplitService {
         // Convert parent to epic if requested
         if (payload.convertParentToEpic) {
           await convertStoryToEpic(tx, parentStoryId);
+          // P0 FIX: Reload parent story after epic conversion to ensure returned object matches database state
+          const [updatedParentStory] = await tx
+            .select()
+            .from(stories)
+            .where(eq(stories.id, parentStoryId))
+            .limit(1);
+          if (updatedParentStory) {
+            parentStory = updatedParentStory;
+          }
         }
 
         // Create child stories

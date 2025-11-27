@@ -17,6 +17,7 @@ import type { Task, TaskStats } from '@/components/tasks/task-list'
 import { SplitStoryButton } from '@/components/story-split/SplitStoryButton'
 import { RefineStoryButton } from '@/components/story-refine/RefineStoryButton'
 import { RevisionHistory } from '@/components/story-refine/RevisionHistory'
+import { TimeTrackingSection } from '@/components/time-tracking/time-tracking-section'
 import Link from 'next/link'
 import {
   Calendar,
@@ -433,6 +434,9 @@ export function StoryDetailClient({ story: initialStory, currentUserId }: StoryD
         stats={taskStats}
         onTasksChange={fetchTasks}
       />
+
+      {/* Time Tracking */}
+      <TimeTrackingSection storyId={story.id} currentUserId={currentUserId} />
 
       {/* Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

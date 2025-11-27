@@ -18,6 +18,8 @@ export enum Feature {
   REFINE_STORY = 'refine_story',
   AI_GENERATION = 'ai_generation',
   ADVANCED_ANALYTICS = 'advanced_analytics',
+  API_ACCESS = 'api_access',
+  SERVICE_KEYS = 'service_keys',
 }
 
 const FEATURE_GATES: Record<Feature, SubscriptionTier[]> = {
@@ -35,6 +37,16 @@ const FEATURE_GATES: Record<Feature, SubscriptionTier[]> = {
   ],
   [Feature.ADVANCED_ANALYTICS]: [
     SubscriptionTier.TEAM,
+    SubscriptionTier.ENTERPRISE,
+    SubscriptionTier.ADMIN,
+  ],
+  [Feature.API_ACCESS]: [
+    SubscriptionTier.PRO,
+    SubscriptionTier.TEAM,
+    SubscriptionTier.ENTERPRISE,
+    SubscriptionTier.ADMIN,
+  ],
+  [Feature.SERVICE_KEYS]: [
     SubscriptionTier.ENTERPRISE,
     SubscriptionTier.ADMIN,
   ],

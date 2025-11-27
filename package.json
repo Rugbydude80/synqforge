@@ -30,7 +30,9 @@
     "test:tier-access": "npm run test:context-access && npm run test:context-api",
     "validate:plans": "tsx scripts/validate-plans-production.ts",
     "test:plans": "vitest run __tests__/pricing-components.test.tsx",
-    "test:plans:coverage": "vitest run --coverage __tests__/pricing-components.test.tsx"
+    "test:plans:coverage": "vitest run --coverage __tests__/pricing-components.test.tsx",
+    "deploy:api": "node scripts/deploy-api.js",
+    "deploy:api:auto": "AUTO_COMMIT=true node scripts/deploy-api.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",

@@ -83,6 +83,7 @@ export const CreateProjectSchema = z.object({
   description: z.string().optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   ownerId: z.string().uuid(),
+  clientId: z.string().uuid().optional(),
   settings: z.record(z.any()).optional(),
 })
 

@@ -52,7 +52,7 @@ export class StorySplitValidationService {
 
     const valuable = this.validateValuable(child, errors);
     const independent = this.validateIndependent(child, allChildren, warnings);
-    const small = this.validateSmall(child, errors);
+    const small = this.validateSmall(child, errors, warnings); // P0 FIX: Pass warnings array for "small" validation
     const testable = this.validateTestable(child, errors, warnings); // Pass warnings array
 
     const valid = errors.length === 0 && valuable && testable;
@@ -185,15 +185,18 @@ export class StorySplitValidationService {
     return titleOverlap >= 2 && descOverlap >= 3;
   }
 
-  private validateSmall(child: ChildStoryInput, errors: string[]): boolean {
+  private validateSmall(child: ChildStoryInput, errors: string[], warnings: string[]): boolean {
     if (!child.estimatePoints || child.estimatePoints <= 0) {
       errors.push('story.split.validation.small.missing_estimate');
       return false;
     }
 
+    // P0 FIX: Story points >5 should be a warning, not an error (per spec)
+    // This allows users to proceed with larger stories but surfaces guidance
     if (child.estimatePoints > this.SMALL_THRESHOLD) {
-      errors.push('story.split.validation.small.too_large');
-      return false;
+      warnings.push('story.split.validation.small.too_large');
+      // Return true to indicate validation passes (with warning)
+      return true;
     }
 
     return true;

@@ -88,6 +88,19 @@ export const aiGenerationRateLimit = createRateLimiter(
 )
 
 /**
+ * API key-based rate limiter
+ * Rate limits by API key ID (not IP address)
+ * Tier-based limits: Pro (1000/hr), Team (5000/hr), Enterprise (unlimited)
+ */
+export function createApiKeyRateLimiter(limitPerHour: number) {
+  return createRateLimiter(
+    'ratelimit:api-key',
+    limitPerHour,
+    '1 h'
+  )
+}
+
+/**
  * Helper function to check rate limit and return appropriate response
  *
  * @param identifier - Unique identifier (email, IP, or token)
