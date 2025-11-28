@@ -29,25 +29,5 @@ async function getInvoice(_request: NextRequest, context: any) {
   }
 }
 
-/**
- * POST /api/invoices/[invoiceId]/send
- * Mark invoice as sent
- */
-async function sendInvoice(_request: NextRequest, context: any) {
-  try {
-    const { invoiceId } = context.params
-    const service = new InvoiceService(context.user)
-    const invoice = await service.sendInvoice(invoiceId)
-
-    return NextResponse.json({ data: invoice })
-  } catch (error: any) {
-    console.error('Error sending invoice:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to send invoice' },
-      { status: 500 }
-    )
-  }
-}
-
 export const GET = withAuth(getInvoice, { requireOrg: true })
 
