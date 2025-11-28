@@ -63,7 +63,7 @@ export const UpdateEpicSchema = z.object({
   description: z.string().optional(),
   goals: z.string().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  status: z.enum(['draft', 'planned', 'in_progress', 'completed', 'archived']).optional(),
+  status: z.enum(['draft', 'published', 'planned', 'in_progress', 'completed', 'archived']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   assignedTo: z.string().uuid().nullable().optional(),
   startDate: z.string().date().nullable().optional(),
