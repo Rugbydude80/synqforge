@@ -15,9 +15,11 @@ import { eq } from 'drizzle-orm'
  * DELETE /api/integrations/api-keys/[keyId]
  * Revoke an API key
  */
+type RouteParams = { keyId: string }
+
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ keyId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -43,7 +45,7 @@ export async function DELETE(
       )
     }
 
-    const { keyId } = await params
+    const { keyId } = await context.params
 
     await revokeApiKey(keyId, user.organizationId)
 

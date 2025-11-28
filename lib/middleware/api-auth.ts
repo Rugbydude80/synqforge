@@ -30,20 +30,14 @@ export interface ApiAuthOptions {
  * API Authentication middleware for REST API routes
  * Validates Bearer token and injects API key context
  */
-export function withApiAuth<T = any>(
+export function withApiAuth<T extends Record<string, string> = Record<string, string>>(
   handler: (req: NextRequest, context: ApiAuthContext & { params: T }) => Promise<Response>,
   options: ApiAuthOptions = {}
-): (req: NextRequest, segmentData: { params: T | Promise<T> } | T | Promise<T>) => Promise<Response> {
-  return async (req: NextRequest, segmentData: { params: T | Promise<T> } | T | Promise<T>) => {
+): (req: NextRequest, context: { params: T | Promise<T> }) => Promise<Response> {
+  return async (req: NextRequest, context: { params: T | Promise<T> }) => {
     // Handle Next.js 15 params format: { params: Promise<{...}> }
-    let params: T
-    if (segmentData && typeof segmentData === 'object' && 'params' in segmentData) {
-      const rawParams = (segmentData as any).params
-      params = rawParams instanceof Promise ? await rawParams : rawParams
-    } else {
-      // Fallback for older format or direct params
-      params = segmentData instanceof Promise ? await segmentData : (segmentData as T)
-    }
+    const rawParams = context.params
+    const params: T = rawParams instanceof Promise ? await rawParams : rawParams
     try {
       // Extract Bearer token from Authorization header
       const authHeader = req.headers.get('authorization')
