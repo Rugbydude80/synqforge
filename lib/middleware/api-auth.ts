@@ -33,11 +33,10 @@ export interface ApiAuthOptions {
 export function withApiAuth<T extends Record<string, string> = Record<string, string>>(
   handler: (req: NextRequest, context: ApiAuthContext & { params: T }) => Promise<Response>,
   options: ApiAuthOptions = {}
-): (req: NextRequest, context: { params: T | Promise<T> }) => Promise<Response> {
-  return async (req: NextRequest, context: { params: T | Promise<T> }) => {
+): (req: NextRequest, context: { params: Promise<T> }) => Promise<Response> {
+  return async (req: NextRequest, context: { params: Promise<T> }) => {
     // Handle Next.js 15 params format: { params: Promise<{...}> }
-    const rawParams = context.params
-    const params: T = rawParams instanceof Promise ? await rawParams : rawParams
+    const params: T = await context.params
     try {
       // Extract Bearer token from Authorization header
       const authHeader = req.headers.get('authorization')
