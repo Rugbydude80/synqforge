@@ -135,7 +135,7 @@ async function createEpic(req: NextRequest, context: ApiAuthContext) {
       description: epicData.description,
       goals: epicData.goals,
       priority: epicData.priority,
-      assignedTo: epicData.assigneeId,
+      assignedTo: epicData.assigneeId ?? undefined,
       startDate: epicData.startDate ? new Date(epicData.startDate) : undefined,
       targetDate: epicData.targetDate ? new Date(epicData.targetDate) : undefined,
     })
