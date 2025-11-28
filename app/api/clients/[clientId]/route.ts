@@ -22,7 +22,7 @@ const updateClientSchema = z.object({
  */
 async function getClient(_request: NextRequest, context: any) {
   try {
-    const { clientId } = await context.params
+    const { clientId } = context.params
     const clientService = new ClientService(context.user)
     const client = await clientService.getClientById(clientId)
 
@@ -49,7 +49,7 @@ async function getClient(_request: NextRequest, context: any) {
  */
 async function updateClient(request: NextRequest, context: any) {
   try {
-    const { clientId } = await context.params
+    const { clientId } = context.params
     const body = await request.json()
     const validated = updateClientSchema.parse(body)
 
@@ -87,7 +87,7 @@ async function updateClient(request: NextRequest, context: any) {
  */
 async function deleteClient(_request: NextRequest, context: any) {
   try {
-    const { clientId } = await context.params
+    const { clientId } = context.params
     const clientService = new ClientService(context.user)
     await clientService.archiveClient(clientId)
 

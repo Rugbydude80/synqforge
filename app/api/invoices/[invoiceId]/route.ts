@@ -8,7 +8,7 @@ import { InvoiceService } from '@/lib/services/invoice.service'
  */
 async function getInvoice(_request: NextRequest, context: any) {
   try {
-    const { invoiceId } = await context.params
+    const { invoiceId } = context.params
     const service = new InvoiceService(context.user)
     const invoice = await service['invoicesRepo'].getInvoiceById(invoiceId)
 
@@ -35,7 +35,7 @@ async function getInvoice(_request: NextRequest, context: any) {
  */
 async function sendInvoice(_request: NextRequest, context: any) {
   try {
-    const { invoiceId } = await context.params
+    const { invoiceId } = context.params
     const service = new InvoiceService(context.user)
     const invoice = await service.sendInvoice(invoiceId)
 

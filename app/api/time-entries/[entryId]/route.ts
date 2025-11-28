@@ -18,7 +18,7 @@ const updateTimeEntrySchema = z.object({
  */
 async function updateTimeEntry(request: NextRequest, context: any) {
   try {
-    const { entryId } = await context.params
+    const { entryId } = context.params
     const body = await request.json()
     const validated = updateTimeEntrySchema.parse(body)
 
@@ -56,7 +56,7 @@ async function updateTimeEntry(request: NextRequest, context: any) {
  */
 async function deleteTimeEntry(_request: NextRequest, context: any) {
   try {
-    const { entryId } = await context.params
+    const { entryId } = context.params
     const service = new TimeTrackingService(context.user)
     
     // Get entry first to check existence

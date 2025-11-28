@@ -10,10 +10,9 @@ import { realtimeService } from '@/lib/services/realtime.service'
  */
 async function publishEpic(
   _request: NextRequest,
-  context: { user: any; params: Promise<{ epicId: string }> }
+  context: { user: any; params: { epicId: string } }
 ) {
-  const params = await context.params
-  const { epicId } = params
+  const { epicId } = context.params
   const epicsRepo = new EpicsRepository(context.user)
   const notificationsRepo = new NotificationsRepository()
 

@@ -8,7 +8,7 @@ import { ClientService } from '@/lib/services/client.service'
  */
 async function getClientStats(_request: NextRequest, context: any) {
   try {
-    const { clientId } = await context.params
+    const { clientId } = context.params
     const clientService = new ClientService(context.user)
     const stats = await clientService.getClientStats(clientId)
 

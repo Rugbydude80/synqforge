@@ -29,11 +29,11 @@ export interface AuthOptions {
  * Authentication middleware for API routes
  * Wraps route handlers with authentication and authorization checks
  */
-export function withAuth<T = any>(
+export function withAuth<T extends Record<string, string> = Record<string, string>>(
   handler: (req: NextRequest, context: AuthContext) => Promise<Response>,
   options: AuthOptions = {}
-): (req: NextRequest, segmentData: T) => Promise<Response> {
-  return async (req: NextRequest, segmentData: T) => {
+): (req: NextRequest, context: { params: Promise<T> }) => Promise<Response> {
+  return async (req: NextRequest, context: { params: Promise<T> }) => {
     try {
       // Get session from NextAuth
       const session = await auth()
@@ -121,15 +121,8 @@ export function withAuth<T = any>(
         )
       }
 
-      // Resolve params if they exist (Next.js 15 async params)
-      let params = {}
-      if (segmentData && typeof segmentData === 'object' && 'params' in segmentData) {
-        const rawParams = (segmentData as any).params
-        // Await if it's a Promise, otherwise use as-is
-        params = rawParams && typeof rawParams.then === 'function'
-          ? await rawParams
-          : rawParams || {}
-      }
+      // Resolve params (Next.js 15 async params)
+      const params: T = await context.params
 
       // Call the actual route handler with context
       return await handler(req, { user: userContext, params })

@@ -8,7 +8,7 @@ import { TimeTrackingService } from '@/lib/services/time-tracking.service'
  */
 async function startTimer(_request: NextRequest, context: any) {
   try {
-    const { storyId } = await context.params
+    const { storyId } = context.params
     const service = new TimeTrackingService(context.user)
     
     const entry = await service.startTimer(storyId, context.user.id)
@@ -58,7 +58,7 @@ async function stopTimer(request: NextRequest, context: any) {
  */
 async function getStoryTimeEntries(_request: NextRequest, context: any) {
   try {
-    const { storyId } = await context.params
+    const { storyId } = context.params
     const service = new TimeTrackingService(context.user)
     
     const entries = await service.getTimeEntries({ storyId })
