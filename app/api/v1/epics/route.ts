@@ -40,27 +40,8 @@ async function listEpics(req: NextRequest, context: ApiAuthContext) {
       isActive: true,
     })
 
-    let epicsList
-    if (projectId) {
-      // Verify project access
-      const [project] = await db
-        .select({ id: projects.id, organizationId: projects.organizationId })
-        .from(projects)
-        .where(eq(projects.id, projectId))
-        .limit(1)
-
-      if (!project) {
-        throw new NotFoundError('Project', projectId)
-      }
-
-      if (project.organizationId !== context.organization.id) {
-        throw new AuthorizationError('Access denied to this project')
-      }
-
-      epicsList = await epicsRepo.getEpicsByProject(projectId)
-    } else {
-      epicsList = await epicsRepo.getEpics()
-    }
+    // getEpics handles project access verification internally
+    const epicsList = await epicsRepo.getEpics(projectId || undefined)
 
     const rateLimitResult = await checkApiKeyRateLimit(
       context.apiKey,
