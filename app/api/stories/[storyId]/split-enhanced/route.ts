@@ -12,10 +12,12 @@ import { validateOperationLimits, getOrganizationContext } from '@/lib/middlewar
 import { getQuotaExceededPrompt } from '@/lib/config/tiers'
 import { v4 as uuidv4 } from 'uuid'
 
+type RouteParams = { storyId: string }
+
 // POST /api/stories/[storyId]/split-enhanced
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ storyId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -27,7 +29,7 @@ export async function POST(
       )
     }
     
-    const { storyId } = await params
+    const { storyId } = await context.params
     const body = await req.json()
     const { childrenCount = 2 } = body
     

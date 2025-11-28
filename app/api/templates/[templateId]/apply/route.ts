@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { storyTemplatesRepository } from '@/lib/repositories/story-templates.repository'
 import { z } from 'zod'
 
+type RouteParams = { templateId: string }
+
 const applyTemplateSchema = z.object({
   projectId: z.string().min(1),
   epicId: z.string().optional(),
@@ -12,9 +14,9 @@ const applyTemplateSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { templateId } = await params
+  const { templateId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {

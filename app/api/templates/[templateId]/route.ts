@@ -3,11 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { storyTemplatesRepository } from '@/lib/repositories/story-templates.repository'
 
+type RouteParams = { templateId: string }
+
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { templateId } = await params
+  const { templateId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -29,9 +31,9 @@ export async function GET(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { templateId } = await params
+  const { templateId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {

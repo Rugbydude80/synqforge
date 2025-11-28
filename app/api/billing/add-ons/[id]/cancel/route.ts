@@ -9,10 +9,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { cancelAddOn } from '@/lib/services/addOnService'
 
+type RouteParams = { id: string }
+
 // POST /api/billing/add-ons/[id]/cancel - Cancel a recurring add-on
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -24,7 +26,7 @@ export async function POST(
       )
     }
     
-    const { id: purchaseId } = await params
+    const { id: purchaseId } = await context.params
     
     if (!purchaseId) {
       return NextResponse.json(

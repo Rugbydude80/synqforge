@@ -5,13 +5,15 @@ import { db } from '@/lib/db'
 import { users, teamInvitations } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
+type RouteParams = { invitationId: string }
+
 /**
  * DELETE /api/team/invite/[invitationId]
  * Cancel/revoke an invitation
  */
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ invitationId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +25,7 @@ export async function DELETE(
       )
     }
 
-    const { invitationId } = await params
+    const { invitationId } = await context.params
 
     // Get current user
     const [currentUser] = await db

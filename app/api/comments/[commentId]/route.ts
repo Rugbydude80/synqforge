@@ -4,15 +4,17 @@ import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
 import { z } from 'zod'
 
+type RouteParams = { commentId: string }
+
 const updateCommentSchema = z.object({
   content: z.string().min(1).optional(),
 })
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ commentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { commentId } = await params
+  const { commentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -44,9 +46,9 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ commentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { commentId } = await params
+  const { commentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {

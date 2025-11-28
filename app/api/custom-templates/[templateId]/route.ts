@@ -9,6 +9,8 @@ import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+type RouteParams = { templateId: string }
+
 const updateTemplateSchema = z.object({
   templateName: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
@@ -21,7 +23,7 @@ const updateTemplateSchema = z.object({
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -29,7 +31,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { templateId } = await params
+    const { templateId } = await context.params
 
     // Check subscription tier - Pro/Team/Enterprise only (or super admin)
     const [user] = await db
@@ -91,7 +93,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -99,7 +101,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { templateId } = await params
+    const { templateId } = await context.params
 
     // Check subscription tier
     const tierCheck = await checkSubscriptionTier(session.user.organizationId, 'pro')
@@ -150,7 +152,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ templateId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -158,7 +160,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { templateId } = await params
+    const { templateId } = await context.params
 
     // Check subscription tier
     const tierCheck = await checkSubscriptionTier(session.user.organizationId, 'pro')

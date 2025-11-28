@@ -4,15 +4,17 @@ import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
 import { z } from 'zod'
 
+type RouteParams = { commentId: string }
+
 const addReactionSchema = z.object({
   emoji: z.string().min(1).max(20),
 })
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ commentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { commentId } = await params
+  const { commentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -40,9 +42,9 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ commentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { commentId } = await params
+  const { commentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -67,9 +69,9 @@ export async function DELETE(
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ commentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { commentId } = await params
+  const { commentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {

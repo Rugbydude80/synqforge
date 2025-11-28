@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientPortalService } from '@/lib/services/client-portal.service'
 
+type RouteParams = { clientId: string }
+
 /**
  * GET /api/client-portal/[clientId]/projects
  * Get read-only project list for client portal
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ clientId: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<RouteParams> }) {
   try {
-    const { clientId } = await params
+    const { clientId } = await context.params
     const token = request.headers.get('x-portal-token')
 
     if (!token) {

@@ -3,11 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { projectDocumentsRepository } from '@/lib/repositories/project-documents.repository'
 
+type RouteParams = { documentId: string }
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ documentId: string }> }
+  context: { params: Promise<RouteParams> }
 ) {
-  const { documentId } = await params
+  const { documentId } = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
