@@ -136,8 +136,8 @@ async function createEpic(req: NextRequest, context: ApiAuthContext) {
       goals: epicData.goals,
       priority: epicData.priority,
       assignedTo: epicData.assigneeId ?? undefined,
-      startDate: epicData.startDate ? new Date(epicData.startDate) : undefined,
-      targetDate: epicData.targetDate ? new Date(epicData.targetDate) : undefined,
+      startDate: epicData.startDate,
+      targetDate: epicData.targetDate,
     })
 
     const rateLimitResult = await checkApiKeyRateLimit(
