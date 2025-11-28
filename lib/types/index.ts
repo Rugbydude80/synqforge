@@ -66,8 +66,14 @@ export const UpdateEpicSchema = z.object({
   status: z.enum(['draft', 'published', 'planned', 'in_progress', 'completed', 'archived']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   assignedTo: z.string().uuid().nullable().optional(),
-  startDate: z.string().date().nullable().optional(),
-  targetDate: z.string().date().nullable().optional(),
+  startDate: z.preprocess(
+    (val) => val === null || val === undefined ? val : (typeof val === 'string' ? new Date(val) : val),
+    z.date().nullable().optional()
+  ),
+  targetDate: z.preprocess(
+    (val) => val === null || val === undefined ? val : (typeof val === 'string' ? new Date(val) : val),
+    z.date().nullable().optional()
+  ),
 })
 
 export type CreateEpicInput = z.infer<typeof CreateEpicSchema>
