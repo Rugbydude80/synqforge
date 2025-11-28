@@ -33,8 +33,17 @@ export interface ApiAuthOptions {
 export function withApiAuth<T = any>(
   handler: (req: NextRequest, context: ApiAuthContext & { params: T }) => Promise<Response>,
   options: ApiAuthOptions = {}
-): (req: NextRequest, segmentData: T) => Promise<Response> {
-  return async (req: NextRequest, segmentData: T) => {
+): (req: NextRequest, segmentData: { params: T | Promise<T> } | T | Promise<T>) => Promise<Response> {
+  return async (req: NextRequest, segmentData: { params: T | Promise<T> } | T | Promise<T>) => {
+    // Handle Next.js 15 params format: { params: Promise<{...}> }
+    let params: T
+    if (segmentData && typeof segmentData === 'object' && 'params' in segmentData) {
+      const rawParams = (segmentData as any).params
+      params = rawParams instanceof Promise ? await rawParams : rawParams
+    } else {
+      // Fallback for older format or direct params
+      params = segmentData instanceof Promise ? await segmentData : (segmentData as T)
+    }
     try {
       // Extract Bearer token from Authorization header
       const authHeader = req.headers.get('authorization')
@@ -187,15 +196,6 @@ export function withApiAuth<T = any>(
           role: 'admin',
           isActive: true,
         }
-      }
-
-      // Resolve params if they exist (Next.js 15 async params)
-      let params = {} as T
-      if (segmentData && typeof segmentData === 'object' && 'params' in segmentData) {
-        const rawParams = (segmentData as any).params
-        params = rawParams && typeof rawParams.then === 'function'
-          ? await rawParams
-          : rawParams || {}
       }
 
       // Call the handler with API auth context
