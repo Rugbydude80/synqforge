@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ClientPortalService } from '@/lib/services/client-portal.service'
 import { z } from 'zod'
 
 const authSchema = z.object({

@@ -17,7 +17,7 @@ type RouteParams = { storyId: string }
 // POST /api/stories/[storyId]/split-enhanced
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<RouteParams> }
+  routeContext: { params: Promise<RouteParams> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -29,7 +29,7 @@ export async function POST(
       )
     }
     
-    const { storyId } = await context.params
+    const { storyId } = await routeContext.params
     const body = await req.json()
     const { childrenCount = 2 } = body
     
