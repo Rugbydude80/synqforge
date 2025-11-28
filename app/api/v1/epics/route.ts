@@ -9,7 +9,6 @@ import { withApiAuth, type ApiAuthContext } from '@/lib/middleware/api-auth'
 import { EpicsRepository } from '@/lib/repositories/epics'
 import {
   createEpicRequestSchema,
-  listEpicsQuerySchema,
   type CreateEpicRequest,
 } from '@/lib/validations/api'
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'
