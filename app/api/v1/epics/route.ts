@@ -136,6 +136,7 @@ async function createEpic(req: NextRequest, context: ApiAuthContext) {
       goals: epicData.goals,
       priority: epicData.priority,
       assignedTo: epicData.assigneeId ?? undefined,
+      // CreateEpicInput expects strings (not Date objects) for dates
       startDate: epicData.startDate,
       targetDate: epicData.targetDate,
     })
