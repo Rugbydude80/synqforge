@@ -9,9 +9,7 @@ import { withApiAuth, type ApiAuthContext } from '@/lib/middleware/api-auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import {
   createProjectRequestSchema,
-  listProjectsQuerySchema,
   type CreateProjectRequest,
-  type ListProjectsQuery,
 } from '@/lib/validations/api'
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'
 import {
