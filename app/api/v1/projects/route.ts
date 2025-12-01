@@ -100,6 +100,14 @@ async function createProject(req: NextRequest, context: ApiAuthContext) {
 
     const projectData = validationResult.data as CreateProjectRequest
 
+    // Generate project key from name if not provided
+    const projectKey = projectData.key || projectData.name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 10)
+      .replace(/[^A-Z0-9]/g, '') || 'PROJ'
+
     const projectsRepo = new ProjectsRepository({
       id: context.user?.id || context.apiKey.apiKeyId,
       email: context.user?.email || 'api@synqforge.com',
@@ -111,6 +119,7 @@ async function createProject(req: NextRequest, context: ApiAuthContext) {
 
     const project = await projectsRepo.createProject({
       name: projectData.name,
+      key: projectKey,
       description: projectData.description,
       slug: projectData.slug,
       ownerId: context.user?.id || context.apiKey.apiKeyId,

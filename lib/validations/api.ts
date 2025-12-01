@@ -77,6 +77,7 @@ export const createProjectRequestSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
   description: z.string().max(2000).optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
+  key: z.string().min(1).max(10).regex(/^[A-Z0-9]+$/, 'Project key must be uppercase letters and numbers only').optional(),
 })
 
 export const updateProjectRequestSchema = z.object({
