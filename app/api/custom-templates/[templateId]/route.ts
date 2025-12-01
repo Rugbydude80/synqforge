@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-document-templates.repository'
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard'
 import { isSuperAdmin } from '@/lib/auth/super-admin'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -83,7 +85,16 @@ export async function GET(
     })
   } catch (error) {
     console.error('Get custom template error:', error)
-    return NextResponse.json({ error: 'Failed to get template' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -139,10 +150,22 @@ export async function PATCH(
     })
   } catch (error) {
     console.error('Update custom template error:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-    return NextResponse.json({ error: 'Failed to update template' }, { status: 500 })
+    
+    if (error instanceof z.ZodError) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -181,7 +204,16 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete custom template error:', error)
-    return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

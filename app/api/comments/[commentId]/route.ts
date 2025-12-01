@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 type RouteParams = { commentId: string }
@@ -37,10 +39,22 @@ export async function PATCH(
     return NextResponse.json(updated)
   } catch (error) {
     console.error('Update comment error:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-    return NextResponse.json({ error: 'Failed to update comment' }, { status: 500 })
+    
+    if (error instanceof z.ZodError) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -64,6 +78,15 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete comment error:', error)
-    return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }

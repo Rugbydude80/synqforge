@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { ValidationError, NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 
 /**
  * POST /api/projects/[projectId]/activate
  * Mark a project as active
  */
-async function activateProject(req: NextRequest, context: any) {
+async function activateProject(req: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
@@ -31,26 +33,16 @@ async function activateProject(req: NextRequest, context: any) {
     })
   } catch (error) {
     console.error('Error activating project:', error)
-
-    if (error instanceof Error) {
-      if (error.name === 'NotFoundError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        )
-      }
-      if (error.name === 'ForbiddenError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        )
-      }
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: 'Failed to activate project' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "validate-build": "tsx scripts/validate-build.ts",
     "test": "node --import tsx --test --test-reporter spec tests/**/*.test.ts",
     "test:ai-backlog-builder": "node --import tsx --test --test-reporter spec tests/integration/ai-backlog-builder.test.ts",
     "test:ai": "bash scripts/run-integration-tests.sh",

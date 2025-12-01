@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { InvoiceService } from '@/lib/services/invoice.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError } from '@/lib/errors/custom-errors'
 
 /**
  * GET /api/invoices/[invoiceId]
  * Get invoice by ID
  */
-async function getInvoice(_request: NextRequest, context: any) {
+async function getInvoice(_request: NextRequest, context: AuthContext & { params: { invoiceId: string } }) {
   try {
     const { invoiceId } = context.params
     const service = new InvoiceService(context.user)
@@ -20,12 +22,18 @@ async function getInvoice(_request: NextRequest, context: any) {
     }
 
     return NextResponse.json({ data: invoice })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching invoice:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch invoice' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

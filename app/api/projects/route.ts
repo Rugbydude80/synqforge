@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { CreateProjectInput } from '@/lib/types'
 import { canCreateProject, getSubscriptionLimits } from '@/lib/middleware/subscription'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { projects } from '@/lib/db/schema'
 import { eq, count } from 'drizzle-orm'
@@ -11,7 +12,7 @@ import { eq, count } from 'drizzle-orm'
  * GET /api/projects
  * Get all projects for the current user's organization
  */
-async function getProjects(_request: NextRequest, context: any) {
+async function getProjects(_request: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
@@ -84,15 +85,16 @@ async function getProjects(_request: NextRequest, context: any) {
     )
   } catch (error) {
     console.error('Error fetching projects:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch projects',
-        message: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-      },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -100,7 +102,7 @@ async function getProjects(_request: NextRequest, context: any) {
  * POST /api/projects
  * Create a new project
  */
-async function createProject(req: NextRequest, context: any) {
+async function createProject(req: NextRequest, context: AuthContext) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
@@ -179,38 +181,16 @@ async function createProject(req: NextRequest, context: any) {
     return NextResponse.json(transformedProject, { status: 201 })
   } catch (error) {
     console.error('Error creating project:', error)
-
-    if (error instanceof Error) {
-      if (error.name === 'ValidationError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        )
-      }
-      if (error.name === 'NotFoundError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        )
-      }
-      if (error.name === 'ForbiddenError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        )
-      }
-      if (error.name === 'ConflictError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 409 }
-        )
-      }
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: 'Failed to create project' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { TimeTrackingService } from '@/lib/services/time-tracking.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 const updateTimeEntrySchema = z.object({
@@ -16,7 +18,7 @@ const updateTimeEntrySchema = z.object({
  * PATCH /api/time-entries/[entryId]
  * Update time entry
  */
-async function updateTimeEntry(request: NextRequest, context: any) {
+async function updateTimeEntry(request: NextRequest, context: AuthContext & { params: { entryId: string } }) {
   try {
     const { entryId } = context.params
     const body = await request.json()
@@ -26,27 +28,24 @@ async function updateTimeEntry(request: NextRequest, context: any) {
     const entry = await service.updateTimeEntry(entryId, validated)
 
     return NextResponse.json({ data: entry })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating time entry:', error)
     
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    if (error.message === 'Time entry not found') {
-      return NextResponse.json(
-        { error: 'Time entry not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { error: error.message || 'Failed to update time entry' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -54,7 +53,7 @@ async function updateTimeEntry(request: NextRequest, context: any) {
  * DELETE /api/time-entries/[entryId]
  * Delete time entry
  */
-async function deleteTimeEntry(_request: NextRequest, context: any) {
+async function deleteTimeEntry(_request: NextRequest, context: AuthContext & { params: { entryId: string } }) {
   try {
     const { entryId } = context.params
     const service = new TimeTrackingService(context.user)
@@ -70,20 +69,18 @@ async function deleteTimeEntry(_request: NextRequest, context: any) {
 
     await service['timeEntriesRepo'].deleteTimeEntry(entryId)
     return NextResponse.json({ message: 'Time entry deleted successfully' })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting time entry:', error)
     
-    if (error.message === 'Time entry not found') {
-      return NextResponse.json(
-        { error: 'Time entry not found' },
-        { status: 404 }
-      )
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete time entry' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

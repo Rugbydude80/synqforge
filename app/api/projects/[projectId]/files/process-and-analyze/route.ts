@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth, AuthContext } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { aiService } from '@/lib/services/ai.service'
 import { fileProcessorService } from '@/lib/services/file-processor.service'
 import { projectDocumentsRepository } from '@/lib/repositories/project-documents.repository'
 import { storiesRepository } from '@/lib/repositories/stories.repository'
 import { aiGenerationRateLimit, checkRateLimit, getResetTimeMessage } from '@/lib/rate-limit'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 
 /**
  * POST /api/projects/[projectId]/files/process-and-analyze
  * Upload file, extract content, analyze with AI, and optionally create stories
  */
 
-async function processAndAnalyze(req: NextRequest, context: AuthContext) {
+async function processAndAnalyze(req: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   try {
-    const url = new URL(req.url)
-    const pathSegments = url.pathname.split('/')
-    const projectId = pathSegments[pathSegments.indexOf('projects') + 1]
+    const { projectId } = context.params
     const formData = await req.formData()
     const file = formData.get('file') as File
     const createStories = formData.get('createStories') === 'true'
@@ -113,13 +112,16 @@ async function processAndAnalyze(req: NextRequest, context: AuthContext) {
     })
   } catch (error) {
     console.error('Process and analyze error:', error)
-    return NextResponse.json(
-      {
-        error: 'Failed to process and analyze file',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

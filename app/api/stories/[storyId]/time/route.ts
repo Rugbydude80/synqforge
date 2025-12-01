@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { TimeTrackingService } from '@/lib/services/time-tracking.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 
 /**
  * POST /api/stories/[storyId]/time/start
  * Start timer for a story
  */
-async function startTimer(_request: NextRequest, context: any) {
+async function startTimer(_request: NextRequest, context: AuthContext & { params: { storyId: string } }) {
   try {
     const { storyId } = context.params
     const service = new TimeTrackingService(context.user)
@@ -14,12 +15,18 @@ async function startTimer(_request: NextRequest, context: any) {
     const entry = await service.startTimer(storyId, context.user.id)
 
     return NextResponse.json({ data: entry })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error starting timer:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to start timer' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -27,7 +34,7 @@ async function startTimer(_request: NextRequest, context: any) {
  * POST /api/stories/[storyId]/time/stop
  * Stop timer
  */
-async function stopTimer(request: NextRequest, context: any) {
+async function stopTimer(request: NextRequest, context: AuthContext) {
   try {
     const body = await request.json()
     const { entryId } = body
@@ -43,12 +50,18 @@ async function stopTimer(request: NextRequest, context: any) {
     const entry = await service.stopTimer(entryId)
 
     return NextResponse.json({ data: entry })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error stopping timer:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to stop timer' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -56,7 +69,7 @@ async function stopTimer(request: NextRequest, context: any) {
  * GET /api/stories/[storyId]/time
  * Get time entries for a story
  */
-async function getStoryTimeEntries(_request: NextRequest, context: any) {
+async function getStoryTimeEntries(_request: NextRequest, context: AuthContext & { params: { storyId: string } }) {
   try {
     const { storyId } = context.params
     const service = new TimeTrackingService(context.user)
@@ -68,12 +81,18 @@ async function getStoryTimeEntries(_request: NextRequest, context: any) {
       data: entries,
       totals,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching story time entries:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch time entries' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

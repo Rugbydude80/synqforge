@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
 import { revokeApiKey } from '@/lib/services/api-key.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -54,13 +56,16 @@ export async function DELETE(
     })
   } catch (error) {
     console.error('Error revoking API key:', error)
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

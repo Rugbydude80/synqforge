@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/options'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { users, teamInvitations } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -76,11 +78,17 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Invitation revoked successfully',
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error revoking invitation:', error)
-    return NextResponse.json(
-      { error: 'Failed to revoke invitation' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }

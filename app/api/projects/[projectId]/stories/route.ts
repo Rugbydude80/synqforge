@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { StoriesRepository } from '@/lib/repositories/stories.repository'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { users, projects } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -81,11 +83,17 @@ export async function GET(
       data: result.stories,
       total: result.total
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching project stories:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch stories' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }

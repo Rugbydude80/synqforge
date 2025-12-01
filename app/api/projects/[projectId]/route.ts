@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import type { UpdateProjectInput } from '@/lib/types'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError, ConflictError } from '@/lib/errors/custom-errors'
 
 /**
  * GET /api/projects/[projectId]
  * Get a specific project by ID
  */
-async function getProject(_request: NextRequest, context: any) {
+async function getProject(_request: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -37,34 +39,24 @@ async function getProject(_request: NextRequest, context: any) {
     return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Error fetching project:', error)
-
-    if (error instanceof Error) {
-      if (error.name === 'NotFoundError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        )
-      }
-      if (error.name === 'ForbiddenError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        )
-      }
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: 'Failed to fetch project' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
 /**
- * PUT /api/projects/[projectId]
+ * PATCH /api/projects/[projectId]
  * Update a specific project
  */
-async function updateProject(req: NextRequest, context: any) {
+async function updateProject(req: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -104,32 +96,16 @@ async function updateProject(req: NextRequest, context: any) {
     return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Error updating project:', error)
-
-    if (error instanceof Error) {
-      if (error.name === 'NotFoundError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        )
-      }
-      if (error.name === 'ForbiddenError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        )
-      }
-      if (error.name === 'ConflictError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 409 }
-        )
-      }
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: 'Failed to update project' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -137,7 +113,7 @@ async function updateProject(req: NextRequest, context: any) {
  * DELETE /api/projects/[projectId]
  * Delete a specific project
  */
-async function deleteProject(_request: NextRequest, context: any) {
+async function deleteProject(_request: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   const projectsRepo = new ProjectsRepository(context.user)
   const { projectId } = context.params
 
@@ -146,32 +122,16 @@ async function deleteProject(_request: NextRequest, context: any) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting project:', error)
-
-    if (error instanceof Error) {
-      if (error.name === 'NotFoundError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 404 }
-        )
-      }
-      if (error.name === 'ForbiddenError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 403 }
-        )
-      }
-      if (error.name === 'ConflictError') {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 409 }
-        )
-      }
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: 'Failed to delete project' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

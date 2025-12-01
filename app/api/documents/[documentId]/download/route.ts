@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { projectDocumentsRepository } from '@/lib/repositories/project-documents.repository'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { documentId: string }
 
@@ -49,6 +51,15 @@ export async function GET(
     })
   } catch (error) {
     console.error('Download document error:', error)
-    return NextResponse.json({ error: 'Failed to download document' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientPortalService } from '@/lib/services/client-portal.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { clientId: string }
 
@@ -57,12 +59,18 @@ export async function GET(request: NextRequest, context: { params: Promise<Route
       data: projects,
       branding,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching portal projects:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch projects' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

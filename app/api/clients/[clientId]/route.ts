@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/middleware/auth'
+import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ClientService } from '@/lib/services/client.service'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 const updateClientSchema = z.object({
@@ -20,7 +22,7 @@ const updateClientSchema = z.object({
  * GET /api/clients/[clientId]
  * Get client by ID
  */
-async function getClient(_request: NextRequest, context: any) {
+async function getClient(_request: NextRequest, context: AuthContext & { params: { clientId: string } }) {
   try {
     const { clientId } = context.params
     const clientService = new ClientService(context.user)
@@ -34,12 +36,18 @@ async function getClient(_request: NextRequest, context: any) {
     }
 
     return NextResponse.json({ data: client })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching client:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch client' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -47,7 +55,7 @@ async function getClient(_request: NextRequest, context: any) {
  * PATCH /api/clients/[clientId]
  * Update client
  */
-async function updateClient(request: NextRequest, context: any) {
+async function updateClient(request: NextRequest, context: AuthContext & { params: { clientId: string } }) {
   try {
     const { clientId } = context.params
     const body = await request.json()
@@ -57,27 +65,24 @@ async function updateClient(request: NextRequest, context: any) {
     const client = await clientService.updateClient(clientId, validated)
 
     return NextResponse.json({ data: client })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating client:', error)
     
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      )
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    if (error.message === 'Client not found') {
-      return NextResponse.json(
-        { error: 'Client not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { error: error.message || 'Failed to update client' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -85,27 +90,25 @@ async function updateClient(request: NextRequest, context: any) {
  * DELETE /api/clients/[clientId]
  * Archive client (soft delete)
  */
-async function deleteClient(_request: NextRequest, context: any) {
+async function deleteClient(_request: NextRequest, context: AuthContext & { params: { clientId: string } }) {
   try {
     const { clientId } = context.params
     const clientService = new ClientService(context.user)
     await clientService.archiveClient(clientId)
 
     return NextResponse.json({ message: 'Client archived successfully' })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error archiving client:', error)
     
-    if (error.message === 'Client not found') {
-      return NextResponse.json(
-        { error: 'Client not found' },
-        { status: 404 }
-      )
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-
-    return NextResponse.json(
-      { error: error.message || 'Failed to archive client' },
-      { status: 500 }
-    )
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

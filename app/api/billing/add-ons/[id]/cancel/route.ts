@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { cancelAddOn } from '@/lib/services/addOnService'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
+import { ValidationError, NotFoundError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { id: string }
 
@@ -54,10 +56,16 @@ export async function POST(
     })
   } catch (error) {
     console.error('POST /api/billing/add-ons/[id]/cancel error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 

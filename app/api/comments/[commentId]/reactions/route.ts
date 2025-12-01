@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 type RouteParams = { commentId: string }
@@ -33,10 +34,22 @@ export async function POST(
     return NextResponse.json(reaction)
   } catch (error) {
     console.error('Add reaction error:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
-    return NextResponse.json({ error: 'Failed to add reaction' }, { status: 500 })
+    
+    if (error instanceof z.ZodError) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -63,7 +76,16 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Remove reaction error:', error)
-    return NextResponse.json({ error: 'Failed to remove reaction' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
 
@@ -83,6 +105,15 @@ export async function GET(
     return NextResponse.json(reactions)
   } catch (error) {
     console.error('Get reactions error:', error)
-    return NextResponse.json({ error: 'Failed to get reactions' }, { status: 500 })
+    
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 }
