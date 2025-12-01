@@ -9,9 +9,9 @@ import { errorResponse } from '@/lib/utils/api-helpers'
  * Get epic details
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
 
       const repository = new EpicsRepository(user)
       const epic = await repository.getEpicById(epicId)
@@ -25,35 +25,13 @@ export const GET = withAuth(
 )
 
 /**
- * PUT /api/epics/[epicId]
- * Update epic (full update)
- */
-export const PUT = withAuth(
-  async (req: NextRequest, { user }) => {
-    try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
-      const body = await req.json()
-      const updates = UpdateEpicSchema.parse(body)
-
-      const repository = new EpicsRepository(user)
-      const epic = await repository.updateEpic(epicId, updates)
-
-      return NextResponse.json(epic)
-    } catch (error) {
-      return errorResponse(error)
-    }
-  },
-  { requireOrg: true, allowedRoles: ['admin', 'member'] }
-)
-
-/**
  * PATCH /api/epics/[epicId]
  * Update epic (partial update)
  */
 export const PATCH = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
       const body = await req.json()
       const updates = UpdateEpicSchema.parse(body)
 
@@ -73,9 +51,9 @@ export const PATCH = withAuth(
  * Delete epic (only if empty)
  */
 export const DELETE = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
 
       const repository = new EpicsRepository(user)
       await repository.deleteEpic(epicId)

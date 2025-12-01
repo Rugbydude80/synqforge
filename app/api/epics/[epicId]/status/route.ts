@@ -18,9 +18,9 @@ const UpdateStatusSchema = z.object({
  * POST /api/epics/[epicId]/status
  */
 export const POST = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
       const body = await req.json()
 
       // Validate input
@@ -58,9 +58,9 @@ export const POST = withAuth(
  * Get valid next statuses for this epic
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
 
       // Get current epic
       const epic = await epicProgressService.getEpicProgress(epicId, user.organizationId)

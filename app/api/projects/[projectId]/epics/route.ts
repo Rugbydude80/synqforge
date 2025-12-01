@@ -9,9 +9,9 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * List all epics for a project
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
+      const { projectId } = params
 
       const repository = new EpicsRepository(user)
       const epics = await repository.getEpics(projectId)
@@ -29,9 +29,9 @@ export const GET = withAuth(
  * Create a new epic
  */
 export const POST = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
+      const { projectId } = params
       const body = await req.json()
       const data = CreateEpicSchema.parse(body)
 

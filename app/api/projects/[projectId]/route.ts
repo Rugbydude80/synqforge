@@ -176,6 +176,5 @@ async function deleteProject(_request: NextRequest, context: any) {
 }
 
 export const GET = withAuth(getProject)
-export const PUT = withAuth(updateProject)
-export const PATCH = withAuth(updateProject) // Support both PUT and PATCH
+export const PATCH = withAuth(updateProject)
 export const DELETE = withAuth(deleteProject)

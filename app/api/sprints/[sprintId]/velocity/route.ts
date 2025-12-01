@@ -15,9 +15,9 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * Get comprehensive sprint velocity summary
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const sprintId = req.nextUrl.pathname.split('/')[3]
+      const { sprintId } = params
 
       // Get comprehensive velocity summary
       const summary = await velocityService.getSprintVelocitySummary(sprintId, user.organizationId)

@@ -11,7 +11,7 @@ export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
       const { searchParams } = req.nextUrl
-      const projectId = req.nextUrl.pathname.split('/')[3]
+      const { projectId } = context.params
 
       // Optional query parameters
       const lastNSprints = parseInt(searchParams.get('sprints') || '3')

@@ -8,9 +8,9 @@ import { realtimeService } from '@/lib/services/realtime.service';
 /**
  * PATCH /api/stories/[storyId]/move - Move story to different status (Kanban board)
  */
-async function moveStory(req: NextRequest, context: { user: any }) {
+async function moveStory(req: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = req.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
 
     if (!storyId) {
       return NextResponse.json(

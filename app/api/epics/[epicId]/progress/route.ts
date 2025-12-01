@@ -8,9 +8,9 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * Get epic progress and statistics with enhanced aggregate data
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
 
       // Use enhanced progress service for detailed summary
       const summary = await epicProgressService.getEpicProgressSummary(epicId, user.organizationId)

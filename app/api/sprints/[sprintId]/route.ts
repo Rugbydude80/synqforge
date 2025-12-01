@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { SprintsRepository } from '@/lib/repositories/sprints'
-import { UpdateSprintSchema, APIResponse, ValidationError } from '@/lib/types'
-import { z } from 'zod'
+import { UpdateSprintSchema, APIResponse } from '@/lib/types'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 
 /**
  * GET /api/sprints/[sprintId]
@@ -10,7 +10,7 @@ import { z } from 'zod'
  */
 export const GET = withAuth(async (req: NextRequest, context) => {
   try {
-    const sprintId = req.nextUrl.pathname.split('/')[3]
+    const { sprintId } = context.params
 
     const repository = new SprintsRepository(context.user)
     const sprint = await repository.getSprintById(sprintId)
@@ -22,18 +22,26 @@ export const GET = withAuth(async (req: NextRequest, context) => {
 
     return NextResponse.json(response)
   } catch (error) {
-    return handleError(error)
+    console.error('Sprint detail API error:', error)
+    if (isApplicationError(error)) {
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
+    }
+    const response = formatErrorResponse(error)
+    const { statusCode, ...errorBody } = response
+    return NextResponse.json(errorBody, { status: statusCode })
   }
 })
 
 /**
- * PUT /api/sprints/[sprintId]
- * Update a sprint
+ * PATCH /api/sprints/[sprintId]
+ * Update a sprint (partial update)
  */
-export const PUT = withAuth(
+export const PATCH = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const sprintId = req.nextUrl.pathname.split('/')[3]
+      const { sprintId } = context.params
       const body = await req.json()
 
       // Validate request body
@@ -50,17 +58,19 @@ export const PUT = withAuth(
 
       return NextResponse.json(response)
     } catch (error) {
-      return handleError(error)
+      console.error('Sprint update API error:', error)
+      if (isApplicationError(error)) {
+        const response = formatErrorResponse(error)
+        const { statusCode, ...errorBody } = response
+        return NextResponse.json(errorBody, { status: statusCode })
+      }
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
   },
   { allowedRoles: ['admin', 'member'] }
 )
-
-/**
- * PATCH /api/sprints/[sprintId]
- * Partial update of a sprint (alias for PUT)
- */
-export const PATCH = PUT
 
 /**
  * DELETE /api/sprints/[sprintId]
@@ -69,7 +79,7 @@ export const PATCH = PUT
 export const DELETE = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const sprintId = req.nextUrl.pathname.split('/')[3]
+      const { sprintId } = context.params
 
       const repository = new SprintsRepository(context.user)
       const result = await repository.deleteSprint(sprintId)
@@ -81,67 +91,16 @@ export const DELETE = withAuth(
 
       return NextResponse.json(response)
     } catch (error) {
-      return handleError(error)
+      console.error('Sprint delete API error:', error)
+      if (isApplicationError(error)) {
+        const response = formatErrorResponse(error)
+        const { statusCode, ...errorBody } = response
+        return NextResponse.json(errorBody, { status: statusCode })
+      }
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
   },
   { allowedRoles: ['admin', 'member'] }
 )
-
-/**
- * Error handler
- */
-function handleError(error: unknown) {
-  console.error('Sprint detail API error:', error)
-
-  if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid request data',
-          details: error.errors,
-        },
-      } as APIResponse,
-      { status: 400 }
-    )
-  }
-
-  if (error instanceof ValidationError) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-        },
-      } as APIResponse,
-      { status: error.statusCode }
-    )
-  }
-
-  if (error instanceof Error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error.message,
-        },
-      } as APIResponse,
-      { status: 500 }
-    )
-  }
-
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code: 'UNKNOWN_ERROR',
-        message: 'An unexpected error occurred',
-      },
-    } as APIResponse,
-    { status: 500 }
-  )
-}

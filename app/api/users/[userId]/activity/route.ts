@@ -11,7 +11,7 @@ export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
       const { searchParams } = req.nextUrl
-      const userId = req.nextUrl.pathname.split('/')[3]
+      const { userId } = context.params
 
       // Parse pagination
       const limit = parseInt(searchParams.get('limit') || '50')

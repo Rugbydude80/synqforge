@@ -10,9 +10,9 @@ import { eq, and } from 'drizzle-orm';
 /**
  * POST /api/stories/[storyId]/sprint - Assign story to a sprint
  */
-async function assignToSprint(req: NextRequest, context: { user: any }) {
+async function assignToSprint(req: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = req.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
 
     if (!storyId) {
       return NextResponse.json(
@@ -113,9 +113,9 @@ async function assignToSprint(req: NextRequest, context: { user: any }) {
 /**
  * DELETE /api/stories/[storyId]/sprint?sprintId=xxx - Remove story from a sprint
  */
-async function removeFromSprint(_request: NextRequest, context: { user: any }) {
+async function removeFromSprint(_request: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = _request.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
     const { searchParams } = new URL(_request.url);
     const sprintId = searchParams.get('sprintId');
 

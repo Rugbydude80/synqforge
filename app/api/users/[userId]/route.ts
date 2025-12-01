@@ -9,7 +9,7 @@ import { APIResponse } from '@/lib/types'
  */
 export const GET = withAuth(async (req: NextRequest, context) => {
   try {
-    const userId = req.nextUrl.pathname.split('/')[3]
+    const { userId } = context.params
 
     const repository = new UsersRepository(context.user)
     const user = await repository.getUserById(userId)

@@ -13,7 +13,7 @@ const updateTimeEntrySchema = z.object({
 })
 
 /**
- * PUT /api/time-entries/[entryId]
+ * PATCH /api/time-entries/[entryId]
  * Update time entry
  */
 async function updateTimeEntry(request: NextRequest, context: any) {
@@ -87,6 +87,6 @@ async function deleteTimeEntry(_request: NextRequest, context: any) {
   }
 }
 
-export const PUT = withAuth(updateTimeEntry, { requireOrg: true })
+export const PATCH = withAuth(updateTimeEntry, { requireOrg: true })
 export const DELETE = withAuth(deleteTimeEntry, { requireOrg: true })
 

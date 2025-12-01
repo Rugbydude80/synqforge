@@ -43,7 +43,7 @@ async function getTask(
 }
 
 /**
- * PUT /api/tasks/[taskId] - Update a task
+ * PATCH /api/tasks/[taskId] - Update a task
  */
 async function updateTask(
   req: NextRequest,
@@ -164,7 +164,7 @@ export const GET = withAuth(getTask, {
   allowedRoles: ['admin', 'member', 'viewer']
 });
 
-export const PUT = withAuth(updateTask, {
+export const PATCH = withAuth(updateTask, {
   allowedRoles: ['admin', 'member']
 });
 

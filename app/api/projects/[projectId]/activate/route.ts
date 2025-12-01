@@ -10,7 +10,7 @@ async function activateProject(req: NextRequest, context: any) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
-    const projectId = req.nextUrl.pathname.split('/')[3]
+    const { projectId } = context.params
 
     if (!projectId) {
       return NextResponse.json(

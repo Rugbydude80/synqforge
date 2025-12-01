@@ -10,7 +10,7 @@ import { APIResponse } from '@/lib/types'
 export const GET = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const sprintId = req.nextUrl.pathname.split('/')[3]
+      const { sprintId } = context.params
 
       const repository = new SprintsRepository(context.user)
       const metrics = await repository.getSprintMetrics(sprintId)

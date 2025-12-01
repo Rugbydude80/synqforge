@@ -35,9 +35,9 @@ import {
  * @throws {AuthorizationError} No access to story
  * @throws {DatabaseError} Database query failed
  */
-async function getStory(req: NextRequest, context: { user: any }) {
+async function getStory(req: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = req.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
 
     if (!storyId) {
       throw new ValidationError('Story ID is required');
@@ -88,9 +88,9 @@ async function getStory(req: NextRequest, context: { user: any }) {
  * - Team: Unlimited (requires approval for Done stories)
  * - Enterprise: Unlimited
  */
-async function updateStory(req: NextRequest, context: { user: any }) {
+async function updateStory(req: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = req.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
 
     if (!storyId) {
       return NextResponse.json(
@@ -295,9 +295,9 @@ async function updateStory(req: NextRequest, context: { user: any }) {
  * @throws {NotFoundError} Story not found
  * @throws {DatabaseError} Database operation failed
  */
-async function deleteStory(_request: NextRequest, context: { user: any }) {
+async function deleteStory(_request: NextRequest, context: { user: any; params: { storyId: string } }) {
   try {
-    const storyId = _request.nextUrl.pathname.split('/')[3];
+    const { storyId } = context.params;
 
     if (!storyId) {
       throw new ValidationError('Story ID is required');

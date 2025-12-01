@@ -8,9 +8,9 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * Archive a project
  */
 export const POST = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const projectId = req.nextUrl.pathname.split('/')[3]
+      const { projectId } = params
 
       const repository = new ProjectsRepository(user)
       const project = await repository.archiveProject(projectId)

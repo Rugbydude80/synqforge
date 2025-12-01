@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/auth'
 import { SprintsRepository } from '@/lib/repositories/sprints'
-import { APIResponse, ValidationError } from '@/lib/types'
+import { APIResponse } from '@/lib/types'
+import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 const ActionSchema = z.object({
@@ -15,7 +16,7 @@ const ActionSchema = z.object({
 export const POST = withAuth(
   async (req: NextRequest, context) => {
     try {
-      const sprintId = req.nextUrl.pathname.split('/')[3]
+      const { sprintId } = context.params
       const body = await req.json()
 
       // Validate action
@@ -43,67 +44,22 @@ export const POST = withAuth(
 
       return NextResponse.json(response)
     } catch (error) {
-      return handleError(error)
+      console.error('Sprint actions API error:', error)
+      if (isApplicationError(error)) {
+        const response = formatErrorResponse(error)
+        const { statusCode, ...errorBody } = response
+        return NextResponse.json(errorBody, { status: statusCode })
+      }
+      // Handle Zod validation errors
+      if (error instanceof z.ZodError) {
+        const response = formatErrorResponse(error)
+        const { statusCode, ...errorBody } = response
+        return NextResponse.json(errorBody, { status: statusCode })
+      }
+      const response = formatErrorResponse(error)
+      const { statusCode, ...errorBody } = response
+      return NextResponse.json(errorBody, { status: statusCode })
     }
   },
   { allowedRoles: ['admin', 'member'] }
 )
-
-/**
- * Error handler
- */
-function handleError(error: unknown) {
-  console.error('Sprint actions API error:', error)
-
-  if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid request data',
-          details: error.errors,
-        },
-      } as APIResponse,
-      { status: 400 }
-    )
-  }
-
-  if (error instanceof ValidationError) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-        },
-      } as APIResponse,
-      { status: error.statusCode }
-    )
-  }
-
-  if (error instanceof Error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error.message,
-        },
-      } as APIResponse,
-      { status: 500 }
-    )
-  }
-
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code: 'UNKNOWN_ERROR',
-        message: 'An unexpected error occurred',
-      },
-    } as APIResponse,
-    { status: 500 }
-  )
-}

@@ -44,7 +44,7 @@ async function getClient(_request: NextRequest, context: any) {
 }
 
 /**
- * PUT /api/clients/[clientId]
+ * PATCH /api/clients/[clientId]
  * Update client
  */
 async function updateClient(request: NextRequest, context: any) {
@@ -110,6 +110,6 @@ async function deleteClient(_request: NextRequest, context: any) {
 }
 
 export const GET = withAuth(getClient, { requireOrg: true })
-export const PUT = withAuth(updateClient, { requireOrg: true })
+export const PATCH = withAuth(updateClient, { requireOrg: true })
 export const DELETE = withAuth(deleteClient, { requireOrg: true })
 

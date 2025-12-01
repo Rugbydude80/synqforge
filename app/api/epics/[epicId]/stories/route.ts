@@ -8,9 +8,9 @@ import { successResponse, errorResponse } from '@/lib/utils/api-helpers'
  * Get stories for an epic
  */
 export const GET = withAuth(
-  async (req: NextRequest, { user }) => {
+  async (req: NextRequest, { user, params }) => {
     try {
-      const epicId = req.nextUrl.pathname.split('/')[3]
+      const { epicId } = params
 
       const repository = new EpicsRepository(user)
       const stories = await repository.getEpicStories(epicId)
