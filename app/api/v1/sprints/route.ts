@@ -9,7 +9,6 @@ import { withApiAuth, type ApiAuthContext } from '@/lib/middleware/api-auth'
 import { SprintsRepository } from '@/lib/repositories/sprints'
 import {
   createSprintRequestSchema,
-  listSprintsQuerySchema,
   type CreateSprintRequest,
 } from '@/lib/validations/api'
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'

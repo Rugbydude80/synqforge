@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { projectDocumentsRepository } from '@/lib/repositories/project-documents.repository'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { documentId: string }
 

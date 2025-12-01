@@ -5,7 +5,6 @@ import { customDocumentTemplatesRepository } from '@/lib/repositories/custom-doc
 import { checkSubscriptionTier } from '@/lib/middleware/subscription-guard'
 import { isSuperAdmin } from '@/lib/auth/super-admin'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors/custom-errors'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'

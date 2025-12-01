@@ -11,7 +11,6 @@ import { updateSprintRequestSchema, type UpdateSprintRequest } from '@/lib/valid
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'
 import {
   ValidationError,
-  AuthorizationError,
   formatErrorResponse,
   isApplicationError,
 } from '@/lib/errors/custom-errors'

@@ -9,10 +9,8 @@ import { withApiAuth, type ApiAuthContext } from '@/lib/middleware/api-auth'
 import { storiesRepository } from '@/lib/repositories/stories.repository'
 import {
   createStoryRequestSchema,
-  updateStoryRequestSchema,
   listStoriesQuerySchema,
   type CreateStoryRequest,
-  type UpdateStoryRequest,
   type ListStoriesQuery,
 } from '@/lib/validations/api'
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'

@@ -15,7 +15,7 @@ import {
   formatErrorResponse,
   isApplicationError,
 } from '@/lib/errors/custom-errors'
-import { encryptSecret, decryptSecret } from '@/lib/services/webhook.service'
+import { encryptSecret } from '@/lib/services/webhook.service'
 
 /**
  * GET /api/v1/webhooks/[webhookId]

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ClientService } from '@/lib/services/client.service'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 const updateClientSchema = z.object({

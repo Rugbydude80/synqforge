@@ -16,7 +16,7 @@ import { eq } from 'drizzle-orm'
  * GET /api/integrations/api-keys
  * List user's API keys
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 

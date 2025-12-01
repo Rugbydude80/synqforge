@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { commentsRepository } from '@/lib/repositories/comments.repository'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, ValidationError } from '@/lib/errors/custom-errors'
 import { z } from 'zod'
 
 type RouteParams = { commentId: string }

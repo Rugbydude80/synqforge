@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientPortalService } from '@/lib/services/client-portal.service'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { clientId: string }
 

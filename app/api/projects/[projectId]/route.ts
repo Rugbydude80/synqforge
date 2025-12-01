@@ -3,7 +3,6 @@ import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import type { UpdateProjectInput } from '@/lib/types'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError, AuthorizationError, ConflictError } from '@/lib/errors/custom-errors'
 
 /**
  * GET /api/projects/[projectId]

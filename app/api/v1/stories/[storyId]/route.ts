@@ -12,7 +12,6 @@ import { updateStoryRequestSchema, type UpdateStoryRequest } from '@/lib/validat
 import { checkApiKeyRateLimit } from '@/lib/middleware/api-rate-limit'
 import {
   ValidationError,
-  NotFoundError,
   AuthorizationError,
   formatErrorResponse,
   isApplicationError,

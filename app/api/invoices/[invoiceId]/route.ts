@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { InvoiceService } from '@/lib/services/invoice.service'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { NotFoundError } from '@/lib/errors/custom-errors'
 
 /**
  * GET /api/invoices/[invoiceId]

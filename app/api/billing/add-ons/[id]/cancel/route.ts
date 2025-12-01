@@ -9,7 +9,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { cancelAddOn } from '@/lib/services/addOnService'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { ValidationError, NotFoundError } from '@/lib/errors/custom-errors'
 
 type RouteParams = { id: string }
 

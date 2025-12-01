@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, type AuthContext } from '@/lib/middleware/auth'
 import { ProjectsRepository } from '@/lib/repositories/projects'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
-import { ValidationError, NotFoundError, AuthorizationError } from '@/lib/errors/custom-errors'
 
 /**
  * POST /api/projects/[projectId]/activate
  * Mark a project as active
  */
-async function activateProject(req: NextRequest, context: AuthContext & { params: { projectId: string } }) {
+async function activateProject(_req: NextRequest, context: AuthContext & { params: { projectId: string } }) {
   const projectsRepo = new ProjectsRepository(context.user)
 
   try {
