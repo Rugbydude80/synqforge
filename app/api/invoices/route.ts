@@ -17,6 +17,14 @@ const createInvoiceSchema = z.object({
  */
 async function getInvoices(request: NextRequest, context: any) {
   try {
+    if (!context.user?.organizationId) {
+      console.error('No organizationId in context:', context.user)
+      return NextResponse.json(
+        { error: 'Organization not found in user context' },
+        { status: 400 }
+      )
+    }
+
     const service = new InvoiceService(context.user)
     const params = request.nextUrl.searchParams
 
@@ -27,10 +35,11 @@ async function getInvoices(request: NextRequest, context: any) {
       endDate: params.get('endDate') ? new Date(params.get('endDate')!) : undefined,
     }
 
-    const invoices = await service['invoicesRepo'].getInvoices(filters)
-    return NextResponse.json({ data: invoices })
+    const invoices = await service.getInvoices(filters)
+    return NextResponse.json({ data: invoices || [] })
   } catch (error: any) {
     console.error('Error fetching invoices:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch invoices' },
       { status: 500 }

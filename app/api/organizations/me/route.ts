@@ -28,8 +28,17 @@ export async function GET(_req: NextRequest) {
       .limit(1)
 
     if (!user) {
+      console.error('User not found for email:', session.user.email)
       return NextResponse.json(
         { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    if (!user.organizationId) {
+      console.error('User has no organizationId:', user.id)
+      return NextResponse.json(
+        { error: 'User has no organization' },
         { status: 404 }
       )
     }
@@ -42,6 +51,7 @@ export async function GET(_req: NextRequest) {
       .limit(1)
 
     if (!organization) {
+      console.error('Organization not found:', user.organizationId)
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 }

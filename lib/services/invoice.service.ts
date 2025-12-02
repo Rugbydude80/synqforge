@@ -27,6 +27,13 @@ export class InvoiceService {
   }
 
   /**
+   * Get all invoices with filters
+   */
+  async getInvoices(filters?: any) {
+    return this.invoicesRepo.getInvoices(filters)
+  }
+
+  /**
    * Generate invoice number (format: INV-YYYY-NNN)
    */
   async generateInvoiceNumber(organizationId: string): Promise<string> {

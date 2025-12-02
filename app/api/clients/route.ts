@@ -21,14 +21,23 @@ const createClientSchema = z.object({
  */
 async function getClients(_request: NextRequest, context: any) {
   try {
+    if (!context.user?.organizationId) {
+      console.error('No organizationId in context:', context.user)
+      return NextResponse.json(
+        { error: 'Organization not found in user context' },
+        { status: 400 }
+      )
+    }
+
     const clientService = new ClientService(context.user)
     const status = _request.nextUrl.searchParams.get('status') as 'active' | 'archived' | null
     
     const clients = await clientService.getClients(status || undefined)
     
-    return NextResponse.json({ data: clients })
+    return NextResponse.json({ data: clients || [] })
   } catch (error: any) {
     console.error('Error fetching clients:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch clients' },
       { status: 500 }
