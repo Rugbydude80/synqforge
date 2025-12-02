@@ -92,10 +92,16 @@ async function listStories(req: NextRequest, context: ApiAuthContext) {
     if (filters.tags) storyFilters.tags = filters.tags
 
     // Get stories
+    // Map orderBy field to repository-supported values
+    let orderBy: 'createdAt' | 'updatedAt' | 'priority' | 'storyPoints' = 'createdAt'
+    if (filters.orderBy && ['createdAt', 'updatedAt', 'priority', 'storyPoints'].includes(filters.orderBy)) {
+      orderBy = filters.orderBy as any
+    }
+    
     const result = await storiesRepository.list(storyFilters, {
       limit: filters.limit,
       offset: filters.offset,
-      orderBy: filters.orderBy,
+      orderBy,
       orderDirection: filters.orderDirection,
     })
 
@@ -188,7 +194,7 @@ async function createStory(req: NextRequest, context: ApiAuthContext) {
     const story = await storiesRepository.create(
       {
         projectId: storyData.projectId,
-        epicId: storyData.epicId,
+        epicId: storyData.epicId || undefined,
         title: storyData.title,
         description: storyData.description,
         acceptanceCriteria: storyData.acceptanceCriteria,

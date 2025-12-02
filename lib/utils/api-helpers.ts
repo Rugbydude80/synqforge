@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { AppError, ValidationError, APIResponse } from '@/lib/types'
+import { ValidationError, APIResponse } from '@/lib/types'
 import { formatErrorResponse, isApplicationError } from '@/lib/errors/custom-errors'
 
 /**

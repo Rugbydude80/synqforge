@@ -232,7 +232,7 @@ export class StorySplitService {
     try {
       const result = await db.transaction(async (tx) => {
         // Load parent story
-        const [parentStory] = await tx
+        let [parentStory] = await tx
           .select()
           .from(stories)
           .where(eq(stories.id, parentStoryId))

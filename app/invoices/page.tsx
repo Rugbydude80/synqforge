@@ -2,13 +2,12 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Plus, Search, Filter, Download } from 'lucide-react'
+import { FileText, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AppSidebar } from '@/components/app-sidebar'
-import { toast } from 'sonner'
 
 interface Invoice {
   id: string

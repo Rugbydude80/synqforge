@@ -108,7 +108,7 @@ async function cleanupUserData() {
     // Step 5: Delete story links
     if (storyIds.length > 0) {
       console.log('Step 5: Deleting story links...')
-      const deletedLinks = await db
+      await db
         .delete(storyLinks)
         .where(
           or(
@@ -123,7 +123,7 @@ async function cleanupUserData() {
     // Step 6: Delete tasks
     if (storyIds.length > 0) {
       console.log('Step 6: Deleting tasks...')
-      const deletedTasks = await db
+      await db
         .delete(tasks)
         .where(inArray(tasks.storyId, storyIds))
       console.log(`✓ Deleted tasks`)
@@ -133,7 +133,7 @@ async function cleanupUserData() {
     // Step 7: Delete stories (including epics where isEpic=true)
     if (storyIds.length > 0) {
       console.log('Step 7: Deleting stories...')
-      const deletedStories = await db
+      await db
         .delete(stories)
         .where(inArray(stories.id, storyIds))
       console.log(`✓ Deleted ${storyIds.length} story/stories`)
@@ -143,7 +143,7 @@ async function cleanupUserData() {
     // Step 8: Delete epics
     if (epicIds.length > 0) {
       console.log('Step 8: Deleting epics...')
-      const deletedEpics = await db
+      await db
         .delete(epics)
         .where(inArray(epics.id, epicIds))
       console.log(`✓ Deleted ${epicIds.length} epic(s)`)
@@ -153,7 +153,7 @@ async function cleanupUserData() {
     // Step 9: Delete projects
     if (projectIds.length > 0) {
       console.log('Step 9: Deleting projects...')
-      const deletedProjects = await db
+      await db
         .delete(projects)
         .where(inArray(projects.id, projectIds))
       console.log(`✓ Deleted ${projectIds.length} project(s)`)

@@ -76,7 +76,7 @@ export class WebhooksRepository {
       .limit(1)
 
     if (!webhook) {
-      throw new NotFoundError('Webhook', webhookId)
+      throw new NotFoundError(`Webhook ${webhookId}`)
     }
 
     return {
@@ -188,7 +188,7 @@ export class WebhooksRepository {
       .returning()
 
     if (!updated) {
-      throw new NotFoundError('Webhook', webhookId)
+      throw new NotFoundError(`Webhook ${webhookId}`)
     }
 
     return {

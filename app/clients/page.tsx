@@ -2,11 +2,10 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Plus, Search, Archive, Clock, DollarSign } from 'lucide-react'
+import { Building2, Plus, Search, Archive } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ClientFormModal } from '@/components/clients/client-form-modal'
 import { ClientList } from '@/components/clients/client-list'

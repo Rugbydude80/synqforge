@@ -26,7 +26,7 @@ async function applyMigration() {
   try {
     console.log('🚀 Applying migration...')
     console.log('Executing SQL migration file...')
-    const result = await sql.unsafe(migrationSQL)
+    await sql.unsafe(migrationSQL)
     console.log('✅ Migration applied successfully!')
     console.log('📊 Tables created: clients, time_entries, invoices, client_portal_access')
     console.log('📊 Columns added: projects.client_id, projects.billing_rate, organizations.last_invoice_number')

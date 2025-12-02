@@ -112,9 +112,25 @@ async function updateStory(req: NextRequest, context: ApiAuthContext & { params:
       throw new AuthorizationError('Access denied to this story')
     }
 
+    // Map API format to repository format
+    const repoUpdateData: any = {}
+    if (updateData.title !== undefined) repoUpdateData.title = updateData.title
+    if (updateData.description !== undefined) repoUpdateData.description = updateData.description
+    if (updateData.acceptanceCriteria !== undefined) repoUpdateData.acceptanceCriteria = updateData.acceptanceCriteria
+    if (updateData.storyPoints !== undefined) repoUpdateData.storyPoints = updateData.storyPoints
+    if (updateData.priority !== undefined) repoUpdateData.priority = updateData.priority
+    if (updateData.storyType !== undefined) repoUpdateData.storyType = updateData.storyType
+    if (updateData.status !== undefined) repoUpdateData.status = updateData.status
+    if (updateData.tags !== undefined) repoUpdateData.tags = updateData.tags
+    if (updateData.epicId !== undefined) repoUpdateData.epicId = updateData.epicId
+    // Map assigneeId to assignedTo, converting null to undefined
+    if (updateData.assigneeId !== undefined) {
+      repoUpdateData.assignedTo = updateData.assigneeId || undefined
+    }
+
     // Update story
     const userId = context.user?.id || context.apiKey.apiKeyId
-    const updatedStory = await storiesRepository.update(storyId, updateData, userId)
+    const updatedStory = await storiesRepository.update(storyId, repoUpdateData, userId)
 
     // Get rate limit info for headers
     const rateLimitResult = await checkApiKeyRateLimit(

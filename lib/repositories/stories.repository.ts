@@ -58,6 +58,7 @@ export interface StoryFilters {
 
 export interface StoryWithRelations {
   id: string;
+  organizationId: string;
   projectId: string;
   epicId: string | null;
   title: string;

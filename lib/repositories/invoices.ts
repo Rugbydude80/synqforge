@@ -137,22 +137,24 @@ export class InvoicesRepository {
     try {
       const invoiceId = generateId()
 
+      const invoiceData = {
+        id: invoiceId,
+        organizationId: this.userContext.organizationId,
+        clientId: input.clientId,
+        invoiceNumber: input.invoiceNumber,
+        status: 'draft' as const,
+        issueDate: input.issueDate.toISOString().split('T')[0],
+        dueDate: input.dueDate.toISOString().split('T')[0],
+        totalHours: input.totalHours.toString(),
+        totalAmount: input.totalAmount.toString(),
+        currency: input.currency || 'USD',
+        lineItems: input.lineItems,
+        notes: input.notes || null,
+      }
+
       const [newInvoice] = await db
         .insert(invoices)
-        .values({
-          id: invoiceId,
-          organizationId: this.userContext.organizationId,
-          clientId: input.clientId,
-          invoiceNumber: input.invoiceNumber,
-          status: 'draft',
-          issueDate: input.issueDate,
-          dueDate: input.dueDate,
-          totalHours: input.totalHours.toString(),
-          totalAmount: input.totalAmount.toString(),
-          currency: input.currency || 'USD',
-          lineItems: input.lineItems,
-          notes: input.notes || null,
-        })
+        .values(invoiceData)
         .returning()
 
       return newInvoice

@@ -83,22 +83,24 @@ export class ClientsRepository {
     try {
       const clientId = generateId()
 
+      const clientData = {
+        id: clientId,
+        organizationId: this.userContext.organizationId,
+        name: input.name,
+        logoUrl: input.logoUrl || null,
+        primaryContactName: input.primaryContactName || null,
+        primaryContactEmail: input.primaryContactEmail || null,
+        contractStartDate: input.contractStartDate ? input.contractStartDate.toISOString().split('T')[0] : null,
+        contractEndDate: input.contractEndDate ? input.contractEndDate.toISOString().split('T')[0] : null,
+        defaultBillingRate: input.defaultBillingRate ? input.defaultBillingRate.toString() : null,
+        currency: input.currency || 'USD',
+        status: 'active' as const,
+        settings: input.settings || {},
+      }
+
       const [newClient] = await db
         .insert(clients)
-        .values({
-          id: clientId,
-          organizationId: this.userContext.organizationId,
-          name: input.name,
-          logoUrl: input.logoUrl || null,
-          primaryContactName: input.primaryContactName || null,
-          primaryContactEmail: input.primaryContactEmail || null,
-          contractStartDate: input.contractStartDate || null,
-          contractEndDate: input.contractEndDate || null,
-          defaultBillingRate: input.defaultBillingRate ? input.defaultBillingRate.toString() : null,
-          currency: input.currency || 'USD',
-          status: 'active',
-          settings: input.settings || {},
-        })
+        .values(clientData)
         .returning()
 
       return newClient

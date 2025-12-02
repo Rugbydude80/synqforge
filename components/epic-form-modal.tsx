@@ -92,15 +92,15 @@ export function EpicFormModal({
     setError(null)
 
     try {
-      const epicData = {
+      const epicData: any = {
         projectId: epic ? epic.projectId : projectId!,
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         goals: formData.goals.trim() || undefined,
         priority: formData.priority,
         color: formData.color,
-        startDate: formData.startDate || undefined,
-        targetDate: formData.targetDate || undefined,
+        startDate: formData.startDate ? new Date(formData.startDate) : undefined,
+        targetDate: formData.targetDate ? new Date(formData.targetDate) : undefined,
       }
 
       if (epic) {

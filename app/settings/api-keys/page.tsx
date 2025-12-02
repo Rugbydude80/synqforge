@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Key, Plus, Trash2, Copy, Eye, EyeOff, Calendar, AlertCircle } from 'lucide-react'
+import { Key, Plus, Trash2, Copy, Calendar, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

@@ -157,10 +157,9 @@ async function createSprint(req: NextRequest, context: ApiAuthContext) {
     const sprint = await sprintsRepo.createSprint({
       projectId: sprintData.projectId,
       name: sprintData.name,
-      description: sprintData.description,
       goal: sprintData.goal,
-      startDate: new Date(sprintData.startDate),
-      endDate: new Date(sprintData.endDate),
+      startDate: sprintData.startDate,
+      endDate: sprintData.endDate,
     })
 
     const rateLimitResult = await checkApiKeyRateLimit(

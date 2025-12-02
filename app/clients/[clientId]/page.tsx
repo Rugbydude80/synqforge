@@ -7,11 +7,6 @@ import {
   ArrowLeft,
   Edit,
   Archive,
-  FolderKanban,
-  Clock,
-  DollarSign,
-  FileText,
-  Calendar,
   Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'

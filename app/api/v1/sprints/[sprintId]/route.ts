@@ -101,11 +101,10 @@ async function updateSprint(req: NextRequest, context: ApiAuthContext & { params
 
     const sprint = await sprintsRepo.updateSprint(sprintId, {
       name: updateData.name,
-      description: updateData.description,
       status: updateData.status,
       goal: updateData.goal,
-      startDate: updateData.startDate ? new Date(updateData.startDate) : undefined,
-      endDate: updateData.endDate ? new Date(updateData.endDate) : undefined,
+      startDate: updateData.startDate,
+      endDate: updateData.endDate,
     })
 
     const rateLimitResult = await checkApiKeyRateLimit(

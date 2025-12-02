@@ -3,7 +3,7 @@
  * Rate limits API requests by API key ID with tier-based limits
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createApiKeyRateLimiter, checkRateLimit } from '@/lib/rate-limit'
 import type { ApiKeyContext } from '@/lib/services/api-key.service'
 

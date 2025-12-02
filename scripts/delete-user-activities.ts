@@ -59,7 +59,7 @@ async function deleteUserActivities() {
 
     // Step 3: Delete all activities for this user
     console.log('Step 3: Deleting activities...')
-    const deletedActivities = await db
+    await db
       .delete(activities)
       .where(eq(activities.userId, targetUser.id))
 

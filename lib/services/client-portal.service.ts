@@ -3,13 +3,14 @@ import { clientPortalAccess, projects, stories, epics, sprints } from '@/lib/db/
 import { eq, sql } from 'drizzle-orm'
 import { ClientsRepository } from '@/lib/repositories/clients'
 import { Resend } from 'resend'
+import { randomBytes } from 'crypto'
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build')
 
 export class ClientPortalService {
   private clientsRepo: ClientsRepository
 
-  constructor(private organizationId: string) {
+  constructor(organizationId: string) {
     this.clientsRepo = new ClientsRepository({ organizationId } as any)
   }
 
@@ -17,7 +18,7 @@ export class ClientPortalService {
    * Generate portal token
    */
   async generatePortalToken(clientId: string, email: string, expiresInDays: number = 30): Promise<string> {
-    const token = crypto.randomBytes(32).toString('hex')
+    const token = randomBytes(32).toString('hex')
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expiresInDays)
 

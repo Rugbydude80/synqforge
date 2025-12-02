@@ -17,8 +17,6 @@ export function DiffViewer({
   changes,
   type,
   showChanges,
-  currentChangeIndex,
-  onHoverChange,
 }: DiffViewerProps) {
   // Build highlighted content with inline highlighting (not fragmented)
   const highlightedContent = useMemo(() => {

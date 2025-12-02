@@ -188,10 +188,19 @@ export class EpicsRepository {
       await this.verifyUserInOrg(updates.assignedTo)
     }
 
+    // Convert Date objects to strings for database
+    const dbUpdates: any = { ...updates }
+    if (updates.startDate !== undefined) {
+      dbUpdates.startDate = updates.startDate ? updates.startDate.toISOString().split('T')[0] : null
+    }
+    if (updates.targetDate !== undefined) {
+      dbUpdates.targetDate = updates.targetDate ? updates.targetDate.toISOString().split('T')[0] : null
+    }
+
     await db
       .update(epics)
       .set({
-        ...updates,
+        ...dbUpdates,
         updatedAt: new Date(),
       })
       .where(eq(epics.id, epicId))

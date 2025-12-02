@@ -1,4 +1,4 @@
-import { InvoicesRepository } from '@/lib/repositories/invoices'
+import { InvoicesRepository, UpdateInvoiceInput } from '@/lib/repositories/invoices'
 import { TimeEntriesRepository } from '@/lib/repositories/time-entries'
 import { ClientsRepository } from '@/lib/repositories/clients'
 import { db } from '@/lib/db'

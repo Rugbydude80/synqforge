@@ -64,7 +64,7 @@ export class TimeTrackingService {
       userId,
       startedAt: now,
       description,
-      billingRate,
+      billingRate: billingRate ?? undefined,
     }
 
     if (clientId) {
@@ -118,11 +118,12 @@ export class TimeTrackingService {
 
     // Resolve billing rate if not provided
     if (!input.billingRate) {
-      input.billingRate = await this.resolveBillingRate(
+      const rate = await this.resolveBillingRate(
         input.clientId,
         input.projectId,
         undefined
       )
+      input.billingRate = rate ?? undefined
     }
 
     return this.timeEntriesRepo.createTimeEntry(input)

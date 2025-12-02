@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { validateApiKey, getApiKeyContext, type ApiKeyContext } from '@/lib/services/api-key.service'
+import { validateApiKey, type ApiKeyContext } from '@/lib/services/api-key.service'
 import { db } from '@/lib/db'
 import { users, organizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'

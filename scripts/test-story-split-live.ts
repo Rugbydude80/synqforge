@@ -21,11 +21,11 @@ config({ path: resolve(process.cwd(), '.env.local') })
 config({ path: resolve(process.cwd(), '.env') })
 
 import { db } from '@/lib/db'
-import { stories, storyLinks, projects, organizations, users } from '@/lib/db/schema'
+import { stories, storyLinks, projects, users } from '@/lib/db/schema'
 import { storySplitService } from '@/lib/services/story-split.service'
 import { storySplitAnalysisService } from '@/lib/services/story-split-analysis.service'
 import { storySplitValidationService } from '@/lib/services/story-split-validation.service'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 interface TestResult {
@@ -82,11 +82,11 @@ async function getOrCreateTestProject(userId: string, orgId: string) {
     id: projectId,
     organizationId: orgId,
     name: 'Story Split Test Project',
+    key: 'SPLIT',
+    slug: 'story-split-test-project',
     description: 'Test project for story split feature testing',
     status: 'active',
-    createdBy: userId,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    ownerId: userId,
   })
   
   const [project] = await db
@@ -448,7 +448,7 @@ async function scenarioB_EpicConversion() {
     
     // Step 4: Execute split with epic conversion
     console.log('\n4. Executing split with epic conversion...')
-    const splitResult = await storySplitService.splitStoryTx(
+    await storySplitService.splitStoryTx(
       parentStory.id,
       user.id,
       {
@@ -606,7 +606,7 @@ async function scenarioC_CoverageValidation() {
     if (isSuperAdmin) {
       console.log('   ⚠️  User is super admin - split will proceed despite incomplete coverage')
       // Super admin can proceed
-      const splitResult = await storySplitService.splitStoryTx(
+      await storySplitService.splitStoryTx(
         parentStory.id,
         user.id,
         {

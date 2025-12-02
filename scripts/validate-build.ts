@@ -10,7 +10,7 @@
  */
 
 import { execSync } from 'child_process'
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
+import { readFileSync, readdirSync, statSync } from 'fs'
 import { join, relative } from 'path'
 
 const errors: string[] = []

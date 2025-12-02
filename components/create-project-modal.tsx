@@ -103,7 +103,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
       })
 
       // Reset form
-      setFormData({ name: '', key: '', description: '' })
+      setFormData({ name: '', key: '', description: '', clientId: '' })
 
       // Show success toast
       toast.success('Project created successfully!')
@@ -129,7 +129,7 @@ export function CreateProjectModal({ open, onOpenChange, onSuccess }: CreateProj
       onOpenChange(newOpen)
       if (!newOpen) {
         // Reset form when closing
-        setFormData({ name: '', key: '', description: '' })
+        setFormData({ name: '', key: '', description: '', clientId: '' })
         setError(null)
       }
     }

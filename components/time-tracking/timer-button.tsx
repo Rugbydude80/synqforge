@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Play, Square, Clock } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
@@ -20,6 +20,7 @@ export function TimerButton({ storyId, onTimerStart, onTimerStop }: TimerButtonP
   // Check for running timer on mount
   React.useEffect(() => {
     checkRunningTimer()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storyId])
 
   // Update elapsed time display

@@ -117,6 +117,7 @@ export function RefineStoryButton({
       });
       setCurrentStory(initialStory);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialStory?.id, initialStory?.title, initialStory?.description]);
 
   // Early returns AFTER all hooks

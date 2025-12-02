@@ -116,7 +116,7 @@ export async function generateApiKey(input: CreateApiKeyInput): Promise<{
         break
       case 'enterprise':
       case 'admin':
-        rateLimitPerHour = null // Unlimited for Enterprise
+        rateLimitPerHour = undefined // Unlimited for Enterprise
         break
       default:
         rateLimitPerHour = 1000

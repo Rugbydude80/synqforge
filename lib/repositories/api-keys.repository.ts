@@ -49,7 +49,7 @@ export class ApiKeysRepository {
       .limit(1)
 
     if (!apiKey) {
-      throw new NotFoundError('API key', apiKeyId)
+      throw new NotFoundError(`API key ${apiKeyId}`)
     }
 
     // Check if user can access this key
@@ -136,7 +136,6 @@ export class ApiKeysRepository {
         scopes: data.scopes,
         expiresAt: data.expiresAt,
         rateLimitPerHour: data.rateLimitPerHour,
-        updatedAt: new Date(),
       })
       .where(
         and(
@@ -147,7 +146,7 @@ export class ApiKeysRepository {
       .returning()
 
     if (!updated) {
-      throw new NotFoundError('API key', apiKeyId)
+      throw new NotFoundError(`API key ${apiKeyId}`)
     }
 
     return {
@@ -186,7 +185,7 @@ export class ApiKeysRepository {
       .returning()
 
     if (!updated) {
-      throw new NotFoundError('API key', apiKeyId)
+      throw new NotFoundError(`API key ${apiKeyId}`)
     }
 
     return { success: true }
