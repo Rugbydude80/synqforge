@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
+import { FileText, Search, Sparkles, FolderKanban, Layers, Plus, Edit, Trash2, CheckSquare, Square, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,7 @@ import { StoryFormModal } from '@/components/story-form-modal'
 import { BatchRefinementModal } from '@/components/story-refine/BatchRefinementModal'
 import { cn } from '@/lib/utils'
 import { api, type Story } from '@/lib/api-client'
+import { exportStoriesToCSV } from '@/lib/utils/export'
 import { emitProjectMetricsChanged } from '@/lib/events/project-events'
 import { toast } from 'sonner'
 
@@ -406,6 +407,22 @@ function StoriesPageContent() {
                 )}
                 {!isSelectMode && (
                   <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        try {
+                          exportStoriesToCSV(stories)
+                          toast.success('Stories exported to CSV')
+                        } catch (_error) {
+                          toast.error('Failed to export stories')
+                        }
+                      }}
+                      disabled={stories.length === 0}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

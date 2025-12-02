@@ -14,6 +14,7 @@ import {
   Sparkles,
   Settings,
   Layers,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +27,8 @@ import { ProjectEditModal } from '@/components/project-edit-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 import { subscribeToProjectMetrics } from '@/lib/events/project-events'
+import { exportProjectsToCSV } from '@/lib/utils/export'
+import { toast } from 'sonner'
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -221,6 +224,22 @@ export default function ProjectsPage() {
               <p className="text-sm sm:text-base text-gray-400">Manage your projects and track progress</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try {
+                    exportProjectsToCSV(projects)
+                    toast.success('Projects exported to CSV')
+                  } catch (error) {
+                    toast.error('Failed to export projects')
+                  }
+                }}
+                disabled={projects.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => router.push('/ai-generate')}

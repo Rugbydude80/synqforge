@@ -24,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { CreateProjectModal } from '@/components/create-project-modal'
 import { AppSidebar } from '@/components/app-sidebar'
 import { TrialWarningBanner } from '@/components/billing/TrialWarningBanner'
+import { CommandPalette } from '@/components/command-palette'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { subscribeToProjectMetrics } from '@/lib/events/project-events'
 
@@ -357,6 +358,7 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-foreground">Welcome back! Here's what's happening.</p>
           </div>
           <div className="flex items-center gap-3">
+            <CommandPalette />
             {lastSyncTime && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
