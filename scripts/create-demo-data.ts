@@ -68,6 +68,7 @@ async function createDemoData() {
         clientId: clientId,
         name: 'Website Redesign',
         key: 'ACME-WEB',
+        slug: 'website-redesign',
         description: 'Complete redesign of Acme Corporation website with modern UI/UX',
         status: 'active',
         ownerId: userId,

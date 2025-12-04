@@ -51,9 +51,11 @@ describe('Story Split Feature Fixes', () => {
       id: testProjectId,
       organizationId: testOrgId,
       name: 'Test Project',
+      key: 'TEST',
+      slug: `test-project-${Date.now()}`,
       description: 'Test project for story split tests',
       status: 'active',
-      createdBy: testUserId,
+      ownerId: testUserId,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
