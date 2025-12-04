@@ -132,7 +132,7 @@ async function createDemoData() {
     const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
     const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)
 
-    const entries = await db.insert(timeEntries).values([
+    await db.insert(timeEntries).values([
       {
         id: timeEntry1Id,
         organizationId: orgId,
