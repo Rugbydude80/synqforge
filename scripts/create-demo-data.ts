@@ -145,9 +145,7 @@ async function createDemoData() {
         durationMinutes: 240,
         description: 'Homepage design work',
         billingRate: '150.00',
-        billableAmount: '600.00',
-        isBillable: true,
-        isBilled: false,
+        billable: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -163,9 +161,7 @@ async function createDemoData() {
         durationMinutes: 180,
         description: 'Homepage responsive adjustments',
         billingRate: '150.00',
-        billableAmount: '450.00',
-        isBillable: true,
-        isBilled: false,
+        billable: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -181,9 +177,7 @@ async function createDemoData() {
         durationMinutes: 300,
         description: 'Contact form implementation',
         billingRate: '150.00',
-        billableAmount: '750.00',
-        isBillable: true,
-        isBilled: false,
+        billable: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -236,7 +230,6 @@ async function createDemoData() {
     await db
       .update(timeEntries)
       .set({
-        isBilled: true,
         invoiceId: invoiceId,
         updatedAt: new Date(),
       })
@@ -245,7 +238,6 @@ async function createDemoData() {
     await db
       .update(timeEntries)
       .set({
-        isBilled: true,
         invoiceId: invoiceId,
         updatedAt: new Date(),
       })
@@ -254,7 +246,6 @@ async function createDemoData() {
     await db
       .update(timeEntries)
       .set({
-        isBilled: true,
         invoiceId: invoiceId,
         updatedAt: new Date(),
       })
