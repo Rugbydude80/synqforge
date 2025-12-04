@@ -2,14 +2,14 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AppSidebar } from '@/components/app-sidebar'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 
@@ -288,19 +288,17 @@ export default function NewInvoicePage() {
                     </div>
                   ) : (
                     <Select
+                      id="client"
                       value={selectedClientId}
-                      onValueChange={setSelectedClientId}
+                      onChange={(e) => setSelectedClientId(e.target.value)}
+                      className="mt-2"
                     >
-                      <SelectTrigger id="client" className="mt-2">
-                        <SelectValue placeholder="Select a client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      <option value="">Select a client</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
                     </Select>
                   )}
                 </div>
