@@ -118,7 +118,7 @@ export default function NewInvoicePage() {
         setPreview(data.data)
         
         // Auto-select all time entries
-        const allEntryIds = new Set(data.data.entries.map((e: TimeEntry) => e.id))
+        const allEntryIds = new Set<string>(data.data.entries.map((e: TimeEntry) => e.id))
         setSelectedTimeEntries(allEntryIds)
       } catch (err: any) {
         setError(err.message || 'Failed to load preview')
