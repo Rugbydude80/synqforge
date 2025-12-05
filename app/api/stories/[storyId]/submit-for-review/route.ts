@@ -13,7 +13,7 @@ const submitSchema = z.object({
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { storyId: string } }
+  { params }: { params: Promise<{ storyId: string }> }
 ) {
   try {
     const session = await auth()
@@ -24,7 +24,7 @@ export async function POST(
       )
     }
 
-    const { storyId } = params
+    const { storyId } = await params
     const body = await request.json()
     
     // Validate request body
