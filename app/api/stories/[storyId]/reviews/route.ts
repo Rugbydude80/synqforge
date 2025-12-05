@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session?.organizationId) {
+    if (!session?.user?.id || !session?.user?.organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

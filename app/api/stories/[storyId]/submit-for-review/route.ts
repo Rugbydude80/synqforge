@@ -17,7 +17,7 @@ export async function POST(
 ) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session?.organizationId) {
+    if (!session?.user?.id || !session?.user?.organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -42,7 +42,7 @@ export async function POST(
     const review = await reviewService.submitStoryForReview(
       storyId,
       clientId,
-      session.organizationId,
+      session.user.organizationId,
       session.user.id
     )
 
