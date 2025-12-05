@@ -33,7 +33,7 @@ export class ClientStoryReviewRepository {
       .insert(clientStoryReviews)
       .values({
         ...data,
-        organizationId: this.context.organizationId,
+        organizationId: this.context.user.organizationId,
       })
       .returning()
 
@@ -49,7 +49,7 @@ export class ClientStoryReviewRepository {
       .from(clientStoryReviews)
       .where(and(
         eq(clientStoryReviews.id, id),
-        eq(clientStoryReviews.organizationId, this.context.organizationId)
+        eq(clientStoryReviews.organizationId, this.context.user.organizationId)
       ))
       .limit(1)
 
@@ -66,7 +66,7 @@ export class ClientStoryReviewRepository {
       .where(and(
         eq(clientStoryReviews.storyId, storyId),
         eq(clientStoryReviews.clientId, clientId),
-        eq(clientStoryReviews.organizationId, this.context.organizationId)
+        eq(clientStoryReviews.organizationId, this.context.user.organizationId)
       ))
       .limit(1)
 
@@ -77,7 +77,7 @@ export class ClientStoryReviewRepository {
    * Find all reviews matching filter
    */
   async findAll(filter: ClientStoryReviewFilter = {}): Promise<any[]> {
-    const conditions = [eq(clientStoryReviews.organizationId, this.context.organizationId)]
+    const conditions = [eq(clientStoryReviews.organizationId, this.context.user.organizationId)]
 
     if (filter.clientId) {
       conditions.push(eq(clientStoryReviews.clientId, filter.clientId))
@@ -132,7 +132,7 @@ export class ClientStoryReviewRepository {
       })
       .where(and(
         eq(clientStoryReviews.id, id),
-        eq(clientStoryReviews.organizationId, this.context.organizationId)
+        eq(clientStoryReviews.organizationId, this.context.user.organizationId)
       ))
       .returning()
 
@@ -147,7 +147,7 @@ export class ClientStoryReviewRepository {
       .delete(clientStoryReviews)
       .where(and(
         eq(clientStoryReviews.id, id),
-        eq(clientStoryReviews.organizationId, this.context.organizationId)
+        eq(clientStoryReviews.organizationId, this.context.user.organizationId)
       ))
 
     return true
@@ -167,7 +167,7 @@ export class ClientStoryReviewRepository {
    * Get review statistics
    */
   async getStatistics(filter: ClientStoryReviewFilter = {}): Promise<any> {
-    const conditions = [eq(clientStoryReviews.organizationId, this.context.organizationId)]
+    const conditions = [eq(clientStoryReviews.organizationId, this.context.user.organizationId)]
 
     if (filter.clientId) {
       conditions.push(eq(clientStoryReviews.clientId, filter.clientId))
@@ -222,7 +222,7 @@ export class ClientStoryReviewRepository {
       })
       .where(and(
         inArray(clientStoryReviews.id, reviewIds),
-        eq(clientStoryReviews.organizationId, this.context.organizationId)
+        eq(clientStoryReviews.organizationId, this.context.user.organizationId)
       ))
       .returning()
 
@@ -242,7 +242,7 @@ export class ClientStoryReviewRepository {
       .from(clientStoryReviews)
       .leftJoin(stories, eq(clientStoryReviews.storyId, stories.id))
       .leftJoin(clients, eq(clientStoryReviews.clientId, clients.id))
-      .where(eq(clientStoryReviews.organizationId, this.context.organizationId))
+      .where(eq(clientStoryReviews.organizationId, this.context.user.organizationId))
       .orderBy(desc(clientStoryReviews.updatedAt))
       .limit(limit)
 
