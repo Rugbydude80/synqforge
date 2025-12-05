@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       valid: true,
       clientId: access.clientId,
+      organizationId: client.organizationId,
       email: access.email,
     })
   } catch (error: any) {

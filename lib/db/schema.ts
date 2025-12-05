@@ -384,6 +384,80 @@ export const clientPortalAccess = pgTable(
 )
 
 // ============================================
+// CLIENT STORY REVIEWS - Client feedback and approval workflow
+// ============================================
+
+export const reviewStatusEnum = pgEnum('review_status', ['pending', 'approved', 'needs_revision', 'rejected'])
+
+export const clientStoryReviews = pgTable(
+  'client_story_reviews',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    clientId: varchar('client_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    organizationId: varchar('organization_id', { length: 36 }).notNull(),
+
+    // Business-friendly translation
+    businessSummary: text('business_summary'),
+    businessValue: text('business_value'),
+    expectedOutcome: text('expected_outcome'),
+    identifiedRisks: json('identified_risks').$type<Array<{
+      category: string
+      description: string
+      severity: 'low' | 'medium' | 'high'
+    }>>().default([]),
+    clarifyingQuestions: json('clarifying_questions').$type<Array<{
+      question: string
+      askedAt: string
+      answeredAt?: string
+      answer?: string
+    }>>().default([]),
+
+    // Approval workflow
+    approvalStatus: reviewStatusEnum('approval_status').default('pending').notNull(),
+    approvalNotes: text('approval_notes'),
+    approvedByRole: varchar('approved_by_role', { length: 50 }), // 'client_stakeholder', 'client_admin'
+    approvedByEmail: varchar('approved_by_email', { length: 255 }),
+    approvedAt: timestamp('approved_at'),
+
+    // Feedback tracking
+    feedbackItems: json('feedback_items').$type<Array<{
+      id: string
+      type: 'concern' | 'question' | 'suggestion' | 'blocker'
+      description: string
+      priority: 'low' | 'medium' | 'high'
+      createdAt: string
+      resolvedAt?: string
+      resolution?: string
+    }>>().default([]),
+    feedbackSummary: text('feedback_summary'),
+
+    // AI-generated insights
+    aiGeneratedSummary: boolean('ai_generated_summary').default(false),
+    technicalComplexityScore: smallint('technical_complexity_score'), // 0-10
+    clientFriendlinessScore: smallint('client_friendliness_score'), // 0-10
+
+    // Timestamps and tracking
+    submittedForReviewAt: timestamp('submitted_for_review_at'),
+    lastViewedAt: timestamp('last_viewed_at'),
+    reviewCompletedAt: timestamp('review_completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    createdBy: varchar('created_by', { length: 36 }).notNull(), // User who submitted for review
+  },
+  (table) => ({
+    storyIdx: index('idx_client_reviews_story').on(table.storyId),
+    clientIdx: index('idx_client_reviews_client').on(table.clientId),
+    projectIdx: index('idx_client_reviews_project').on(table.projectId),
+    orgIdx: index('idx_client_reviews_org').on(table.organizationId),
+    statusIdx: index('idx_client_reviews_status').on(table.approvalStatus),
+    submittedIdx: index('idx_client_reviews_submitted').on(table.submittedForReviewAt),
+    uniqueStoryClient: uniqueIndex('unique_story_client_review').on(table.storyId, table.clientId),
+  })
+)
+
+// ============================================
 // EPICS & STORIES
 // ============================================
 
@@ -1149,6 +1223,7 @@ export const storiesRelations = relations(stories, ({ one, many }) => ({
   }),
   tasks: many(tasks),
   timeEntries: many(timeEntries),
+  clientReviews: many(clientStoryReviews),
 }))
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
@@ -1267,6 +1342,7 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   timeEntries: many(timeEntries),
   invoices: many(invoices),
   portalAccess: many(clientPortalAccess),
+  storyReviews: many(clientStoryReviews),
 }))
 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
@@ -1315,6 +1391,28 @@ export const clientPortalAccessRelations = relations(clientPortalAccess, ({ one 
   }),
 }))
 
+export const clientStoryReviewsRelations = relations(clientStoryReviews, ({ one }) => ({
+  story: one(stories, {
+    fields: [clientStoryReviews.storyId],
+    references: [stories.id],
+  }),
+  client: one(clients, {
+    fields: [clientStoryReviews.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [clientStoryReviews.projectId],
+    references: [projects.id],
+  }),
+  organization: one(organizations, {
+    fields: [clientStoryReviews.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [clientStoryReviews.createdBy],
+    references: [users.id],
+  }),
+}))
 
 // ============================================
 // STRIPE SUBSCRIPTIONS
