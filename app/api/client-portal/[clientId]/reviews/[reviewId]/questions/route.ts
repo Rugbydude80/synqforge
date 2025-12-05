@@ -13,10 +13,10 @@ const questionSchema = z.object({
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { clientId: string; reviewId: string } }
+  { params }: { params: Promise<{ clientId: string; reviewId: string }> }
 ) {
   try {
-    const { clientId, reviewId } = params
+    const { clientId, reviewId } = await params
     const body = await request.json()
     
     // Validate portal token

@@ -143,7 +143,7 @@ export class ClientStoryReviewRepository {
    * Delete review
    */
   async delete(id: string): Promise<boolean> {
-    const result = await db
+    await db
       .delete(clientStoryReviews)
       .where(and(
         eq(clientStoryReviews.id, id),

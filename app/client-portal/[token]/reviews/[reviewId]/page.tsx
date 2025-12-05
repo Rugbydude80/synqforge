@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { 
   CheckCircle2, 
-  XCircle, 
   AlertTriangle, 
   MessageSquare,
   ThumbsUp,
@@ -54,6 +53,7 @@ export default function ReviewDetailPage() {
 
   useEffect(() => {
     fetchReview()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewId, token])
 
   const fetchReview = async () => {

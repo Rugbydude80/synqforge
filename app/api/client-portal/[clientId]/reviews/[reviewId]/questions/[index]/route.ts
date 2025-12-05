@@ -12,10 +12,10 @@ const answerSchema = z.object({
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { clientId: string; reviewId: string; index: string } }
+  { params }: { params: Promise<{ clientId: string; reviewId: string; index: string }> }
 ) {
   try {
-    const { reviewId, index } = params
+    const { reviewId, index } = await params
     const body = await request.json()
     
     // Note: This endpoint should be protected by regular auth, not portal token

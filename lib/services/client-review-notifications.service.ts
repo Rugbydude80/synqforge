@@ -5,7 +5,7 @@
  */
 
 import { db, generateId } from '@/lib/db'
-import { activities, notifications } from '@/lib/db/schema'
+import { activities } from '@/lib/db/schema'
 import { Resend } from 'resend'
 import { logger } from '@/lib/utils/logger'
 

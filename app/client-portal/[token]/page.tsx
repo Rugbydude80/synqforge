@@ -35,8 +35,8 @@ export default function ClientPortalPage() {
   const [branding, setBranding] = useState<ClientBranding | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [clientId, setClientId] = useState<string | null>(null)
-  const [organizationId, setOrganizationId] = useState<string | null>(null)
+  const [_clientId, setClientId] = useState<string | null>(null)
+  const [_organizationId, setOrganizationId] = useState<string | null>(null)
 
   useEffect(() => {
     const validateAndFetchData = async () => {

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,7 +36,7 @@ export function ClientReviewCard({
   onAskQuestion,
   showActions = true,
 }: ClientReviewCardProps) {
-  const [expanded, setExpanded] = useState(false)
+  // Removed unused expanded state
 
   const statusConfig = {
     pending: {

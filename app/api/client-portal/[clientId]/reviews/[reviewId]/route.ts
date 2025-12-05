@@ -16,10 +16,10 @@ const updateStatusSchema = z.object({
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { clientId: string; reviewId: string } }
+  { params }: { params: Promise<{ clientId: string; reviewId: string }> }
 ) {
   try {
-    const { clientId, reviewId } = params
+    const { clientId, reviewId } = await params
     
     // Validate portal token
     const authHeader = request.headers.get('authorization')
@@ -67,10 +67,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { clientId: string; reviewId: string } }
+  { params }: { params: Promise<{ clientId: string; reviewId: string }> }
 ) {
   try {
-    const { clientId, reviewId } = params
+    const { clientId, reviewId } = await params
     const body = await request.json()
     
     // Validate portal token
