@@ -7,7 +7,7 @@
 import { db } from '@/lib/db'
 import { clientStoryReviews, stories, clients, projects } from '@/lib/db/schema'
 import { eq, and, desc, sql, inArray } from 'drizzle-orm'
-import type { AuthContext } from '@/lib/types/context.types'
+import type { AuthContext } from '@/lib/middleware/auth'
 
 export interface ClientStoryReviewFilter {
   clientId?: string
