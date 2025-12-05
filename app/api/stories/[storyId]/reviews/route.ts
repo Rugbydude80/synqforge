@@ -8,7 +8,7 @@ import { auth } from '@/lib/auth'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { storyId: string } }
+  { params }: { params: Promise<{ storyId: string }> }
 ) {
   try {
     const session = await auth()
@@ -19,7 +19,7 @@ export async function GET(
       )
     }
 
-    const { storyId } = params
+    const { storyId } = await params
 
     const reviewService = new ClientStoryReviewService()
     const reviews = await reviewService.getStoryReviews(storyId)
