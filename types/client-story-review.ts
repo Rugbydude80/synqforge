@@ -74,6 +74,7 @@ export interface ReviewWithRelations extends ClientStoryReview {
     description: string | null
     status: string
     storyPoints: number | null
+    acceptanceCriteria: string[]
   } | null
   client?: {
     id: string

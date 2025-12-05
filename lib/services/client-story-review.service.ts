@@ -225,20 +225,48 @@ Focus on:
   }
 
   /**
-   * Get review by ID
+   * Get review by ID with relations
    */
   async getReview(reviewId: string): Promise<any> {
-    const [review] = await db
-      .select()
+    const [result] = await db
+      .select({
+        review: clientStoryReviews,
+        story: {
+          id: stories.id,
+          title: stories.title,
+          description: stories.description,
+          status: stories.status,
+          storyPoints: stories.storyPoints,
+          acceptanceCriteria: stories.acceptanceCriteria,
+        },
+        client: {
+          id: clients.id,
+          name: clients.name,
+          logoUrl: clients.logoUrl,
+        },
+        project: {
+          id: projects.id,
+          name: projects.name,
+          description: projects.description,
+        },
+      })
       .from(clientStoryReviews)
+      .leftJoin(stories, eq(clientStoryReviews.storyId, stories.id))
+      .leftJoin(clients, eq(clientStoryReviews.clientId, clients.id))
+      .leftJoin(projects, eq(clientStoryReviews.projectId, projects.id))
       .where(eq(clientStoryReviews.id, reviewId))
       .limit(1)
 
-    if (!review) {
+    if (!result) {
       throw new NotFoundError('Review not found')
     }
 
-    return review
+    return {
+      ...result.review,
+      story: result.story,
+      client: result.client,
+      project: result.project,
+    }
   }
 
   /**
