@@ -129,13 +129,16 @@ export class PrioritizationEngine {
         const a = topTen[i]
         const b = topTen[j]
         const sameTeam = a.teamDependency && a.teamDependency === b.teamDependency
+        const sameComponent = a.component && a.component === b.component
         const similarScore =
           Math.abs((a.wsjfScore ?? a.riceScore ?? 0) - (b.wsjfScore ?? b.riceScore ?? 0)) <= 0.2
 
-        if (sameTeam && similarScore) {
+        if ((sameTeam || sameComponent) && similarScore) {
           conflicts.push({
             conflict: `${a.title} vs ${b.title}`,
-            reason: `Both depend on ${a.teamDependency}; prefer ${a.title} due to higher time criticality.`,
+            reason: sameTeam
+              ? `Both depend on team ${a.teamDependency}; prefer ${a.title} due to higher time criticality.`
+              : `Both touch component ${a.component}; prefer ${a.title} due to higher score.`,
           })
         }
       }
@@ -148,6 +151,8 @@ export class PrioritizationEngine {
     const sprintStories: string[] = []
     const quarterStories: string[] = []
     const atRiskStories: string[] = []
+    const teamCapacity: Array<{ team: string; used: number; capacity: number; stories: string[] }> = []
+    const teamUsage = new Map<string, { used: number; stories: string[] }>()
 
     let usedPoints = 0
     rankedStories.forEach((story) => {
@@ -166,12 +171,26 @@ export class PrioritizationEngine {
       if ((story.confidence ?? 0) < 0.4) {
         atRiskStories.push(story.id)
       }
+
+      if (story.teamDependency) {
+        const current = teamUsage.get(story.teamDependency) ?? { used: 0, stories: [] }
+        if (current.used + size <= velocity) {
+          current.used += size
+          current.stories.push(story.id)
+        }
+        teamUsage.set(story.teamDependency, current)
+      }
     })
+
+    for (const [team, info] of teamUsage.entries()) {
+      teamCapacity.push({ team, used: info.used, capacity: velocity, stories: info.stories })
+    }
 
     return {
       sprintStories,
       quarterStories,
       atRiskStories,
+      teamCapacity,
     }
   }
 

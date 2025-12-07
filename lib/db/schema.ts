@@ -93,6 +93,8 @@ export const clientStatusEnum = pgEnum('client_status', ['active', 'archived'])
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue'])
 export const prioritizationFrameworkEnum = pgEnum('prioritization_framework', ['WSJF', 'RICE', 'MoSCoW'])
 export const moscowCategoryEnum = pgEnum('moscow_category', ['Must', 'Should', 'Could', 'Wont'])
+export const prioritizationJobStatusEnum = pgEnum('prioritization_job_status', ['pending', 'processing', 'completed', 'failed'])
+export const scoreProvenanceEnum = pgEnum('score_provenance', ['auto', 'ai', 'manual'])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -250,7 +252,7 @@ export const strategicGoals = pgTable(
   'strategic_goals',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    projectId: varchar('project_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull().references(() => projects.id, { onDelete: 'cascade' }),
     goalName: varchar('goal_name', { length: 255 }).notNull(),
     description: text('description'),
     quarter: varchar('quarter', { length: 10 }),
@@ -603,8 +605,8 @@ export const storyPrioritizationScores = pgTable(
   'story_prioritization_scores',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    storyId: varchar('story_id', { length: 36 }).notNull(),
-    projectId: varchar('project_id', { length: 36 }).notNull(),
+    storyId: varchar('story_id', { length: 36 }).notNull().references(() => stories.id, { onDelete: 'cascade' }),
+    projectId: varchar('project_id', { length: 36 }).notNull().references(() => projects.id, { onDelete: 'cascade' }),
     framework: prioritizationFrameworkEnum('framework').notNull(),
 
     // WSJF fields
@@ -625,9 +627,10 @@ export const storyPrioritizationScores = pgTable(
     moscowCategory: moscowCategoryEnum('moscow_category'),
 
     calculatedAt: timestamp('calculated_at').defaultNow(),
-    calculatedBy: varchar('calculated_by', { length: 36 }),
+    calculatedBy: varchar('calculated_by', { length: 36 }).references(() => users.id),
     isManualOverride: boolean('is_manual_override').default(false),
     reasoning: text('reasoning'),
+    provenance: scoreProvenanceEnum('provenance').default('auto'),
   },
   (table) => ({
     uniqueStoryFramework: uniqueIndex('unique_story_framework').on(table.storyId, table.framework),
@@ -641,10 +644,10 @@ export const backlogAnalysisReports = pgTable(
   'backlog_analysis_reports',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    projectId: varchar('project_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull().references(() => projects.id, { onDelete: 'cascade' }),
     frameworkUsed: prioritizationFrameworkEnum('framework_used').notNull(),
     generatedAt: timestamp('generated_at').defaultNow(),
-    generatedBy: varchar('generated_by', { length: 36 }).notNull(),
+    generatedBy: varchar('generated_by', { length: 36 }).notNull().references(() => users.id),
 
     strategicFocus: text('strategic_focus'),
     marketSegment: text('market_segment'),
@@ -660,6 +663,28 @@ export const backlogAnalysisReports = pgTable(
   },
   (table) => ({
     projectGeneratedIdx: index('idx_reports_project_generated_at').on(table.projectId, table.generatedAt),
+    projectFrameworkIdx: index('idx_reports_project_framework_generated').on(table.projectId, table.frameworkUsed, table.generatedAt),
+  })
+)
+
+export const prioritizationJobs = pgTable(
+  'prioritization_jobs',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    framework: prioritizationFrameworkEnum('framework').notNull(),
+    status: prioritizationJobStatusEnum('status').default('pending').notNull(),
+    reportId: varchar('report_id', { length: 36 }),
+    error: text('error'),
+    generatedBy: varchar('generated_by', { length: 36 }).notNull().references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    durationMs: integer('duration_ms'),
+  },
+  (table) => ({
+    projectIdx: index('idx_prioritization_jobs_project').on(table.projectId, table.createdAt),
+    statusIdx: index('idx_prioritization_jobs_status').on(table.status),
   })
 )
 

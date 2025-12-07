@@ -35,13 +35,22 @@ test.describe('Prioritization API', () => {
       teamVelocity: 20,
     })
     assert.equal(res.status, 202)
-    assert.ok(res.data.reportId, 'reportId should be returned')
+    assert.ok(res.data.jobId, 'jobId should be returned')
   })
 
   test('story scores endpoint responds', async () => {
     if (!TEST_AUTH_TOKEN || !TEST_STORY_ID) return
     const res = await apiCall(`/api/v1/prioritization/stories/${TEST_STORY_ID}/scores`, 'GET')
     assert.ok([200, 400, 404].includes(res.status), 'Endpoint should respond without crashing')
+  })
+
+  test('analyze validation fails for invalid payload', async () => {
+    if (!TEST_AUTH_TOKEN || !TEST_PROJECT_ID) return
+    const res = await apiCall(`/api/v1/prioritization/projects/${TEST_PROJECT_ID}/analyze`, 'POST', {
+      framework: 'WSJF',
+      teamVelocity: -5, // invalid
+    })
+    assert.equal(res.status, 400)
   })
 })
 

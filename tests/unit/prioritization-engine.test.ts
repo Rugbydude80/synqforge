@@ -49,3 +49,51 @@ test('confidence analysis buckets missing estimates as unestimated', () => {
   assert.deepEqual(result.confidenceLevels.unestimatedStories, ['d'])
 })
 
+test('MoSCoW ordering respects category priority', () => {
+  const stories: BacklogStoryInput[] = [
+    { id: 'a', projectId: 'p1', title: 'A', businessValue: 1, tags: ['blocker'] }, // Must
+    { id: 'b', projectId: 'p1', title: 'B', businessValue: 9 }, // Should
+    { id: 'c', projectId: 'p1', title: 'C', businessValue: 5, effort: 2 }, // Could
+    { id: 'd', projectId: 'p1', title: 'D', businessValue: 1, effort: 10 }, // Wont
+  ]
+
+  const result = engine.runFullAnalysis(stories, { framework: 'MoSCoW' })
+  const ordered = result.rankedStories.map((s) => s.id)
+  assert.deepEqual(ordered, ['a', 'b', 'c', 'd'])
+})
+
+test('manual override provenance wins over auto', () => {
+  const stories: BacklogStoryInput[] = [
+    { id: 'a', projectId: 'p1', title: 'A', businessValue: 1, jobSize: 2, provenance: 'auto' },
+    { id: 'b', projectId: 'p1', title: 'B', businessValue: 10, jobSize: 5, provenance: 'manual' },
+  ]
+
+  const result = engine.runFullAnalysis(stories, { framework: 'WSJF' })
+  const ranked = result.rankedStories
+  assert.equal(ranked[0].provenance, 'manual')
+})
+
+test('conflict detection flags shared team/component with similar scores', () => {
+  const stories: BacklogStoryInput[] = [
+    { id: 'a', projectId: 'p1', title: 'A', businessValue: 8, timeCriticality: 8, riskReduction: 8, jobSize: 4, teamDependency: 'teamA', component: 'auth' },
+    { id: 'b', projectId: 'p1', title: 'B', businessValue: 8, timeCriticality: 7, riskReduction: 7, jobSize: 4, teamDependency: 'teamA', component: 'auth' },
+    { id: 'c', projectId: 'p1', title: 'C', businessValue: 2, timeCriticality: 2, riskReduction: 2, jobSize: 5 },
+  ]
+
+  const result = engine.runFullAnalysis(stories, { framework: 'WSJF' })
+  assert.ok(result.priorityConflicts.length >= 1)
+})
+
+test('capacity allocates per team', () => {
+  const stories: BacklogStoryInput[] = [
+    { id: 'a', projectId: 'p1', title: 'A', jobSize: 3, teamDependency: 'teamA' },
+    { id: 'b', projectId: 'p1', title: 'B', jobSize: 3, teamDependency: 'teamA' },
+    { id: 'c', projectId: 'p1', title: 'C', jobSize: 3, teamDependency: 'teamB' },
+  ]
+
+  const result = engine.runFullAnalysis(stories, { framework: 'WSJF', teamVelocity: 5 })
+  const teamA = result.capacityAnalysis.teamCapacity?.find((t) => t.team === 'teamA')
+  assert.ok(teamA)
+  assert.ok((teamA?.used || 0) <= 5)
+})
+

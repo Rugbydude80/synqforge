@@ -6,8 +6,9 @@ import {
   backlogAnalysisReports,
   impactScores,
   effortScores,
+  prioritizationJobs,
 } from '@/lib/db/schema'
-import { and, eq, inArray, desc } from 'drizzle-orm'
+import { and, eq, inArray, desc, sql } from 'drizzle-orm'
 import { prioritizationEngine } from '@/lib/prioritization/engine'
 import type {
   BacklogAnalysisConfig,
@@ -19,7 +20,64 @@ import type { UserContext } from '@/lib/middleware/auth'
 export class PrioritizationRepository {
   constructor(private user: UserContext) {}
 
-  async runAnalysis(projectId: string, config: BacklogAnalysisConfig): Promise<BacklogAnalysisResult & { reportId: string }> {
+  async createJob(projectId: string, framework: PrioritizationFramework) {
+    await this.verifyProject(projectId)
+    const id = generateId()
+    await db.insert(prioritizationJobs).values({
+      id,
+      projectId,
+      framework,
+      status: 'pending',
+      generatedBy: this.user.id,
+    })
+    return id
+  }
+
+  async getJob(projectId: string, jobId: string) {
+    await this.verifyProject(projectId)
+    const [job] = await db
+      .select()
+      .from(prioritizationJobs)
+      .where(and(eq(prioritizationJobs.id, jobId), eq(prioritizationJobs.projectId, projectId)))
+      .limit(1)
+    if (!job) throw new Error('Job not found')
+    return job
+  }
+
+  async processJob(projectId: string, jobId: string, config: BacklogAnalysisConfig) {
+    const startedAt = new Date()
+    await db
+      .update(prioritizationJobs)
+      .set({ status: 'processing', startedAt })
+      .where(and(eq(prioritizationJobs.id, jobId), eq(prioritizationJobs.projectId, projectId)))
+
+    try {
+      const result = await this.runAnalysisAndPersist(projectId, config)
+      const completedAt = new Date()
+      await db
+        .update(prioritizationJobs)
+        .set({
+          status: 'completed',
+          reportId: result.reportId,
+          completedAt,
+          durationMs: completedAt.getTime() - startedAt.getTime(),
+        })
+        .where(eq(prioritizationJobs.id, jobId))
+      return { jobId, status: 'completed', reportId: result.reportId }
+    } catch (error: any) {
+      await db
+        .update(prioritizationJobs)
+        .set({
+          status: 'failed',
+          error: error?.message || 'Unknown error',
+          completedAt: new Date(),
+        })
+        .where(eq(prioritizationJobs.id, jobId))
+      throw error
+    }
+  }
+
+  async runAnalysisAndPersist(projectId: string, config: BacklogAnalysisConfig): Promise<BacklogAnalysisResult & { reportId: string }> {
     await this.verifyProject(projectId)
 
     const backlogStories = await this.loadStories(projectId, config.framework)
@@ -56,15 +114,16 @@ export class PrioritizationRepository {
           timeCriticality: story.timeCriticality ?? null,
           riskReduction: story.riskReduction ?? null,
           jobSize: story.jobSize ?? story.storyPoints ?? null,
-          wsjfScore: story.wsjfScore ? String(story.wsjfScore) : null,
+          wsjfScore: story.wsjfScore ?? null,
           reach: story.reach ?? null,
-          impact: story.impact ? Number(story.impact) : null,
+          impact: story.impact != null ? Number(story.impact) : null,
           confidence: story.confidence ?? null,
           effort: story.effort ?? null,
-          riceScore: story.riceScore ? String(story.riceScore) : null,
+          riceScore: story.riceScore ?? null,
           moscowCategory: story.moscowCategory ?? null,
           calculatedBy: this.user.id,
           reasoning: 'Auto-calculated by PrioritizationEngine',
+          provenance: story.provenance ?? 'auto',
         })
         .onConflictDoUpdate({
           target: [storyPrioritizationScores.storyId, storyPrioritizationScores.framework],
@@ -73,17 +132,18 @@ export class PrioritizationRepository {
             timeCriticality: story.timeCriticality ?? null,
             riskReduction: story.riskReduction ?? null,
             jobSize: story.jobSize ?? story.storyPoints ?? null,
-            wsjfScore: story.wsjfScore ? String(story.wsjfScore) : null,
+            wsjfScore: story.wsjfScore ?? null,
             reach: story.reach ?? null,
-            impact: story.impact ? Number(story.impact) : null,
+            impact: story.impact != null ? Number(story.impact) : null,
             confidence: story.confidence ?? null,
             effort: story.effort ?? null,
-            riceScore: story.riceScore ? String(story.riceScore) : null,
+            riceScore: story.riceScore ?? null,
             moscowCategory: story.moscowCategory ?? null,
             calculatedAt: new Date(),
             calculatedBy: this.user.id,
             isManualOverride: false,
             reasoning: 'Auto-calculated by PrioritizationEngine',
+            provenance: story.provenance ?? 'auto',
           },
         })
     }
@@ -91,13 +151,36 @@ export class PrioritizationRepository {
     return { ...result, reportId }
   }
 
-  async listReports(projectId: string) {
+  async listReports(
+    projectId: string,
+    opts?: {
+      limit?: number
+      offset?: number
+      framework?: PrioritizationFramework
+    }
+  ) {
     await this.verifyProject(projectId)
-    return db
+    const limit = opts?.limit && opts.limit > 0 ? Math.min(opts.limit, 100) : 20
+    const offset = opts?.offset && opts.offset >= 0 ? opts.offset : 0
+
+    const where = opts?.framework
+      ? and(eq(backlogAnalysisReports.projectId, projectId), eq(backlogAnalysisReports.frameworkUsed, opts.framework))
+      : eq(backlogAnalysisReports.projectId, projectId)
+
+    const data = await db
       .select()
       .from(backlogAnalysisReports)
-      .where(eq(backlogAnalysisReports.projectId, projectId))
-      .orderBy(backlogAnalysisReports.generatedAt)
+      .where(where)
+      .orderBy(desc(backlogAnalysisReports.generatedAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(backlogAnalysisReports)
+      .where(where)
+
+    return { data, total: Number(count) }
   }
 
   async getReport(reportId: string) {
@@ -230,6 +313,7 @@ export class PrioritizationRepository {
         id: stories.id,
         projectId: stories.projectId,
         title: stories.title,
+        status: stories.status,
         storyPoints: stories.storyPoints,
         tags: stories.tags,
         priority: stories.priority,
@@ -320,6 +404,13 @@ export class PrioritizationRepository {
       const impact = impactMap.get(row.id)
       const effort = effortMap.get(row.id)
 
+      const tags = row.tags ?? []
+      const teamTag = tags.find((t) => t.startsWith('team:'))?.split(':')[1]
+      const componentTag = tags.find((t) => t.startsWith('component:'))?.split(':')[1]
+      const goalTags = tags.filter((t) => t.startsWith('goal:')).map((t) => t.split(':')[1]).filter(Boolean)
+      const revenueTag = tags.find((t) => t.startsWith('revenue:'))
+      const revenueImpact = revenueTag ? Number(revenueTag.split(':')[1]) || null : null
+
       const jobSize =
         override?.jobSize ??
         effort?.suggestedPoints ??
@@ -333,11 +424,19 @@ export class PrioritizationRepository {
         (effort?.confidence != null ? effort.confidence / 100 : undefined) ??
         (row.aiConfidenceScore != null ? row.aiConfidenceScore / 100 : undefined)
 
+      const provenance: 'manual' | 'ai' | 'auto' = override?.isManualOverride
+        ? 'manual'
+        : impact
+          ? 'ai'
+          : 'auto'
+
       return {
         id: row.id,
         projectId: row.projectId,
         title: row.title,
-        tags: row.tags ?? [],
+        priority: row.priority,
+        status: row.status,
+        tags,
         storyPoints: row.storyPoints ?? undefined,
         jobSize,
         businessValue: override?.businessValue ?? impact?.impact ?? priorityToScore[row.priority] ?? 5,
@@ -350,8 +449,12 @@ export class PrioritizationRepository {
         wsjfScore: override?.wsjfScore ? Number(override.wsjfScore) : impact?.wsjfScore ? Number(impact.wsjfScore) : undefined,
         riceScore: override?.riceScore ? Number(override.riceScore) : impact?.riceScore ? Number(impact.riceScore) : undefined,
         moscowCategory: override?.moscowCategory ?? undefined,
-        teamDependency: undefined,
-        quarterlyRevenue: undefined,
+        teamDependency: teamTag ?? undefined,
+        component: componentTag ?? undefined,
+        goalTags,
+        revenueImpact,
+        quarterlyRevenue: revenueImpact ?? undefined,
+        provenance,
       }
     })
   }

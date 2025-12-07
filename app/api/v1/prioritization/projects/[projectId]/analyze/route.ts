@@ -6,11 +6,11 @@ import type { BacklogAnalysisConfig } from '@/lib/prioritization/types'
 
 const analyzeSchema = z.object({
   framework: z.enum(['WSJF', 'RICE', 'MoSCoW']),
-  strategicFocus: z.string().optional(),
-  marketSegment: z.string().optional(),
-  competitivePressure: z.string().optional(),
-  budgetPerQuarter: z.number().optional(),
-  teamVelocity: z.number().optional(),
+  strategicFocus: z.string().max(500).optional(),
+  marketSegment: z.string().max(200).optional(),
+  competitivePressure: z.string().max(100).optional(),
+  budgetPerQuarter: z.number().positive().optional(),
+  teamVelocity: z.number().positive().optional(),
 })
 
 export const POST = withAuth(
@@ -21,25 +21,22 @@ export const POST = withAuth(
       const config = analyzeSchema.parse(body) as BacklogAnalysisConfig
 
       const repo = new PrioritizationRepository(user)
-      const result = await repo.runAnalysis(projectId, config)
+      const jobId = await repo.createJob(projectId, config.framework)
+      // Process synchronously for now; status endpoints will reflect completion
+      const result = await repo.processJob(projectId, jobId, config)
 
       return NextResponse.json(
         {
+          jobId: result.jobId,
+          status: result.status,
           reportId: result.reportId,
-          framework: config.framework,
-          rankedStories: result.rankedStories,
-          strategicAlignment: result.strategicAlignment,
-          priorityConflicts: result.priorityConflicts,
-          capacityAnalysis: result.capacityAnalysis,
-          confidenceLevels: result.confidenceLevels,
-          executiveSummary: result.executiveSummary,
         },
         { status: 202 }
       )
     } catch (error: any) {
       console.error('[PRIORITIZATION_ANALYZE] error', error)
       return NextResponse.json(
-        { error: 'Failed to run analysis', message: error?.message || 'Unknown error' },
+        { code: 'ANALYZE_FAILED', error: 'Failed to run analysis', message: error?.message || 'Unknown error' },
         { status: 400 }
       )
     }

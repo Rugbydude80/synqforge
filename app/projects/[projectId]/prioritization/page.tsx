@@ -4,12 +4,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 
@@ -72,6 +70,7 @@ export default function PrioritizationDashboardPage() {
   const [reports, setReports] = useState<Report[]>([])
   const [activeReport, setActiveReport] = useState<Report | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingReports, setIsLoadingReports] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
@@ -79,6 +78,7 @@ export default function PrioritizationDashboardPage() {
   }, [projectId])
 
   async function refreshReports() {
+    setIsLoadingReports(true)
     try {
       const data = await fetchJSON<{ data: Report[] }>(`/api/v1/prioritization/projects/${projectId}/analysis/reports`)
       setReports(data.data || [])
@@ -90,6 +90,8 @@ export default function PrioritizationDashboardPage() {
     } catch (error: any) {
       console.error(error)
       toast.error('Failed to load reports')
+    } finally {
+      setIsLoadingReports(false)
     }
   }
 
@@ -145,16 +147,18 @@ export default function PrioritizationDashboardPage() {
           <h1 className="text-2xl font-semibold">Backlog Priority Analysis</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={framework} onValueChange={(val) => setFramework(val as Framework)}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Framework" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="WSJF">WSJF</SelectItem>
-              <SelectItem value="RICE">RICE</SelectItem>
-              <SelectItem value="MoSCoW">MoSCoW</SelectItem>
-            </SelectContent>
-          </Select>
+          <Button variant="outline" size="sm" onClick={refreshReports} disabled={isLoadingReports}>
+            {isLoadingReports ? 'Refreshing…' : 'Refresh'}
+          </Button>
+          <select
+            className="h-10 rounded-lg border border-gray-700 bg-gray-800/50 px-3 text-sm text-white"
+            value={framework}
+            onChange={(e) => setFramework(e.target.value as Framework)}
+          >
+            <option value="WSJF">WSJF</option>
+            <option value="RICE">RICE</option>
+            <option value="MoSCoW">MoSCoW</option>
+          </select>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
               <Button>Run New Analysis</Button>
@@ -173,38 +177,61 @@ export default function PrioritizationDashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recommended Priority</CardTitle>
+            {activeReport && (
+              <p className="text-xs text-muted-foreground">
+                Last generated: {new Date((activeReport as any).generatedAt || activeReport.id).toLocaleString()}
+              </p>
+            )}
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>Story</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Size</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(activeReport?.rankedStories || []).map((story) => (
-                  <TableRow key={story.id}>
-                    <TableCell className="font-mono">{story.rank}</TableCell>
-                    <TableCell>{story.title}</TableCell>
-                    <TableCell>
-                      {framework === 'WSJF' && (story.wsjfScore ?? '–')}
-                      {framework === 'RICE' && (story.riceScore ?? '–')}
-                      {framework === 'MoSCoW' && (
-                        <Badge variant="outline" className="capitalize">
-                          {story.moscowCategory || 'N/A'}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{story.confidence != null ? `${Math.round(story.confidence * 100)}%` : '–'}</TableCell>
-                    <TableCell>{story.jobSize ?? story.storyPoints ?? '–'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground">
+                  <tr>
+                    <th className="py-2 pr-4">Rank</th>
+                    <th className="py-2 pr-4">Story</th>
+                    <th className="py-2 pr-4">Score</th>
+                    <th className="py-2 pr-4">Confidence</th>
+                    <th className="py-2 pr-4">Size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingReports && (
+                    <tr>
+                      <td className="py-3 text-muted-foreground" colSpan={5}>
+                        Loading…
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoadingReports && (activeReport?.rankedStories || []).length === 0 && (
+                    <tr>
+                      <td className="py-3 text-muted-foreground" colSpan={5}>
+                        No analyses yet. Run a new analysis to get started.
+                      </td>
+                    </tr>
+                  )}
+                  {(activeReport?.rankedStories || []).map((story) => (
+                    <tr key={story.id} className="border-t border-gray-800">
+                      <td className="py-2 pr-4 font-mono">{story.rank}</td>
+                      <td className="py-2 pr-4">{story.title}</td>
+                      <td className="py-2 pr-4">
+                        {framework === 'WSJF' && (story.wsjfScore ?? '–')}
+                        {framework === 'RICE' && (story.riceScore ?? '–')}
+                        {framework === 'MoSCoW' && (
+                          <Badge variant="outline" className="capitalize">
+                            {story.moscowCategory || 'N/A'}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {story.confidence != null ? `${Math.round(story.confidence * 100)}%` : '–'}
+                      </td>
+                      <td className="py-2 pr-4">{story.jobSize ?? story.storyPoints ?? '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 
@@ -312,19 +339,15 @@ function RunAnalysisModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label>Framework</Label>
-          <Select
+          <select
+            className="h-10 rounded-lg border border-gray-700 bg-gray-800/50 px-3 text-sm text-white"
             value={form.framework}
-            onValueChange={(val) => setForm((prev) => ({ ...prev, framework: val as Framework }))}
+            onChange={(e) => setForm((prev) => ({ ...prev, framework: e.target.value as Framework }))}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select framework" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="WSJF">WSJF</SelectItem>
-              <SelectItem value="RICE">RICE</SelectItem>
-              <SelectItem value="MoSCoW">MoSCoW</SelectItem>
-            </SelectContent>
-          </Select>
+            <option value="WSJF">WSJF</option>
+            <option value="RICE">RICE</option>
+            <option value="MoSCoW">MoSCoW</option>
+          </select>
         </div>
 
         <div className="space-y-2">

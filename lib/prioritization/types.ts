@@ -4,6 +4,8 @@ export interface BacklogStoryInput {
   id: string
   projectId: string
   title: string
+  priority?: string | null
+  status?: string | null
   storyPoints?: number | null
   jobSize?: number | null
   businessValue?: number | null
@@ -15,6 +17,10 @@ export interface BacklogStoryInput {
   effort?: number | null
   tags?: string[] | null
   teamDependency?: string | null
+  component?: string | null
+  goalTags?: string[] | null
+  revenueImpact?: number | null
+  teamDependency?: string | null
   quarterlyRevenue?: number | null
 }
 
@@ -23,6 +29,7 @@ export interface RankedStory extends BacklogStoryInput {
   riceScore?: number
   moscowCategory?: 'Must' | 'Should' | 'Could' | 'Wont'
   rank?: number
+  provenance?: 'auto' | 'ai' | 'manual'
 }
 
 export interface StrategicAlignmentResult {
@@ -41,6 +48,12 @@ export interface CapacityAnalysisResult {
   sprintStories: string[]
   quarterStories: string[]
   atRiskStories: string[]
+  teamCapacity?: Array<{
+    team: string
+    used: number
+    capacity: number
+    stories: string[]
+  }>
 }
 
 export interface ConfidenceLevelsResult {
