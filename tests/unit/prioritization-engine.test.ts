@@ -48,3 +48,4 @@ test('confidence analysis buckets missing estimates as unestimated', () => {
   assert.deepEqual(result.confidenceLevels.lowConfidenceStories, ['c'])
   assert.deepEqual(result.confidenceLevels.unestimatedStories, ['d'])
 })
+
