@@ -114,12 +114,12 @@ export class PrioritizationRepository {
           timeCriticality: story.timeCriticality ?? null,
           riskReduction: story.riskReduction ?? null,
           jobSize: story.jobSize ?? story.storyPoints ?? null,
-          wsjfScore: story.wsjfScore ?? null,
+          wsjfScore: story.wsjfScore != null ? String(story.wsjfScore) : null,
           reach: story.reach ?? null,
-          impact: story.impact != null ? Number(story.impact) : null,
-          confidence: story.confidence ?? null,
+          impact: story.impact != null ? String(story.impact) : null,
+          confidence: story.confidence != null ? String(story.confidence) : null,
           effort: story.effort ?? null,
-          riceScore: story.riceScore ?? null,
+          riceScore: story.riceScore != null ? String(story.riceScore) : null,
           moscowCategory: story.moscowCategory ?? null,
           calculatedBy: this.user.id,
           reasoning: 'Auto-calculated by PrioritizationEngine',
@@ -132,12 +132,12 @@ export class PrioritizationRepository {
             timeCriticality: story.timeCriticality ?? null,
             riskReduction: story.riskReduction ?? null,
             jobSize: story.jobSize ?? story.storyPoints ?? null,
-            wsjfScore: story.wsjfScore ?? null,
+            wsjfScore: story.wsjfScore != null ? String(story.wsjfScore) : null,
             reach: story.reach ?? null,
-            impact: story.impact != null ? Number(story.impact) : null,
-            confidence: story.confidence ?? null,
+            impact: story.impact != null ? String(story.impact) : null,
+            confidence: story.confidence != null ? String(story.confidence) : null,
             effort: story.effort ?? null,
-            riceScore: story.riceScore ?? null,
+            riceScore: story.riceScore != null ? String(story.riceScore) : null,
             moscowCategory: story.moscowCategory ?? null,
             calculatedAt: new Date(),
             calculatedBy: this.user.id,
@@ -259,16 +259,17 @@ export class PrioritizationRepository {
         timeCriticality: payload.timeCriticality ?? null,
         riskReduction: payload.riskReduction ?? null,
         jobSize: payload.jobSize ?? null,
-        wsjfScore: payload.wsjfScore ? String(payload.wsjfScore) : null,
+        wsjfScore: payload.wsjfScore != null ? String(payload.wsjfScore) : null,
         reach: payload.reach ?? null,
-        impact: payload.impact ?? null,
-        confidence: payload.confidence ?? null,
+        impact: payload.impact != null ? String(payload.impact) : null,
+        confidence: payload.confidence != null ? String(payload.confidence) : null,
         effort: payload.effort ?? null,
-        riceScore: payload.riceScore ? String(payload.riceScore) : null,
+        riceScore: payload.riceScore != null ? String(payload.riceScore) : null,
         moscowCategory: payload.moscowCategory ?? null,
         calculatedBy: this.user.id,
         isManualOverride: true,
         reasoning: payload.reasoning ?? 'Manual override',
+        provenance: 'manual',
       })
       .onConflictDoUpdate({
         target: [storyPrioritizationScores.storyId, storyPrioritizationScores.framework],
@@ -277,17 +278,18 @@ export class PrioritizationRepository {
           timeCriticality: payload.timeCriticality ?? null,
           riskReduction: payload.riskReduction ?? null,
           jobSize: payload.jobSize ?? null,
-          wsjfScore: payload.wsjfScore ? String(payload.wsjfScore) : null,
+          wsjfScore: payload.wsjfScore != null ? String(payload.wsjfScore) : null,
           reach: payload.reach ?? null,
-          impact: payload.impact ?? null,
-          confidence: payload.confidence ?? null,
+          impact: payload.impact != null ? String(payload.impact) : null,
+          confidence: payload.confidence != null ? String(payload.confidence) : null,
           effort: payload.effort ?? null,
-          riceScore: payload.riceScore ? String(payload.riceScore) : null,
+          riceScore: payload.riceScore != null ? String(payload.riceScore) : null,
           moscowCategory: payload.moscowCategory ?? null,
           calculatedAt: new Date(),
           calculatedBy: this.user.id,
           isManualOverride: true,
           reasoning: payload.reasoning ?? 'Manual override',
+          provenance: 'manual',
         },
       })
   }
@@ -418,17 +420,21 @@ export class PrioritizationRepository {
         row.storyPoints ??
         undefined
 
-      const confidence =
+      const confidenceRaw =
         override?.confidence ??
-        (impact?.confidence != null ? impact.confidence / 100 : undefined) ??
-        (effort?.confidence != null ? effort.confidence / 100 : undefined) ??
+        (impact?.confidence != null ? Number(impact.confidence) / 100 : undefined) ??
+        (effort?.confidence != null ? Number(effort.confidence) / 100 : undefined) ??
         (row.aiConfidenceScore != null ? row.aiConfidenceScore / 100 : undefined)
+      const confidence = confidenceRaw != null ? Number(confidenceRaw) : undefined
 
       const provenance: 'manual' | 'ai' | 'auto' = override?.isManualOverride
         ? 'manual'
         : impact
           ? 'ai'
           : 'auto'
+
+      const priorityKey = (row.priority ?? 'medium') as keyof typeof priorityToScore
+      const priorityScore = priorityToScore[priorityKey] ?? 5
 
       return {
         id: row.id,
@@ -439,13 +445,13 @@ export class PrioritizationRepository {
         tags,
         storyPoints: row.storyPoints ?? undefined,
         jobSize,
-        businessValue: override?.businessValue ?? impact?.impact ?? priorityToScore[row.priority] ?? 5,
-        timeCriticality: override?.timeCriticality ?? priorityToScore[row.priority] ?? 5,
-        riskReduction: override?.riskReduction ?? priorityToScore[row.priority] ?? 5,
-        reach: override?.reach ?? impact?.reach ?? undefined,
-        impact: override?.impact ?? impact?.impact ?? undefined,
+        businessValue: override?.businessValue ?? (impact?.impact != null ? Number(impact.impact) : undefined) ?? priorityScore,
+        timeCriticality: override?.timeCriticality ?? priorityScore,
+        riskReduction: override?.riskReduction ?? priorityScore,
+        reach: override?.reach ?? (impact?.reach != null ? Number(impact.reach) : undefined) ?? undefined,
+        impact: override?.impact ?? (impact?.impact != null ? Number(impact.impact) : undefined),
         confidence,
-        effort: override?.effort ?? impact?.effort ?? effort?.suggestedPoints ?? undefined,
+        effort: override?.effort ?? (impact?.effort != null ? Number(impact.effort) : undefined) ?? effort?.suggestedPoints ?? undefined,
         wsjfScore: override?.wsjfScore ? Number(override.wsjfScore) : impact?.wsjfScore ? Number(impact.wsjfScore) : undefined,
         riceScore: override?.riceScore ? Number(override.riceScore) : impact?.riceScore ? Number(impact.riceScore) : undefined,
         moscowCategory: override?.moscowCategory ?? undefined,

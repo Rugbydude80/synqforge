@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from 'recharts'
 
 type Framework = 'WSJF' | 'RICE' | 'MoSCoW'
 
@@ -31,7 +39,7 @@ interface Report {
   rankedStories: RankedStory[]
   strategicAlignment?: any
   priorityConflicts?: any[]
-  capacityAnalysis?: { sprintStories?: string[]; quarterStories?: string[]; atRiskStories?: string[] }
+  capacityAnalysis?: { sprintStories?: string[]; quarterStories?: string[]; atRiskStories?: string[]; teamCapacity?: Array<{ team: string; used: number; capacity: number; stories: string[] }> }
   confidenceLevels?: {
     highConfidenceStories?: string[]
     mediumConfidenceStories?: string[]
@@ -72,10 +80,36 @@ export default function PrioritizationDashboardPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingReports, setIsLoadingReports] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobStatus, setJobStatus] = useState<'pending' | 'processing' | 'completed' | 'failed' | null>(null)
+  const [selectedStory, setSelectedStory] = useState<RankedStory | null>(null)
+
+  const featureEnabled = process.env.NEXT_PUBLIC_ENABLE_PRIORITIZATION !== 'false'
 
   useEffect(() => {
     refreshReports()
   }, [projectId])
+
+  useEffect(() => {
+    if (!jobId || !projectId) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetchJSON<{ data: any }>(`/api/v1/prioritization/projects/${projectId}/analysis/jobs/${jobId}`)
+        const status = res.data?.status
+        setJobStatus(status)
+        if (status === 'completed' || status === 'failed') {
+          clearInterval(interval)
+          await refreshReports()
+          if (status === 'failed') {
+            toast.error('Analysis failed')
+          }
+        }
+      } catch (err) {
+        clearInterval(interval)
+      }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [jobId, projectId])
 
   async function refreshReports() {
     setIsLoadingReports(true)
@@ -105,14 +139,18 @@ export default function PrioritizationDashboardPage() {
   }) {
     setIsLoading(true)
     try {
-      const result = await fetchJSON(`/api/v1/prioritization/projects/${projectId}/analyze`, {
+      const result = await fetchJSON<{ jobId?: string; status?: any; reportId?: string }>(`/api/v1/prioritization/projects/${projectId}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       toast.success('Analysis started')
       setFramework(payload.framework)
-      await refreshReports()
+      setJobId(result.jobId ?? null)
+      setJobStatus(result.status)
+      if (result.status === 'completed') {
+        await refreshReports()
+      }
       return result
     } catch (error: any) {
       toast.error(error?.message || 'Failed to start analysis')
@@ -139,6 +177,41 @@ export default function PrioritizationDashboardPage() {
     }
   }, [activeReport])
 
+  const confidenceChartData = useMemo(
+    () => [
+      { name: 'High', value: confidenceBreakdown.high },
+      { name: 'Medium', value: confidenceBreakdown.medium },
+      { name: 'Low', value: confidenceBreakdown.low },
+      { name: 'Unestimated', value: confidenceBreakdown.none },
+    ],
+    [confidenceBreakdown]
+  )
+
+  const alignment = activeReport?.strategicAlignment
+  const conflicts = activeReport?.priorityConflicts || []
+
+  const handleStoryClick = useCallback(
+    (story: RankedStory) => {
+      setSelectedStory(story)
+    },
+    []
+  )
+
+  if (!featureEnabled) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Prioritization</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            This feature is disabled. Set NEXT_PUBLIC_ENABLE_PRIORITIZATION=true to enable.
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -150,6 +223,11 @@ export default function PrioritizationDashboardPage() {
           <Button variant="outline" size="sm" onClick={refreshReports} disabled={isLoadingReports}>
             {isLoadingReports ? 'Refreshing…' : 'Refresh'}
           </Button>
+          {jobStatus && (
+            <Badge variant="outline" className="text-xs capitalize">
+              Job: {jobStatus}
+            </Badge>
+          )}
           <select
             className="h-10 rounded-lg border border-gray-700 bg-gray-800/50 px-3 text-sm text-white"
             value={framework}
@@ -211,7 +289,7 @@ export default function PrioritizationDashboardPage() {
                     </tr>
                   )}
                   {(activeReport?.rankedStories || []).map((story) => (
-                    <tr key={story.id} className="border-t border-gray-800">
+                    <tr key={story.id} className="border-t border-gray-800 hover:bg-gray-800/40 cursor-pointer" onClick={() => handleStoryClick(story)}>
                       <td className="py-2 pr-4 font-mono">{story.rank}</td>
                       <td className="py-2 pr-4">{story.title}</td>
                       <td className="py-2 pr-4">
@@ -254,6 +332,16 @@ export default function PrioritizationDashboardPage() {
               <ConfidenceBar label="Medium" value={confidenceBreakdown.medium} />
               <ConfidenceBar label="Low" value={confidenceBreakdown.low} />
               <ConfidenceBar label="Unestimated" value={confidenceBreakdown.none} />
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={confidenceChartData}>
+                    <XAxis dataKey="name" hide />
+                    <YAxis hide />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#a855f7" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -270,9 +358,59 @@ export default function PrioritizationDashboardPage() {
                 <span className="font-medium text-foreground">Next Quarter:</span>{' '}
                 {(activeReport?.capacityAnalysis?.quarterStories || []).length} stories
               </p>
+              {activeReport?.capacityAnalysis?.teamCapacity && activeReport.capacityAnalysis.teamCapacity.length > 0 && (
+                <div className="space-y-1">
+                  {activeReport.capacityAnalysis.teamCapacity.map((team: { team: string; used: number; capacity: number; stories: string[] }) => (
+                    <div key={team.team} className="flex justify-between text-xs">
+                      <span>{team.team}</span>
+                      <span>
+                        {team.used}/{team.capacity} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Strategic Alignment</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            {alignment ? (
+              <>
+                <p><span className="font-medium text-foreground">Goal:</span> {alignment.top3AlignmentGoal}</p>
+                <p><span className="font-medium text-foreground">Revenue (next quarter):</span> {alignment.revenueImpactNextQuarter}</p>
+                <p><span className="font-medium text-foreground">Risk Reduction:</span> {alignment.riskReduction}</p>
+                <p><span className="font-medium text-foreground">Market:</span> {alignment.marketDifferentiation}</p>
+              </>
+            ) : (
+              <p>No alignment data yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Conflicts</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            {conflicts.length === 0 ? (
+              <p>No conflicts detected.</p>
+            ) : (
+              conflicts.map((c, idx) => (
+                <div key={idx} className="border border-gray-800 rounded-lg p-2">
+                  <p className="font-medium text-foreground">{c.conflict}</p>
+                  <p>{c.reason}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -291,6 +429,28 @@ export default function PrioritizationDashboardPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={!!selectedStory} onOpenChange={(open) => !open && setSelectedStory(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedStory?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedStory && (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Rank:</span> {selectedStory.rank ?? '–'}</p>
+              <p><span className="font-medium text-foreground">WSJF:</span> {selectedStory.wsjfScore ?? '–'}</p>
+              <p><span className="font-medium text-foreground">RICE:</span> {selectedStory.riceScore ?? '–'}</p>
+              <p><span className="font-medium text-foreground">Category:</span> {selectedStory.moscowCategory ?? '–'}</p>
+              <p><span className="font-medium text-foreground">Confidence:</span> {selectedStory.confidence != null ? `${Math.round(selectedStory.confidence * 100)}%` : '–'}</p>
+              <p><span className="font-medium text-foreground">Size:</span> {selectedStory.jobSize ?? selectedStory.storyPoints ?? '–'}</p>
+              <p><span className="font-medium text-foreground">Provenance:</span> {(selectedStory as any).provenance || 'auto'}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedStory(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
