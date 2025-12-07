@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Rocket } from 'lucide-react'
 import { emitProjectMetricsChanged } from '@/lib/events/project-events'
+import { brandTokens } from '@/lib/theme/brand-tokens'
 
 interface EpicFormModalProps {
   open: boolean
@@ -44,7 +45,7 @@ export function EpicFormModal({
     description: '',
     goals: '',
     priority: 'medium' as Epic['priority'],
-    color: '#a855f7',
+    color: brandTokens.primary,
     startDate: '',
     targetDate: '',
   })
@@ -57,7 +58,7 @@ export function EpicFormModal({
         description: epic.description || '',
         goals: epic.goals || '',
         priority: epic.priority,
-        color: epic.color || '#a855f7',
+        color: epic.color || brandTokens.primary,
         startDate: epic.startDate || '',
         targetDate: epic.targetDate || '',
       })
@@ -68,7 +69,7 @@ export function EpicFormModal({
         description: '',
         goals: '',
         priority: 'medium',
-        color: '#a855f7',
+        color: brandTokens.primary,
         startDate: '',
         targetDate: '',
       })
@@ -117,7 +118,7 @@ export function EpicFormModal({
         description: '',
         goals: '',
         priority: 'medium',
-        color: '#a855f7',
+        color: brandTokens.primary,
         startDate: '',
         targetDate: '',
       })

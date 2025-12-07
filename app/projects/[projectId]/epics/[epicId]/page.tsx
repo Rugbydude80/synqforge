@@ -11,6 +11,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { ArrowLeft, Sparkles, FileText, Clock, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { brandTokens } from '@/lib/theme/brand-tokens'
 
 export default function EpicDetailPage() {
   const router = useRouter()
@@ -122,8 +123,8 @@ export default function EpicDetailPage() {
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <div
-                    className="h-10 w-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: epic.color || '#a855f7' }}
+                  className="h-10 w-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: epic.color || brandTokens.primary }}
                   >
                     <FileText className="h-5 w-5 text-white" />
                   </div>

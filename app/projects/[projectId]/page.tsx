@@ -35,6 +35,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useDroppable } from '@dnd-kit/core'
 import { emitProjectMetricsChanged } from '@/lib/events/project-events'
+import { brandTokens } from '@/lib/theme/brand-tokens'
 
 // Draggable Story Card Component
 function DraggableStoryCard({ story, onClick }: { story: Story; onClick: (storyId: string) => void }) {
@@ -520,7 +521,7 @@ export default function ProjectDetailPage() {
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <div
                             className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: epic.color || '#a855f7' }}
+                            style={{ backgroundColor: epic.color || brandTokens.primary }}
                           />
                           <h3 className="text-lg font-semibold text-white">{epic.title}</h3>
                           <Badge variant="outline" className={cn(

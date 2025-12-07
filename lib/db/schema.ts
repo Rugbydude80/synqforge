@@ -91,6 +91,8 @@ export const addOnStatusEnum = pgEnum('addon_status', ['active', 'expired', 'can
 export const webhookDeliveryStatusEnum = pgEnum('webhook_delivery_status', ['pending', 'success', 'failed', 'retrying'])
 export const clientStatusEnum = pgEnum('client_status', ['active', 'archived'])
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue'])
+export const prioritizationFrameworkEnum = pgEnum('prioritization_framework', ['WSJF', 'RICE', 'MoSCoW'])
+export const moscowCategoryEnum = pgEnum('moscow_category', ['Must', 'Should', 'Could', 'Wont'])
 
 // ============================================
 // ORGANIZATIONS & USERS
@@ -241,6 +243,24 @@ export const projects = pgTable(
     statusIdx: index('idx_projects_status').on(table.organizationId, table.status),
     clientIdx: index('idx_projects_client').on(table.clientId),
     uniqueSlug: uniqueIndex('unique_project_slug').on(table.organizationId, table.slug),
+  })
+)
+
+export const strategicGoals = pgTable(
+  'strategic_goals',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    goalName: varchar('goal_name', { length: 255 }).notNull(),
+    description: text('description'),
+    quarter: varchar('quarter', { length: 10 }),
+    relatedStoryTags: json('related_story_tags').$type<string[]>(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    projectQuarterIdx: index('idx_goals_project_quarter').on(table.projectId, table.quarter),
+    uniqueGoalPerQuarter: uniqueIndex('unique_goal_per_quarter').on(table.projectId, table.goalName, table.quarter),
   })
 )
 
@@ -470,7 +490,7 @@ export const epics = pgTable(
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     goals: text('goals'),
-    color: varchar('color', { length: 7 }).default('#a855f7'),
+    color: varchar('color', { length: 7 }).default('#7c5cf5'),
     status: epicStatusEnum('status').default('draft'),
     priority: priorityEnum('priority').default('medium'),
     aiGenerated: boolean('ai_generated').default(false),
@@ -576,6 +596,70 @@ export const stories = pgTable(
     correlationKeyIdx: uniqueIndex('idx_stories_correlation_key').on(table.correlationKey),
     requestIdIdx: index('idx_stories_request_id').on(table.requestId),
     capabilityKeyIdx: index('idx_stories_capability_key').on(table.capabilityKey),
+  })
+)
+
+export const storyPrioritizationScores = pgTable(
+  'story_prioritization_scores',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    storyId: varchar('story_id', { length: 36 }).notNull(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    framework: prioritizationFrameworkEnum('framework').notNull(),
+
+    // WSJF fields
+    businessValue: integer('business_value'),
+    timeCriticality: integer('time_criticality'),
+    riskReduction: integer('risk_reduction'),
+    jobSize: integer('job_size'),
+    wsjfScore: decimal('wsjf_score', { precision: 10, scale: 2 }),
+
+    // RICE fields
+    reach: integer('reach'),
+    impact: decimal('impact', { precision: 10, scale: 2 }),
+    confidence: decimal('confidence', { precision: 3, scale: 2 }),
+    effort: integer('effort'),
+    riceScore: decimal('rice_score', { precision: 10, scale: 2 }),
+
+    // MoSCoW
+    moscowCategory: moscowCategoryEnum('moscow_category'),
+
+    calculatedAt: timestamp('calculated_at').defaultNow(),
+    calculatedBy: varchar('calculated_by', { length: 36 }),
+    isManualOverride: boolean('is_manual_override').default(false),
+    reasoning: text('reasoning'),
+  },
+  (table) => ({
+    uniqueStoryFramework: uniqueIndex('unique_story_framework').on(table.storyId, table.framework),
+    projectFrameworkIdx: index('idx_scores_project_framework').on(table.projectId, table.framework),
+    wsjfIdx: index('idx_scores_wsjf').on(table.wsjfScore),
+    riceIdx: index('idx_scores_rice').on(table.riceScore),
+  })
+)
+
+export const backlogAnalysisReports = pgTable(
+  'backlog_analysis_reports',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    projectId: varchar('project_id', { length: 36 }).notNull(),
+    frameworkUsed: prioritizationFrameworkEnum('framework_used').notNull(),
+    generatedAt: timestamp('generated_at').defaultNow(),
+    generatedBy: varchar('generated_by', { length: 36 }).notNull(),
+
+    strategicFocus: text('strategic_focus'),
+    marketSegment: text('market_segment'),
+    competitivePressure: varchar('competitive_pressure', { length: 50 }),
+    budgetConstraint: decimal('budget_constraint', { precision: 12, scale: 2 }),
+
+    strategicAlignment: json('strategic_alignment').$type<Record<string, any>>(),
+    priorityConflicts: json('priority_conflicts').$type<Record<string, any>>(),
+    capacityAnalysis: json('capacity_analysis').$type<Record<string, any>>(),
+    confidenceLevels: json('confidence_levels').$type<Record<string, any>>(),
+    executiveSummary: text('executive_summary'),
+    rankedStories: json('ranked_stories').$type<any[]>(),
+  },
+  (table) => ({
+    projectGeneratedIdx: index('idx_reports_project_generated_at').on(table.projectId, table.generatedAt),
   })
 )
 
@@ -1192,6 +1276,15 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   epics: many(epics),
   sprints: many(sprints),
   timeEntries: many(timeEntries),
+  strategicGoals: many(strategicGoals),
+  backlogAnalysisReports: many(backlogAnalysisReports),
+}))
+
+export const strategicGoalsRelations = relations(strategicGoals, ({ one }) => ({
+  project: one(projects, {
+    fields: [strategicGoals.projectId],
+    references: [projects.id],
+  }),
 }))
 
 export const epicsRelations = relations(epics, ({ one, many }) => ({
@@ -1224,6 +1317,29 @@ export const storiesRelations = relations(stories, ({ one, many }) => ({
   tasks: many(tasks),
   timeEntries: many(timeEntries),
   clientReviews: many(clientStoryReviews),
+  prioritizationScores: many(storyPrioritizationScores),
+}))
+
+export const storyPrioritizationScoresRelations = relations(storyPrioritizationScores, ({ one }) => ({
+  story: one(stories, {
+    fields: [storyPrioritizationScores.storyId],
+    references: [stories.id],
+  }),
+  project: one(projects, {
+    fields: [storyPrioritizationScores.projectId],
+    references: [projects.id],
+  }),
+}))
+
+export const backlogAnalysisReportsRelations = relations(backlogAnalysisReports, ({ one }) => ({
+  project: one(projects, {
+    fields: [backlogAnalysisReports.projectId],
+    references: [projects.id],
+  }),
+  author: one(users, {
+    fields: [backlogAnalysisReports.generatedBy],
+    references: [users.id],
+  }),
 }))
 
 export const tasksRelations = relations(tasks, ({ one }) => ({

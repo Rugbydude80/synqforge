@@ -6,6 +6,7 @@
 import * as XLSX from 'xlsx'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import PDFDocument from 'pdfkit'
+import { brandTokens } from '@/lib/theme/brand-tokens'
 
 // ============================================
 // TYPES
@@ -254,7 +255,7 @@ export function exportProjectsToPdf(projects: ExportProject[]): Promise<Buffer> 
       doc.save()
       doc.rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
       doc.fontSize(60)
-        .fillColor('#a855f7', 0.1) // Brand purple with low opacity
+        .fillColor(brandTokens.primary, 0.1) // Brand violet with low opacity
         .text('SynqForge', 0, doc.page.height / 2 - 30, {
           align: 'center',
           width: doc.page.width,
@@ -306,7 +307,7 @@ export function exportStoriesToPdf(stories: ExportStory[]): Promise<Buffer> {
       doc.save()
       doc.rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
       doc.fontSize(60)
-        .fillColor('#a855f7', 0.1) // Brand purple with low opacity
+        .fillColor(brandTokens.primary, 0.1) // Brand violet with low opacity
         .text('SynqForge', 0, doc.page.height / 2 - 30, {
           align: 'center',
           width: doc.page.width,

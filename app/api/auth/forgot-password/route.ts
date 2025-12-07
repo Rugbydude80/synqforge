@@ -133,11 +133,11 @@ export async function POST(request: NextRequest) {
           subject: 'Reset your password',
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #a855f7;">Reset Your Password</h1>
+              <h1 style="color: #7c5cf5;">Reset Your Password</h1>
               <p>Hi ${user.name || 'there'},</p>
               <p>You requested to reset your password for your SynqForge account.</p>
               <p>Click the button below to reset your password:</p>
-              <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(to right, #a855f7, #10b981); color: white; text-decoration: none; border-radius: 8px; margin: 16px 0;">Reset Password</a>
+              <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(to right, #7c5cf5, #2dd4bf); color: white; text-decoration: none; border-radius: 8px; margin: 16px 0;">Reset Password</a>
               <p>Or copy and paste this URL into your browser:</p>
               <p style="color: #666; word-break: break-all;">${resetUrl}</p>
               <p><strong>This link will expire in 1 hour.</strong></p>

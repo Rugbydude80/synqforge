@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       subject: `[${typeLabels[type]}] ${escapedSubject}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #a855f7; margin-bottom: 20px;">New Feedback Submission</h1>
+          <h1 style="color: #7c5cf5; margin-bottom: 20px;">New Feedback Submission</h1>
           
           <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
             <p style="margin: 0 0 8px 0;"><strong>Type:</strong> ${typeLabels[type]}</p>
