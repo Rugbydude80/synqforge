@@ -30,7 +30,7 @@ const redis = isRateLimitEnabled
     })
   : null
 
-function createRateLimiter(prefix: string, limit: number, duration: `${number} ${'s' | 'm' | 'h' | 'd'}`) {
+export function createRateLimiter(prefix: string, limit: number, duration: `${number} ${'s' | 'm' | 'h' | 'd'}`) {
   return redis
     ? new Ratelimit({
         redis,

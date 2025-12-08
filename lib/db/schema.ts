@@ -677,6 +677,7 @@ export const prioritizationJobs = pgTable(
     reportId: varchar('report_id', { length: 36 }),
     error: text('error'),
     generatedBy: varchar('generated_by', { length: 36 }).notNull().references(() => users.id),
+    requestPayload: json('request_payload').$type<Record<string, any>>(),
     createdAt: timestamp('created_at').defaultNow(),
     startedAt: timestamp('started_at'),
     completedAt: timestamp('completed_at'),

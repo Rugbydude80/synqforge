@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS "prioritization_jobs" (
   "report_id" varchar(36),
   "error" text,
   "generated_by" varchar(36) NOT NULL REFERENCES "users"("id"),
+  "request_payload" json,
   "created_at" timestamp DEFAULT now(),
   "started_at" timestamp,
   "completed_at" timestamp,

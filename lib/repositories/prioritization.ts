@@ -20,7 +20,7 @@ import type { UserContext } from '@/lib/middleware/auth'
 export class PrioritizationRepository {
   constructor(private user: UserContext) {}
 
-  async createJob(projectId: string, framework: PrioritizationFramework) {
+  async createJob(projectId: string, framework: PrioritizationFramework, payload?: Record<string, any>) {
     await this.verifyProject(projectId)
     const id = generateId()
     await db.insert(prioritizationJobs).values({
@@ -29,6 +29,7 @@ export class PrioritizationRepository {
       framework,
       status: 'pending',
       generatedBy: this.user.id,
+      requestPayload: payload ?? {},
     })
     return id
   }
@@ -52,7 +53,18 @@ export class PrioritizationRepository {
       .where(and(eq(prioritizationJobs.id, jobId), eq(prioritizationJobs.projectId, projectId)))
 
     try {
-      const result = await this.runAnalysisAndPersist(projectId, config)
+      const [job] = await db
+        .select()
+        .from(prioritizationJobs)
+        .where(and(eq(prioritizationJobs.id, jobId), eq(prioritizationJobs.projectId, projectId)))
+        .limit(1)
+
+      const effectiveConfig = {
+        ...((job?.requestPayload as BacklogAnalysisConfig) || {}),
+        framework: config.framework,
+      } as BacklogAnalysisConfig
+
+      const result = await this.runAnalysisAndPersist(projectId, effectiveConfig)
       const completedAt = new Date()
       await db
         .update(prioritizationJobs)
@@ -75,6 +87,22 @@ export class PrioritizationRepository {
         .where(eq(prioritizationJobs.id, jobId))
       throw error
     }
+  }
+
+  async getPendingJob(projectId: string, framework?: PrioritizationFramework) {
+    await this.verifyProject(projectId)
+    const where = framework
+      ? and(eq(prioritizationJobs.projectId, projectId), eq(prioritizationJobs.status, 'pending'), eq(prioritizationJobs.framework, framework))
+      : and(eq(prioritizationJobs.projectId, projectId), eq(prioritizationJobs.status, 'pending'))
+
+    const [job] = await db
+      .select()
+      .from(prioritizationJobs)
+      .where(where)
+      .orderBy(desc(prioritizationJobs.createdAt))
+      .limit(1)
+
+    return job || null
   }
 
   async runAnalysisAndPersist(projectId: string, config: BacklogAnalysisConfig): Promise<BacklogAnalysisResult & { reportId: string }> {
