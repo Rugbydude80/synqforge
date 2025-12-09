@@ -20,7 +20,6 @@ export interface BacklogStoryInput {
   component?: string | null
   goalTags?: string[] | null
   revenueImpact?: number | null
-  teamDependency?: string | null
   quarterlyRevenue?: number | null
 }
 

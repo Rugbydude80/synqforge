@@ -43,9 +43,28 @@ export const PUT = withAuth(
       const { storyId } = await params
       const body = await req.json()
       const parsed = scoreSchema.parse(body)
+      const { framework, ...scoreValues } = parsed
+
+      const impactLookup: Record<string, number> = {
+        massive: 3,
+        high: 2,
+        medium: 1,
+        low: 0.5,
+        minimal: 0.25,
+      }
+      const normalizedImpact =
+        scoreValues.impact === undefined
+          ? undefined
+          : typeof scoreValues.impact === 'number'
+            ? scoreValues.impact
+            : impactLookup[scoreValues.impact] ?? undefined
+      const payload: Parameters<PrioritizationRepository['upsertStoryScore']>[2] = {
+        ...scoreValues,
+        impact: normalizedImpact,
+      }
 
       const repo = new PrioritizationRepository(user)
-      await repo.upsertStoryScore(storyId, parsed.framework, parsed)
+      await repo.upsertStoryScore(storyId, framework, payload)
 
       return NextResponse.json({ success: true })
     } catch (error: any) {

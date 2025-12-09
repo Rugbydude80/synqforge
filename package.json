@@ -20,6 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:push:safe": "tsx scripts/push-schema-with-views.ts",
     "db:studio": "drizzle-kit studio",
     "setup": "npm run db:migrate",
     "embeddings:backfill": "tsx scripts/backfill-embeddings.ts",
