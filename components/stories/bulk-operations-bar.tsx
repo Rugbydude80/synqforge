@@ -42,7 +42,7 @@ export function BulkOperationsBar({
     try {
       await onUpdateStatus(status)
       toast.success(`Updated ${selectedCount} stories to ${status}`)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to update stories')
     } finally {
       setIsProcessing(false)
@@ -55,7 +55,7 @@ export function BulkOperationsBar({
     try {
       await onUpdatePriority(priority)
       toast.success(`Updated ${selectedCount} stories to ${priority} priority`)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to update stories')
     } finally {
       setIsProcessing(false)
@@ -71,7 +71,7 @@ export function BulkOperationsBar({
     try {
       await onDelete()
       toast.success(`Deleted ${selectedCount} stories`)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to delete stories')
     } finally {
       setIsProcessing(false)

@@ -247,7 +247,7 @@ export function CommandPalette() {
                     {category}
                   </div>
                   <div className="space-y-1">
-                    {commands.map((command, index) => {
+                    {commands.map((command) => {
                       const globalIndex = filteredCommands.indexOf(command)
                       const isSelected = globalIndex === selectedIndex
 

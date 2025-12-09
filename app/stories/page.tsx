@@ -414,7 +414,7 @@ function StoriesPageContent() {
                         try {
                           exportStoriesToCSV(stories)
                           toast.success('Stories exported to CSV')
-                        } catch (_error) {
+                        } catch {
                           toast.error('Failed to export stories')
                         }
                       }}

@@ -231,7 +231,7 @@ export default function ProjectsPage() {
                   try {
                     exportProjectsToCSV(projects)
                     toast.success('Projects exported to CSV')
-                  } catch (error) {
+                  } catch {
                     toast.error('Failed to export projects')
                   }
                 }}

@@ -86,32 +86,7 @@ export default function PrioritizationDashboardPage() {
 
   const featureEnabled = process.env.NEXT_PUBLIC_ENABLE_PRIORITIZATION !== 'false'
 
-  useEffect(() => {
-    refreshReports()
-  }, [projectId])
-
-  useEffect(() => {
-    if (!jobId || !projectId) return
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetchJSON<{ data: any }>(`/api/v1/prioritization/projects/${projectId}/analysis/jobs/${jobId}`)
-        const status = res.data?.status
-        setJobStatus(status)
-        if (status === 'completed' || status === 'failed') {
-          clearInterval(interval)
-          await refreshReports()
-          if (status === 'failed') {
-            toast.error('Analysis failed')
-          }
-        }
-      } catch (err) {
-        clearInterval(interval)
-      }
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [jobId, projectId])
-
-  async function refreshReports() {
+  const refreshReports = useCallback(async () => {
     setIsLoadingReports(true)
     try {
       const data = await fetchJSON<{ data: Report[] }>(`/api/v1/prioritization/projects/${projectId}/analysis/reports`)
@@ -127,7 +102,32 @@ export default function PrioritizationDashboardPage() {
     } finally {
       setIsLoadingReports(false)
     }
-  }
+  }, [projectId])
+
+  useEffect(() => {
+    refreshReports()
+  }, [projectId, refreshReports])
+
+  useEffect(() => {
+    if (!jobId || !projectId) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetchJSON<{ data: any }>(`/api/v1/prioritization/projects/${projectId}/analysis/jobs/${jobId}`)
+        const status = res.data?.status
+        setJobStatus(status)
+        if (status === 'completed' || status === 'failed') {
+          clearInterval(interval)
+          await refreshReports()
+          if (status === 'failed') {
+            toast.error('Analysis failed')
+          }
+        }
+      } catch {
+        clearInterval(interval)
+      }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [jobId, projectId, refreshReports])
 
   async function runAnalysis(payload: {
     framework: Framework
